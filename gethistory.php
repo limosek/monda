@@ -10,12 +10,13 @@ require './common.inc.php';
 $hist=time()-3600;
 $rhost='';
 $ritem='';
+$nritem='Someabnormalkeywhichdoesnotexists';
 $time_step=60;
 $histapi=true;
 $backuptable=false;
 
 $opts=getopt(
-	"h:t:H:a:i:SB"
+	"h:t:H:G:a:i:I:SB"
 );
 
 if (isset($opts["t"])) {
@@ -41,6 +42,10 @@ if (isset($opts["H"])) {
 	$rhost=$opts["H"];
 }
 
+if (isset($opts["G"])) {
+	$rgroup=$opts["G"];
+}
+
 if (isset($opts["a"])) {
 	$time_step=$opts["a"];
 }
@@ -49,32 +54,52 @@ if (isset($opts["i"])) {
 	$ritem=$opts["i"];
 }
 
+if (isset($opts["I"])) {
+	$nritem=$opts["I"];
+}
+
 try {
-	echo "a";
-	init_api();
+	$api=init_api();
 	
+	if ($rhost=="" && $rgroup=="" && $ritem=="") {
+	  fprintf(STDERR,"#Fetching all hosts and items!");
+	}
+	$sq=Array(
+	  "output" => 'extend'
+	);
+	if ($rhost) $sq["host"]=$rhost;
+	if ($rhost) $sq["group"]=$rgroup;
+	$items = $api->itemGet($sq);
+		
 	$itemids=Array();
 	$history=array();
 	$ftime=date("Y-m-d H:i:s",$hist);
 	$now=date("Y-m-d H:i:s",$to_time);
 	fprintf(STDOUT,"#Data from: %s to %s\n",$ftime,$now);
 	fprintf(STDERR,"#Data from: %s to %s\n",$ftime,$now);
-	fprintf(STDOUT,"time_from=%u;time_to=%u;date_from='%s',date_to='%s';tmp=[];\n",$hist,$to_time,$ftime,$now);
+	fprintf(STDOUT,"format short; fixed_point_format(1); global history; time_from=%u;time_to=%u;date_from='%s';date_to='%s';\n",$hist,$to_time,$ftime,$now);
 	$itemcount=0;
 	$arrid=1;
 	$maxitems=0;
 	$delay=false;
 	foreach ($items as $item) {
-		if (preg_match("*$ritem*",$item->key_) || preg_match("*$ritem*",$item->name)) {
-			fprintf(STDOUT,"#%s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s))\n",$item->host,$item->key_,$item->itemid,$item->value_type,$item->delay,$item->history,(int) ($item->history*24*3600/$item->delay),$item->trends,(int) $item->trends*24);
+		if (preg_match("*$ritem*",$item->key_) && (!preg_match("*$nritem*",$item->key_)) && ($item->value_type==2 || $item->value_type==3)) {
+			fprintf(STDOUT,"#%s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s))\n",$item->host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history,(int) ($item->history*24*3600/$item->delay), $item->trends,(int) $item->trends*24);
 			$itemid=$item->itemid;
-			$h="tmp";
-			fprintf(STDOUT,"$h.id=%s; $h.key=\"%s\";$h.delay=%s;$h.history=%s;\n",$item->itemid,$item->key_,$item->delay,$item->history);
+			$host=$api->hostGet(
+			  Array(
+			  "itemids" => Array($itemid),
+			  "output" => "extend"
+			  )
+			);
+			$host=$host[0]->name;
+			$h=sprintf("history.%s.i%s",$host,$itemid);
+			fprintf(STDOUT,"${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.history=%s;\n",$item->itemid,addslashes($item->key_),$h,$item->delay,$item->history);
 			$itemcount++;
 			$itemids[]=$item->itemid;
-			$hgetarr= array(
+			$hgetarr=array(
 				"history" => $item->value_type,
-				"itemids" => $itemids,
+				"itemids" => array($itemid),
 				"sortfield" => "clock",
 				"output" => "extend",
 				"sortorder" => "ASC",
@@ -83,24 +108,22 @@ try {
 				"time_to" => $to_time,
 				);
 			if ($histapi) {
-				$history[$item->itemid]=$api->historyGet($hgetarr);
+				$history=$api->historyGet($hgetarr);
 			} else {
-				$history[$item->itemid]=historyGet($hgetarr);
+				$history=historyGet($hgetarr);
 			}
-			
-			fprintf(STDOUT,"#Got %s values\n\n",count($history[$item->itemid]));
-			fprintf(STDERR,"#Got %s values for item %s\n",count($history[$item->itemid]),$item->key_);
-			fprintf(STDOUT,"tmpx=[");
-			foreach ($history[$item->itemid] as $i=>$h) {
-			    fprintf(STDOUT,"%s,",$h->clock);
-			}
-			fprintf(STDOUT,"];\n");
-			fprintf(STDOUT,"tmpy=[");
-			foreach ($history[$item->itemid] as $i=>$h) {
-			    fprintf(STDOUT,"%s,",$h->value);
+			//print_r($history);
+			fprintf(STDOUT,"#Got %s values for item %s\n",count($history),$item->key_);
+			fprintf(STDOUT,"${h}.x=[");
+			foreach ($history as $i=>$k) {
+			    fprintf(STDOUT,"%s,",$k->clock);
 			}
 			fprintf(STDOUT,"];\n");
-			fprintf(STDOUT,'history.%s.i%s=tmp; history.%s.i%s.x=tmpx; history.%s.i%s.y=tmpy; items=[items,tmp.id];'."\n",$rhost,$item->itemid,$rhost,$item->itemid,$rhost,$item->itemid,$rhost);
+			fprintf(STDOUT,"${h}.y=[");
+			foreach ($history as $i=>$k) {
+			    fprintf(STDOUT,"%s,",$k->value);
+			}
+			fprintf(STDOUT,"];\n");
 		}
 	}
 

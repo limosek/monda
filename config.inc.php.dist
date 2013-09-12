@@ -1,9 +1,20 @@
 <?
-define(ZABBIX_USER,'monda');
-define(ZABBIX_PW,'somesuperpassword');
-define(ZABBIX_URL,'http://<youzabbixserver>/api_jsonrpc.php');
-define(ZABBIX_CFG,'/var/www/zabbix/conf/zabbix.conf.php');
+define('ZABBIX_USER','monda');
+define('ZABBIX_PW','somesuperpassword');
+define('ZABBIX_URL','http://<youzabbixserver>/api_jsonrpc.php');
 
-ZABBIX_URL, ZABBIX_USER and ZABBIX_PW 
+# You can define path to zabbix.conf.php of your zabbix for database connection
+define('ZABBIX_CFG','/var/www/zabbix/conf/zabbix.conf.php');
+
+# Or define $DB here
+#global $DB;
+#$DB["TYPE"]             = "MYSQL";
+#$DB["SERVER"]           = "localhost";
+#$DB["PORT"]             = "3306";
+#$DB["DATABASE"]         = "zabbix";
+#$DB["USER"]             = "zabbix";
+#$DB["PASSWORD"]         = "passwooord";
+#$ZBX_SERVER             = "zabbix";
+#$ZBX_SERVER_PORT        = "10051";
 
 ?>

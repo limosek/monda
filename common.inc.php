@@ -171,25 +171,19 @@ function historyGet($query) {
 function init_api() {
     global $DB;
     
-    if (!defined("ZABBIX_URL") || !defined("ZABBIX_USER") || !define("ZABBIX_PW")) {
+    if (!defined(ZABBIX_URL) || !defined(ZABBIX_USER) || !defined(ZABBIX_PW)) {
 	  $api = new ZabbixApi(ZABBIX_URL, ZABBIX_USER, ZABBIX_PW);
 	} else {
 	  die("You must define ZABBIX_URL, ZABBIX_USER and ZABBIX_PW macros in config.inc.php!\n");
 	}
-
-	$items = $api->itemGet(
-		array(
-			"host" => $rhost,
-			"output" => 'extend'
-		)
-	);
 	
-	if ($DB["type"]=="MYSQL") {
+	if ($DB["TYPE"]=="MYSQL") {
 	  mysql_connect($DB["SERVER"].":".$DB["PORT"],$DB["USER"],$DB["PASSWORD"]);
 	  mysql_select_db($DB["DATABASE"]);
-	} elseif ($DB["type"]=="POSTGRESQL") {
+	} elseif ($DB["TYPE"]=="POSTGRESQL") {
 	  pg_connect(sprintf("host=%s port=%s dbname=%s user=%s password=%s"),$DB["SERVER"],$DB["PORT"],$DB["DATABASE"],$DB["USER"],$DB["PASSWORD"]);
 	}
+	return($api);
 }
 
 ?>

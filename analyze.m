@@ -14,11 +14,11 @@ function normalize(delay)
     startx=round(minx/delay)*delay;
     endx=round(maxx/delay)*delay;
     for [host, hkey] = history
-      printf("\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i): ",hkey,strftime("%Y-%m-%d %H:%M:%S",localtime(startx)),startx,strftime("%Y-%m-%d %H:%M:%S",localtime(endx)),endx,round((endx-startx)/delay));
+      fprintf(stderr,"\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i): ",hkey,strftime("%Y-%m-%d %H:%M:%S",localtime(startx)),startx,strftime("%Y-%m-%d %H:%M:%S",localtime(endx)),endx,round((endx-startx)/delay));
       for [item, key] = host
 	cols=columns(item.x);
 	cols2=columns(item.y);
-	printf("%s(%i,%i) ",item.key,cols,cols2);
+	fprintf(stderr,"%s(%i,%i) ",item.key,cols,cols2);
 	p(1,:)=[0,item.y(1)];
 	for col=1:round(cols/2)-1
 	    p(col+1,:)=polyfit(item.x(col*2:col*2+1),item.y(col*2:col*2+1),1);
@@ -34,14 +34,14 @@ function normalize(delay)
 	end;
      end;
     end;
-    printf("\n");
+    fprintf(stderr,"\n");
 endfunction;
 
 function smatrix()
       global history;
-      printf("Statistics: ");
+      fprintf(stderr,"Statistics: ");
       for [host, hkey] = history
-        printf("%s ",hkey);
+        fprintf(stderr,"%s ",hkey);
 	for [item, key] = host
 		history.(hkey).(key).std=std(item.y);
 		history.(hkey).(key).stdn=std(item.yn);
@@ -63,15 +63,15 @@ function smatrix()
 		history.(hkey).(key).moden=mode(item.yn);
 	end;
       end;
-      printf("\n");
+      fprintf(stderr,"\n");
 endfunction;
 
 function cmatrix()
       global history;
       global cm;
-      printf("Correlation: ");
+      fprintf(stderr,"Correlation: ");
       for [host, hkey] = history
-        printf("%s ",hkey);
+        fprintf(stderr,"%s ",hkey);
         col1=1; 
 	for [item1, key1] = host
 	  col2=1;
@@ -83,7 +83,7 @@ function cmatrix()
 	  col1++;
         end;
       end;
-      printf("\n");
+      fprintf(stderr,"\n");
 endfunction;
 
 function hostplot(host)
