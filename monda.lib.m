@@ -32,8 +32,13 @@ function normalize(delay)
 	p(end+1,:)=[0,item.y(end)];
 	col=1;
 	hdata.(hkey).(key).xn=[startx:delay:endx];
+	hdata.(hkey).(key).yn=[];
 	for x=hdata.(hkey).(key).xn
-	    hdata.(hkey).(key).yn(end+1)=x*p(round(col),1)+p(round(col),2);
+	    if (col<=size(p))
+	      hdata.(hkey).(key).yn(end+1)=x*p(round(col),1)+p(round(col),2);
+	    else
+	      hdata.(hkey).(key).yn(end+1)=hdata.(hkey).(key).yn(end);
+	    end;
 	    col+=0.5;
 	end;
        end;

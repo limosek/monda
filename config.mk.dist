@@ -1,13 +1,18 @@
 # Configuration file for monda
 # You have to fill all required settings
 
-ZABBIX_USER = zabcon
-ZABBIX_PW = mocneheslo334
-ZABBIX_URL = https://zabbix.opf.slu.cz/api_jsonrpc.php
-ZABBIX_CFG = zabbix.conf.php
+ZABBIX_USER = somewebuser
+ZABBIX_PW = somepassword
+ZABBIX_URL = http://zabbixhost/api_jsonrpc.php
 ZABBIX_DB_TYPE = MYSQL
 ZABBIX_DB_SERVER = 127.0.0.1
-ZABBIX_DB_PORT = 3307
-ZABBIX_DB = zabbix2
-ZABBOX_DB_USER = zabbix
-ZABBIX_DB_PASSWORD = ZAbit
+ZABBIX_DB_PORT = 3306
+ZABBIX_DB = zabbix
+ZABBIX_DB_USER = zabbix
+ZABBIX_DB_PASSWORD = somedbpasword
+
+
+PERSERVER = 'net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|proc.num\[,,run\]|vfs.fs.size\[/,free\]|vfs.fs.size\[\/,used\]'
+HOSTGROUP = 'Servers'
+INTERVALS = 4hour 12hour 24hour
+TIME_START = -7day

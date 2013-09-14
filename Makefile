@@ -1,20 +1,68 @@
 
-PERSERVER=net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|proc.num\[,,run\]|vfs.fs.size\[/,free\]|vfs.fs.size\[\/,used\]
-H1=-24hour
-H2=-8hour
-H3=-4hour
-
 -include config.mk
 
-all: _test _config.inc.php $(HOSTS)
-
-_test:
-ifeq ($(ZABBIX_USER),)
-	@echo "You must define all variables in config.mk before use! You can use config.mk.dist for start but edit your values to fit your setup!"
-	exit 2
+ifeq ($(ZABBIX_DB_TYPE),MYSQL)
+ZSQL = mysql '-u$(ZABBIX_DB_USER)' '-p$(ZABBIX_DB_PASSWORD)' '-h$(ZABBIX_DB_SERVER)' '-P$(ZABBIX_DB_PORT)' -A '-D$(ZABBIX_DB)'
+ZSQLC = mysql '-u$(ZABBIX_DB_USER)' '-p$(ZABBIX_DB_PASSWORD)' '-h$(ZABBIX_DB_SERVER)' '-P$(ZABBIX_DB_PORT)' -A '-D$(ZABBIX_DB)' -e
+else
+ZSQL = PGPASSWORD='$(ZABBIX_DB_PASSWORD)' psql -U '$(ZABBIX_DB_USER)' -h '$(ZABBIX_DB_SERVER)' -p '$(ZABBIX_DB_PORT)' -d '$(ZABBIX_DB)'
+ZSQLC = PGPASSWORD='$(ZABBIX_DB_PASSWORD)' psql -U '$(ZABBIX_DB_USER)' -h '$(ZABBIX_DB_SERVER)' -p '$(ZABBIX_DB_PORT)' -d '$(ZABBIX_DB)' -c
 endif
 
-_config.inc.php:
+ifneq ($(V),)
+GH=./gethistory.php -e
+OCTAVE=octave
+else
+GH=./gethistory.php
+OCTAVE=octave -q
+endif
+
+define testtool
+	@if ! which $(1) >/dev/null; then echo $(2); exit 2; fi
+endef
+
+# Parameter: host start_date interval start_time
+define analyze/host/interval
+out/$(1)-$(2)-$(3):
+	($(GH) -f "$(4)" -T "$(3)" -i '$(PERSERVER)' -H '$(1)'; cat analyze.m) | $(OCTAVE) >out/$(1)-$(2)-$(3) ;
+endef
+
+# Parameter: host start_date start_timestamp
+define analyze/host
+$(1): $(foreach interval,$(INTERVALS),out/$(1)-$(2)-$(interval))
+$(foreach interval,$(INTERVALS),$(eval $(call analyze/host/interval,$(1),$(2),$(interval),$(3))))
+$(1)-clean:
+	rm -f out/$(1)*
+endef
+
+ifneq ($(wildcard config.inc.php),)
+ ifneq ($(HOSTGROUP),)
+HOSTS=$(shell ./gethostsingroup.php $(HOSTGROUP))
+ endif
+endif
+
+DATE_START=$(shell date -d "$(TIME_START)" +%Y_%m_%d_%H00)
+
+$(foreach host,$(HOSTS),$(eval $(call analyze/host,$(host),$(DATE_START),$(TIME_START))))
+
+all: _test analyze
+
+_test: _testconf _testtools _config.inc.php
+
+_testconf:
+ifeq ($(ZABBIX_USER),)
+	@echo "\nYou must define all variables in config.mk before use!\nYou can use 'cp config.mk.dist config.mk' for start but edit your values to fit your setup!\n"
+	@exit 2
+endif
+ifeq ($(ZABBIX_USER),somewebuser)
+	@echo "\nYou cannot use distribution config file! Edit config.mk first!\n"
+endif
+
+_testtools:
+	$(call testtool,octave,Install GNU Octave first and do not forget signaling toolkit!)
+	$(call testtool,php,Install PHP first!)
+
+_config.inc.php config:
 	@echo "<? \
 	define('ZABBIX_USER','$(ZABBIX_USER)'); \
 	define('ZABBIX_PW','$(ZABBIX_PW)'); \
@@ -25,22 +73,25 @@ _config.inc.php:
 	define('ZABBIX_DB','$(ZABBIX_DB)'); \
 	define('ZABBIX_DB_USER','$(ZABBIX_DB_USER)'); \
 	define('ZABBIX_DB_PASSWORD','$(ZABBIX_DB_PASSWORD)'); \
-	"
-clean:
-	rm -f *.hin *.tin *.out *.tdesc.m *.hdesc.m
+	" >config.inc.php
 
-%.hin:
-	export host=$(shell basename $@ .hin); ./gethistory.php -B -H$$host -i'$(PERSERVER)' -h$(H) -a$(ACCU) >$$host.hin || rm -f $@
+info:
+	@echo Hosts: $(foreach host,$(HOSTS),$(host))
+	@echo Start: $(START_DATE)
+	@echo Intervals: $(INTERVALS)
+	
+clean:	$(foreach host,$(HOSTS),$(host)-clean)
+	rm -f config.inc.php *.out
+	$(MAKE) config
+	
+analyze: _test $(foreach host,$(HOSTS),$(host))
+	
+patchdb:
+	$(ZSQL) <sql_triggers_backuptables.sql
 
-%.tin:
-	host=$(shell basename $@ .tin); ./gettrends.php -e -B -H$$host -i '$(PERSERVER)' -h$(T) >$$host.tin || rm -f $@
-
-donalisa.out: donalisa.tin
-	./corel.m
-
-reorder:
-	$(ZSQL) -e 'alter table history_uint_backup order by clock,itemid'
-	$(ZSQL) -e 'alter table history_backup order by clock,itemid'
-	$(ZSQL) -e 'alter table trends_uint_backup order by clock,itemid'
-	$(ZSQL) -e 'alter table trends_backup order by clock,itemid'
+reorderdb:
+	$(ZSQLC) 'alter table history_uint_backup order by clock,itemid'
+	$(ZSQLC) 'alter table history_backup order by clock,itemid'
+	$(ZSQLC) 'alter table trends_uint_backup order by clock,itemid'
+	$(ZSQLC) 'alter table trends_backup order by clock,itemid'
 	

@@ -6,11 +6,13 @@ if (file_exists('config.inc.php')) {
     if (file_exists(ZABBIX_CFG)) {
       require ZABBIX_CFG;
     } else {
-      die("Cannot include ".ZABBIX_CFG." \n");
+      fprintf(STDERR,"Cannot include ".ZABBIX_CFG." \n");
+      die();
     }
   }
 } else {
-  die("Cannot open config.inc.php!\n");
+  fprintf(STDERR,"Cannot open config.inc.php!\n");
+  die();
 }
 
 function timetoseconds($t,$r=false) {
