@@ -103,6 +103,10 @@ try {
 	$arrid=1;
 	$maxitems=0;
 	$delay=false;
+	$minclock=time();
+	$maxclock=0;
+	$minclock2=time();
+	$maxclock2=0;
 	foreach ($items as $item) {
 		if (preg_match("*$ritem*",$item->key_) && (!preg_match("*$nritem*",$item->key_)) && ($item->value_type==0 || $item->value_type==2 || $item->value_type==3)) {
 			$itemid=$item->itemid;
@@ -142,8 +146,19 @@ try {
 			  fprintf(STDOUT,"### Got %s values for item %s\n",count($history),$item->key_);
 			  if ($stderr) fprintf(STDERR,"### Got %s values for item %s\n",count($history),$item->key_);
 			  fprintf(STDOUT,"${h}.x=[");
+			  $c=1;
+			  $last=count($history);
 			  foreach ($history as $i=>$k) {
+			    if ($c==2) {
+			      $minclock2=min($k->clock,$minclock2);
+			    }
+			    if ($c==$last-1) {
+			      $maxclock2=max($k->clock,$maxclock2);
+			    }
+			    $minclock=min($k->clock,$minclock);
+			    $maxclock=max($k->clock,$maxclock);
 			    fprintf(STDOUT,"%s,",$k->clock);
+			    $c++;
 			  }
 			  fprintf(STDOUT,"];\n");
 			  fprintf(STDOUT,"${h}.y=[");
@@ -158,6 +173,7 @@ try {
 			if ($stderr) fprintf(STDERR,"### Ignoring item %s (type %u)\n",$item->key_,$item->value_type);
 		}
 	}
+	fprintf(STDOUT,"hdata.minx=%s;hdata.minx2=%s;hdata.maxx=%s;hdata.maxx2=%s;\n",$minclock,$minclock2,$maxclock,$maxclock2);
 
 } catch(Exception $e) {
 	echo $e->getMessage();

@@ -1,21 +1,8 @@
 
 function normalize(delay)
     global hdata;
-    minx=0; maxx=0;
-    for [host, hkey] = hdata
-      if (isstruct(host))
-      for [item, key] = host
-	if (isstruct(item))
-	  if (minx==0) minx=min(item.x); end;
-	  if (maxx==0) maxx=max(item.x); end;
-	  if (minx>min(item.x)) minx=min(item.x); end;
-	  if (maxx<max(item.x)) maxx=max(item.x); end;
-	end;
-      end;
-      end;
-    end;
-    startx=round(minx/delay)*delay;
-    endx=round(maxx/delay)*delay;
+    startx=(round(hdata.minx2/delay)+1)*delay;
+    endx=(round(hdata.maxx2/delay)-1)*delay;
     for [host, hkey] = hdata
      if (isstruct(host))
       fprintf(stderr,"\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i):\n",hkey,strftime("%Y-%m-%d %H:%M:%S",localtime(startx)),startx,strftime("%Y-%m-%d %H:%M:%S",localtime(endx)),endx,round((endx-startx)/delay));
@@ -23,23 +10,23 @@ function normalize(delay)
        if (isstruct(item))
 	cols=columns(item.x);
 	cols2=columns(item.y);
-	fprintf(stderr,"%s(%i,%i)\n",item.key,cols,cols2);
-	p(1,:)=[0,item.y(1)];
-	for col=1:round(cols/2)-1
-	    p(col+1,:)=polyfit(item.x(col*2:col*2+1),item.y(col*2:col*2+1),1);
-	end;
-	p(end+1,:)=[0,item.y(end)];
-	p(end+1,:)=[0,item.y(end)];
-	col=1;
 	hdata.(hkey).(key).xn=[startx:delay:endx];
+	cols3=columns(hdata.(hkey).(key).xn);
+	fprintf(stderr,"%s(%i,%i)>%i\n",item.key,cols,cols2,cols3);
 	hdata.(hkey).(key).yn=[];
 	for x=hdata.(hkey).(key).xn
-	    if (col<=size(p))
-	      hdata.(hkey).(key).yn(end+1)=x*p(round(col),1)+p(round(col),2);
-	    else
-	      hdata.(hkey).(key).yn(end+1)=hdata.(hkey).(key).yn(end);
+	    index=lookup(hdata.(hkey).(key).x,x);
+	    if (index<=0) 
+	      index=1;
 	    end;
-	    col+=0.5;
+	    if (index>(cols-1)) 
+	      index=cols-1;
+	    end;
+	    y0=hdata.(hkey).(key).y(index);
+	    y1=hdata.(hkey).(key).y(index+1);
+	    x0=hdata.(hkey).(key).x(index);
+	    x1=hdata.(hkey).(key).x(index+1);
+	    hdata.(hkey).(key).yn(end+1)=y0+(y1-y0)*(x-x0)/(x1-x0);
 	end;
        end;
       end;

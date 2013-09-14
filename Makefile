@@ -45,7 +45,7 @@ DATE_START=$(shell date -d "$(TIME_START)" +%Y_%m_%d_%H00)
 
 $(foreach host,$(HOSTS),$(eval $(call analyze/host,$(host),$(DATE_START),$(TIME_START))))
 
-all: _test analyze
+all: _test analyze $(foreach host,$(HOSTS),$(host))
 
 _test: _testconf _testtools _config.inc.php
 
@@ -74,6 +74,7 @@ _config.inc.php config:
 	define('ZABBIX_DB_USER','$(ZABBIX_DB_USER)'); \
 	define('ZABBIX_DB_PASSWORD','$(ZABBIX_DB_PASSWORD)'); \
 	" >config.inc.php
+	@mkdir -p out
 
 info:
 	@echo Hosts: $(foreach host,$(HOSTS),$(host))
