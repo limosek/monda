@@ -24,7 +24,7 @@ endef
 # Parameter: host start_date interval start_time
 define analyze/host/interval
 out/$(1)-$(2)-$(3):
-	($(GH) -f "$(4)" -T "$(3)" -i '$(PERSERVER)' -H '$(1)'; cat analyze.m) | $(OCTAVE) >out/$(1)-$(2)-$(3) ;
+	(($(GH) -f "$(4)" -T "$(3)" -i '$(PERSERVER)' -H '$(1)'; cat analyze.m) | $(OCTAVE) >out/$(1)-$(2)-$(3)) || rm -f out/$(1)-$(2)-$(3);
 endef
 
 # Parameter: host start_date start_timestamp
@@ -45,7 +45,7 @@ DATE_START=$(shell date -d "$(TIME_START)" +%Y_%m_%d_%H00)
 
 $(foreach host,$(HOSTS),$(eval $(call analyze/host,$(host),$(DATE_START),$(TIME_START))))
 
-all: _test analyze $(foreach host,$(HOSTS),$(host))
+all analyze: _test $(foreach host,$(HOSTS),$(host))
 
 _test: _testconf _testtools _config.inc.php
 
@@ -84,9 +84,7 @@ info:
 clean:	$(foreach host,$(HOSTS),$(host)-clean)
 	rm -f config.inc.php *.out
 	$(MAKE) config
-	
-analyze: _test $(foreach host,$(HOSTS),$(host))
-	
+		
 patchdb:
 	$(ZSQL) <sql_triggers_backuptables.sql
 
@@ -95,4 +93,3 @@ reorderdb:
 	$(ZSQLC) 'alter table history_backup order by clock,itemid'
 	$(ZSQLC) 'alter table trends_uint_backup order by clock,itemid'
 	$(ZSQLC) 'alter table trends_backup order by clock,itemid'
-	
