@@ -63,7 +63,7 @@ _testtools:
 	$(call testtool,php,Install PHP first!)
 
 _config.inc.php config:
-	@echo "<? \
+	@echo "<?php \
 	define('ZABBIX_USER','$(ZABBIX_USER)'); \
 	define('ZABBIX_PW','$(ZABBIX_PW)'); \
 	define('ZABBIX_URL','$(ZABBIX_URL)'); \
