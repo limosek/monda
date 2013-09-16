@@ -1,11 +1,31 @@
 
-function normalize(delay)
+function retval=xdate(x)
+  retval=strftime("%Y-%m-%d %H:%M:%S",localtime(x));
+endfunction;
+
+function savedata(fle)
+  global cm;
+  global hdata;
+  
+  save("-binary", fle);
+endfunction;
+
+function loaddata(fle)
+  global cm;
+  global hdata;
+  
+  load(fle);
+endfunction;
+
+function normalize()
     global hdata;
+    delay=60;
     startx=(round(hdata.minx2/delay)+1)*delay;
     endx=(round(hdata.maxx2/delay)-1)*delay;
+
     for [host, hkey] = hdata
      if (isstruct(host))
-      fprintf(stderr,"\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i):\n",hkey,strftime("%Y-%m-%d %H:%M:%S",localtime(startx)),startx,strftime("%Y-%m-%d %H:%M:%S",localtime(endx)),endx,round((endx-startx)/delay));
+      fprintf(stderr,"\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i):\n",hkey,xdate(startx),startx,xdate(endx),endx,round((endx-startx)/delay));
       for [item, key] = host
        if (isstruct(item))
 	cols=columns(item.x);
@@ -33,6 +53,22 @@ function normalize(delay)
     end;
     end;
     fprintf(stderr,"\n\n");
+endfunction;
+
+function hostinfo(host) 
+  for [item, key] = host
+	  if (isstruct(item))
+	    fprintf(stdout,"%s: minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i=>%i\n",item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn));
+	  end;
+  end;
+endfunction;
+
+function hinfo(h) 
+  for [host, hkey] = h
+	  if (isstruct(host))
+	    fprintf(stdout,"%s: minx=%s,maxx=%s,minx2=%s,maxx2=%s,\n",hkey,xdate(h.minx),xdate(h.maxx),xdate(h.minx2),xdate(h.maxx2));
+	  end;
+  end;
 endfunction;
 
 function smatrix()

@@ -5,12 +5,21 @@ source "monda.lib.m";
 global cm;
 global hdata;
 
-normalize(60);
+arg_list=argv();
+src=arg_list{1};
+if (index(src,".m")>0)
+  source(src);
+else
+  load(src);
+end
+dst=arg_list{2};
+
+normalize();
 smatrix;
 cmatrix;
-save("-binary", "-");
-exit;
+savedata(dst);
 
+exit;
 
 
 

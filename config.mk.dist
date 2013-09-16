@@ -11,8 +11,8 @@ ZABBIX_DB = zabbix
 ZABBIX_DB_USER = zabbix
 ZABBIX_DB_PASSWORD = somedbpasword
 
-
+# Analyzation parameters
 PERSERVER = 'net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|proc.num\[,,run\]|vfs.fs.size\[/,free\]|vfs.fs.size\[\/,used\]'
 HOSTGROUP = 'Servers'
 INTERVALS = 4hour 12hour 24hour
-TIME_START = -7day
+START_TIMES = -1day -2day

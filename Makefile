@@ -1,49 +1,10 @@
 
+# Monda Makefile
 -include config.mk
-
-ifeq ($(ZABBIX_DB_TYPE),MYSQL)
-ZSQL = mysql '-u$(ZABBIX_DB_USER)' '-p$(ZABBIX_DB_PASSWORD)' '-h$(ZABBIX_DB_SERVER)' '-P$(ZABBIX_DB_PORT)' -A '-D$(ZABBIX_DB)'
-ZSQLC = mysql '-u$(ZABBIX_DB_USER)' '-p$(ZABBIX_DB_PASSWORD)' '-h$(ZABBIX_DB_SERVER)' '-P$(ZABBIX_DB_PORT)' -A '-D$(ZABBIX_DB)' -e
-else
-ZSQL = PGPASSWORD='$(ZABBIX_DB_PASSWORD)' psql -U '$(ZABBIX_DB_USER)' -h '$(ZABBIX_DB_SERVER)' -p '$(ZABBIX_DB_PORT)' -d '$(ZABBIX_DB)'
-ZSQLC = PGPASSWORD='$(ZABBIX_DB_PASSWORD)' psql -U '$(ZABBIX_DB_USER)' -h '$(ZABBIX_DB_SERVER)' -p '$(ZABBIX_DB_PORT)' -d '$(ZABBIX_DB)' -c
+ifneq ($(C),)
+include config-$(C).mk
 endif
-
-ifneq ($(V),)
-GH=./gethistory.php -e
-OCTAVE=octave
-else
-GH=./gethistory.php
-OCTAVE=octave -q
-endif
-
-define testtool
-	@if ! which $(1) >/dev/null; then echo $(2); exit 2; fi
-endef
-
-# Parameter: host start_date interval start_time
-define analyze/host/interval
-out/$(1)-$(2)-$(3):
-	(($(GH) -f "$(4)" -T "$(3)" -i '$(PERSERVER)' -H '$(1)'; cat analyze.m) | $(OCTAVE) >out/$(1)-$(2)-$(3)) || rm -f out/$(1)-$(2)-$(3);
-endef
-
-# Parameter: host start_date start_timestamp
-define analyze/host
-$(1): $(foreach interval,$(INTERVALS),out/$(1)-$(2)-$(interval))
-$(foreach interval,$(INTERVALS),$(eval $(call analyze/host/interval,$(1),$(2),$(interval),$(3))))
-$(1)-clean:
-	rm -f out/$(1)*
-endef
-
-ifneq ($(wildcard config.inc.php),)
- ifneq ($(HOSTGROUP),)
-HOSTS=$(shell ./gethostsingroup.php $(HOSTGROUP))
- endif
-endif
-
-DATE_START=$(shell date -d "$(TIME_START)" +%Y_%m_%d_%H00)
-
-$(foreach host,$(HOSTS),$(eval $(call analyze/host,$(host),$(DATE_START),$(TIME_START))))
+include lib.mk
 
 all analyze: _test $(foreach host,$(HOSTS),$(host))
 
@@ -67,7 +28,7 @@ _config.inc.php config:
 	define('ZABBIX_USER','$(ZABBIX_USER)'); \
 	define('ZABBIX_PW','$(ZABBIX_PW)'); \
 	define('ZABBIX_URL','$(ZABBIX_URL)'); \
-	define('ZABBIX_DB_TYPE',''); \
+	define('ZABBIX_DB_TYPE','$(ZABBIX_DB_TYPE)'); \
 	define('ZABBIX_DB_SERVER','$(ZABBIX_DB_SERVER)'); \
 	define('ZABBIX_DB_PORT',$(ZABBIX_DB_PORT)); \
 	define('ZABBIX_DB','$(ZABBIX_DB)'); \
@@ -78,13 +39,16 @@ _config.inc.php config:
 
 info:
 	@echo Hosts: $(foreach host,$(HOSTS),$(host))
-	@echo Start: $(START_DATE)
-	@echo Intervals: $(INTERVALS)
-	
+	@echo TIME_START=$(TIME_START)
+	@echo TIME_TO=$(TIME_TO)
+	@echo TIME_STEP=$(TIME_STEP)
+	@echo Starts: $(START_DATES_NICE)
+	@echo Intervals: $(INTERVALS) 
+
 clean:	$(foreach host,$(HOSTS),$(host)-clean)
 	rm -f config.inc.php *.out
 	$(MAKE) config
-		
+
 patchdb:
 	$(ZSQL) <sql_triggers_backuptables.sql
 
@@ -93,3 +57,10 @@ reorderdb:
 	$(ZSQLC) 'alter table history_backup order by clock,itemid'
 	$(ZSQLC) 'alter table trends_uint_backup order by clock,itemid'
 	$(ZSQLC) 'alter table trends_backup order by clock,itemid'
+
+query:
+	$(ZSQLC) '$(Q)'
+
+# Create all targets
+$(foreach host,$(HOSTS),$(eval $(call analyze/host,$(host))))
+

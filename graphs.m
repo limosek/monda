@@ -8,7 +8,7 @@ global hdata;
 arg_list=argv();
 items=[];
 file=arg_list{1};
-load(file);
+loaddata(file);
 
  fig=1;
  for [ host, hkey ] = hdata

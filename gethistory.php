@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-error_reporting(E_ERROR);
+error_reporting(E_ERROR|E_PARSE);
 
 // load ZabbixApi
 require 'PhpZabbixApi_Library/ZabbixApiAbstract.class.php';
@@ -9,9 +9,9 @@ require './common.inc.php';
 
 $hist=time()-3600;
 $rhost='';
+$rgroup='';
 $ritem='';
 $nritem='Someabnormalkeywhichdoesnotexists';
-$time_step=60;
 $histapi=true;
 $backuptable=false;
 $nodata=false;
@@ -19,14 +19,35 @@ $stderr=false;
 $to_time=time();
 
 $opts=getopt(
-	"F:f:T:t:H:G:a:i:I:SBDe"
+	"F:f:T:t:H:G:i:I:SBDe"
 );
+
+if (!$opts) {
+  fprintf(STDERR,"
+  gethistory 
+   -F timespec          Specify start_time relative to end_time
+   -f timespec          Specify start_time relative to now or absolute
+   -T timespec          Specify end_time relative to start_time
+   -t timespec          Specify end_time relative to now or absolute		example -1day
+   -H host              Specify host to get					example 'Zabbix server'
+   -G group             Specify host group to get				example Servers
+   -i itemregexp        Specify regexp of item keys to accept, 			example 'net|mem'
+   -I itemregexp	Specify regexp of item keys to ignore
+   -S 			Use SQL instead of API for getting history
+   -B			Use backup tables instead of history tables (implies -S)
+   -D			Only show what would be done
+   -e			Write stderror messages
+   
+   timespec examples:   -1day, 3day, -8hour, '2013-01-01 00:00', @1379323692
+  \n\n");
+  errorexit("",1);
+}
 
 if (isset($opts["f"])) {
 	$hist=timetoseconds($opts["f"]);
 } else {
   if (isset($opts["F"])) {
-	$hist=timetoseconds($opts["F"],$to_time);
+	$hist=timetoseconds($opts["F"])-time()+$to_time;
   }
 }
 
@@ -34,7 +55,7 @@ if (isset($opts["t"])) {
 	$to_time=timetoseconds($opts["t"]);
 } else {
   if (isset($opts["T"])) {
-	$to_time=timetoseconds($opts["T"],"@$hist");
+	$to_time=timetoseconds($opts["T"])-time()+$hist;
   }
 }
 
@@ -53,10 +74,6 @@ if (isset($opts["H"])) {
 
 if (isset($opts["G"])) {
 	$rgroup=$opts["G"];
-}
-
-if (isset($opts["a"])) {
-	$time_step=$opts["a"];
 }
 
 if (isset($opts["i"])) {
@@ -85,10 +102,12 @@ try {
 	  "output" => 'extend',
 	);
 	if ($rhost) $sq["host"]=$rhost;
-	if ($rhost) $sq["group"]=$rgroup;
+	if ($rgroup) $sq["group"]=$rgroup;
 	  if ($stderr) fprintf(STDERR,"### Searching items...\n");
 	$items = $api->itemGet($sq);
-		
+	if (count($items)==0) {
+	  errorexit("No items found!\n",9);
+	}
 	$itemids=Array();
 	$history=array();
 	$ftime=date("Y-m-d H:i:s",$hist);
@@ -96,7 +115,10 @@ try {
 	fprintf(STDOUT,"### Data from: %s to %s\n",$ftime,$now);
 	if ($stderr) fprintf(STDERR,"### Data from: %s to %s\n",$ftime,$now);
 	if ($to_time<=$hist) {
-	  die("End time is lower than start time??\n");
+	  errorexit("End time is lower than start time??\n",6);
+	}
+	if ($to_time>time()) {
+	  errorexit("End time is in future??\n",6);
 	}
 	fprintf(STDOUT,"format short; fixed_point_format(1); global hdata; hdata.time_from=%u;hdata.time_to=%u;hdata.date_from='%s';hdata.date_to='%s';\n",$hist,$to_time,$ftime,$now);
 	$itemcount=0;
@@ -107,6 +129,7 @@ try {
 	$maxclock=0;
 	$minclock2=time();
 	$maxclock2=0;
+	$datafound=false;
 	foreach ($items as $item) {
 		if (preg_match("*$ritem*",$item->key_) && (!preg_match("*$nritem*",$item->key_)) && ($item->value_type==0 || $item->value_type==2 || $item->value_type==3)) {
 			$itemid=$item->itemid;
@@ -118,7 +141,8 @@ try {
 			);
 			$host=$host[0]->name;
 			if (trim($host)=="") continue;
-			fprintf(STDOUT,"\n\n### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s))\n",$host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history,(int) ($item->history*24*3600/$item->delay), $item->trends,(int) $item->trends*24);			
+			fprintf(STDOUT,"\n\n### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n",$host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history,(int) ($item->history*24*3600/$item->delay), $item->trends,(int) $item->trends*24);
+			if ($stderr) fprintf(STDERR,"\n\n### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n",$host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history,(int) ($item->history*24*3600/$item->delay), $item->trends,(int) $item->trends*24);
 			$h=sprintf("hdata.%s.i%s",$host,$itemid);
 			$itemcount++;
 			$itemids[]=$item->itemid;
@@ -142,6 +166,7 @@ try {
 			      $history=array();
 			}
 			if (count($history)>10) {
+			  $datafound=true;
 			  fprintf(STDOUT,"${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n",$item->itemid,addslashes($item->key_),$h,$item->delay,$item->history);
 			  fprintf(STDOUT,"### Got %s values for item %s\n",count($history),$item->key_);
 			  if ($stderr) fprintf(STDERR,"### Got %s values for item %s\n",count($history),$item->key_);
@@ -168,12 +193,17 @@ try {
 			  fprintf(STDOUT,"];\n");
 			} else {
 			  fprintf(STDOUT,"### Got %s values for item %s, ignored!\n",count($history),$item->key_);
+			  if ($stderr) fprintf(STDERR,"### Got %s values for item %s, ignored!\n",count($history),$item->key_);
 			}
 		} else {
 			if ($stderr) fprintf(STDERR,"### Ignoring item %s (type %u)\n",$item->key_,$item->value_type);
 		}
 	}
-	fprintf(STDOUT,"hdata.minx=%s;hdata.minx2=%s;hdata.maxx=%s;hdata.maxx2=%s;\n",$minclock,$minclock2,$maxclock,$maxclock2);
+	if ($datafound) {
+	  fprintf(STDOUT,"hdata.minx=%s;hdata.minx2=%s;hdata.maxx=%s;hdata.maxx2=%s;\n",$minclock,$minclock2,$maxclock,$maxclock2);
+	} else {
+	  errorexit("No data in history found!\n",15);
+	}
 
 } catch(Exception $e) {
 	echo $e->getMessage();
