@@ -1,5 +1,7 @@
 <?php
 
+define("SELECT_QUERY","SELECT * FROM %s WHERE itemid IN (%s) AND clock>=%s AND clock<=%s");
+
 function errorexit($str,$code) {
   fprintf(STDERR,$str,$code);
   exit($code);
@@ -43,7 +45,7 @@ function historyGetMysql($query) {
 	  if ($backuptable) {
 	    $table.="_backup";
 	  }
-	  $sql=sprintf("SELECT * FROM %s WHERE itemid IN (%s) AND clock>=%s AND clock<=%s ORDER BY clock",$table,join(",",$itemids),$from,$to);
+	  $sql=sprintf(SELECT_QUERY,$table,join(",",$itemids),$from,$to);
 	  dumpsql($sql);
 	  $tq=mysql_query($sql);
 	  $lines=Array();
@@ -52,8 +54,9 @@ function historyGetMysql($query) {
 	    $line->itemid = $row["itemid"];
 	    $line->clock = $row["clock"];
 	    $line->value = $row["value"];
-	    $lines[]=$line;
+	    $lines[$line->clock.$line->itemid]=$line;
 	  }
+	  arsort($lines);
 	  return($lines);
 }
 
@@ -73,7 +76,7 @@ function trendsGetMysql($query) {
 	  if ($backuptable) {
 	    $table.="_backup";
 	  }
-	  $sql=sprintf("SELECT * FROM %s WHERE itemid IN (%s) AND clock>=%s AND clock<=%s ORDER BY clock",$table,join(",",$itemids),$from,$to);
+	  $sql=sprintf(SELECT_QUERY,$table,join(",",$itemids),$from,$to);
 	  dumpsql($sql);
 	  $tq=mysql_query($sql);
 	  $lines=Array();
@@ -85,8 +88,9 @@ function trendsGetMysql($query) {
 	    $line->value_avg = $row["value_avg"];
 	    $line->value_max = $row["value_max"];
 	    $line->num = $row["num"];
-	    $lines[]=$line;
+	    $lines[$line->clock.$line->itemid]=$line;
 	  }
+	  arsort($lines);
 	  return($lines);
 }
 
@@ -106,7 +110,7 @@ function historyGetPgsql($query) {
 	  if ($backuptable) {
 	    $table.="_backup";
 	  }
-	  $sql=sprintf("SELECT * FROM %s WHERE itemid IN (%s) AND clock>=%s AND clock<=%s ORDER BY clock",$table,join(",",$itemids),$from,$to);
+	  $sql=sprintf(SELECT_QUERY,$table,join(",",$itemids),$from,$to);
 	  dumpsql($sql);
 	  $tq=pg_query($sql);
 	  $lines=Array();
@@ -115,8 +119,9 @@ function historyGetPgsql($query) {
 	    $line->itemid = $row["itemid"];
 	    $line->clock = $row["clock"];
 	    $line->value = $row["value"];
-	    $lines[]=$line;
+	    $lines[$line->clock.$line->itemid]=$line;
 	  }
+	  arsort($lines);
 	  return($lines);
 }
 
@@ -136,7 +141,7 @@ function trendsGetPgsql($query) {
 	  if ($backuptable) {
 	    $table.="_backup";
 	  }
-	  $sql=sprintf("SELECT * FROM %s WHERE itemid IN (%s) AND clock>=%s AND clock<=%s ORDER BY clock",$table,join(",",$itemids),$from,$to);
+	  $sql=sprintf(SELECT_QUERY,$table,join(",",$itemids),$from,$to);
 	  dumpsql($sql);
 	  $tq=pg_query($sql);
 	  $lines=Array();
@@ -148,8 +153,9 @@ function trendsGetPgsql($query) {
 	    $line->value_avg = $row["value_avg"];
 	    $line->value_max = $row["value_max"];
 	    $line->num = $row["num"];
-	    $lines[]=$line;
+	    $lines[$line->clock.$line->itemid]=$line;
 	  }
+	  arsort($lines);
 	  return($lines);
 }
 

@@ -25,7 +25,11 @@ ifeq ($(ZABBIX_HISTORY),real)
 endif
 
 #Output dir
+ifeq ($(OUTDIR),)
 O=out
+else
+O=$(OUTDIR)
+endif
 
 define testtool
 	@if ! which $(1) >/dev/null; then echo $(2); exit 2; fi

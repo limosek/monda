@@ -20,9 +20,22 @@ endfunction;
 function normalize()
     global hdata;
     delay=60;
+
+    for [host, hkey] = hdata
+     if (isstruct(host))
+      for [item, key] = host
+       if (isstruct(item))
+         hdata.minx=min([hdata.minx,hdata.(hkey).(key).x]);
+	 hdata.maxx=max([hdata.maxx,hdata.(hkey).(key).x]);
+	 hdata.minx2=min([hdata.minx2,hdata.(hkey).(key).x(2:end)]);
+	 hdata.maxx2=max([hdata.maxx2,hdata.(hkey).(key).x(1:end-1)]);
+       end;
+      end;
+     end;
+    end;
     startx=(round(hdata.minx2/delay)+1)*delay;
     endx=(round(hdata.maxx2/delay)-1)*delay;
-
+    
     for [host, hkey] = hdata
      if (isstruct(host))
       fprintf(stderr,"\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i):\n",hkey,xdate(startx),startx,xdate(endx),endx,round((endx-startx)/delay));
@@ -79,6 +92,7 @@ function smatrix()
 	fprintf(stderr,"%s ",hkey);
 	for [item, key] = host
 	  if (isstruct(item))
+		
 		hdata.(hkey).(key).std=std(item.y);
 		hdata.(hkey).(key).stdn=std(item.yn);
 		hdata.(hkey).(key).max=max(item.y);

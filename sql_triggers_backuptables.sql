@@ -6,8 +6,6 @@ CREATE TABLE IF NOT EXISTS `history_backup` (
   `ns` int(11) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM;
 
-ALTER TABLE history_backup PARTITION BY KEY(clock) PARTITIONS 20;
-
 DROP TRIGGER IF EXISTS `history_backup`;
 DELIMITER //
 CREATE TRIGGER `history_backup` AFTER INSERT ON `history`
@@ -24,8 +22,6 @@ CREATE TABLE IF NOT EXISTS `history_uint_backup` (
   `ns` int(11) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM ;
 
-ALTER TABLE history_uint_backup PARTITION BY KEY(clock) PARTITIONS 20;
-
 DROP TRIGGER IF EXISTS `history_uint_backup`;
 DELIMITER //
 CREATE TRIGGER `history_uint_backup` AFTER INSERT ON `history_uint`
@@ -35,6 +31,18 @@ end
 //
 DELIMITER ;
 
+CREATE TABLE IF NOT EXISTS `history_log_backup` (
+  `id` bigint(20) unsigned NOT NULL,
+  `itemid` bigint(20) unsigned NOT NULL,
+  `clock` int(11) NOT NULL DEFAULT '0',
+  `timestamp` int(11) NOT NULL DEFAULT '0',
+  `source` varchar(64) COLLATE utf8_czech_ci NOT NULL,
+  `severity` int(11) NOT NULL DEFAULT '0',
+  `value` text COLLATE utf8_czech_ci NOT NULL,
+  `logeventid` int(11) NOT NULL DEFAULT '0',
+  `ns` int(11) NOT NULL DEFAULT '0'
+) ENGINE=MyISAM;
+
 CREATE TABLE IF NOT EXISTS `trends_backup` (
   `itemid` bigint(20) unsigned NOT NULL,
   `clock` int(11) NOT NULL DEFAULT '0',
@@ -43,8 +51,6 @@ CREATE TABLE IF NOT EXISTS `trends_backup` (
   `value_avg` double(16,4) NOT NULL DEFAULT '0.0000',
   `value_max` double(16,4) NOT NULL DEFAULT '0.0000'
 ) ENGINE=myisam ;
-
-ALTER TABLE trends_backup PARTITION BY KEY(clock) PARTITIONS 20;
 
 DROP TRIGGER IF EXISTS `trends_backup`;
 DELIMITER //
@@ -63,8 +69,6 @@ CREATE TABLE IF NOT EXISTS `trends_uint_backup` (
   `value_avg` bigint(20) unsigned NOT NULL DEFAULT '0',
   `value_max` bigint(20) unsigned NOT NULL DEFAULT '0'
 ) ENGINE=myisam ;
-
-ALTER TABLE trends_uint_backup PARTITION BY KEY(clock) PARTITIONS 20;
 
 DROP TRIGGER IF EXISTS `trends_uint_backup`;
 DELIMITER //
