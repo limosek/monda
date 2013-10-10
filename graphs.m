@@ -1,4 +1,4 @@
-#!/usr/bin/octave -qf
+#!/usr/bin/octave --persist -qf 
 
 source "monda.lib.m";
 
@@ -13,8 +13,8 @@ loaddata(file);
  fig=1;
  for [ host, hkey ] = hdata
   if (isstruct(host))
-   figure(fig++);
-   hostplot(host);
+   #figure(fig++);
+   #hostplot(host);
    figure(fig++);
    cmplot(cm.(hkey));
   end;

@@ -17,6 +17,23 @@ function loaddata(fle)
   load(fle);
 endfunction;
 
+function ret=datetoseconds(dte)
+  [tme,n]=strptime(dte,"@%s");
+  if (n==0)
+    [tme,n]=strptime(dte,"%Y-%m-%d %k:%M");
+    if (n==0)
+      [tme,n]=strptime(dte,"%Y-%m-%d");
+    else
+      ret=strftime("%s",tme);
+    endif
+    if (n==0) 
+      ret=-1;
+    endif
+  else
+    ret=strftime("%s",tme);
+  endif
+endfunction
+
 function normalize()
     global hdata;
     delay=60;
@@ -92,7 +109,6 @@ function smatrix()
 	fprintf(stderr,"%s ",hkey);
 	for [item, key] = host
 	  if (isstruct(item))
-		
 		hdata.(hkey).(key).std=std(item.y);
 		hdata.(hkey).(key).stdn=std(item.yn);
 		hdata.(hkey).(key).max=max(item.y);
