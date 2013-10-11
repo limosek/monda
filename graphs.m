@@ -1,4 +1,4 @@
-#!/usr/bin/octave --persist -qf 
+#!/usr/bin/octave -qf 
 
 source "monda.lib.m";
 

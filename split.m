@@ -19,7 +19,7 @@ function ret=splitdata(src,from,to,items)
        for [item, ikey] = host
          if (columns(items)>0)
 	   if (!strcmp([hkey,":",ikey],items) && !strcmp([hkey,":",item.key],items) && !strcmp([hkey],items) && !strcmp([ikey],items) && !strcmp([item.key],items))
-	     fprintf(stderr,"\Filtering %s:%s(%s)\n",hkey,item.key,ikey);
+	     fprintf(stderr,"Filtering %s:%s(%s)\n",hkey,item.key,ikey);
 	     hdata.(hkey).(ikey)=[];
 	     continue;
            endif
@@ -45,6 +45,11 @@ function ret=splitdata(src,from,to,items)
   end;
   fprintf(stderr,"(newminx=%s,newmaxx=%s,newminx2=%s,newmaxx2=%s)\n",xdate(hdata.minx),xdate(hdata.maxx),xdate(hdata.minx2),xdate(hdata.maxx2));
 endfunction;
+
+if (nargin<4) 
+  fprintf(stdout,"split.m startdate enddate [host] [host:item] [item] ...\n");
+  exit
+end
 
 arg_list=argv();
 src=arg_list{1};

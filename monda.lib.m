@@ -1,4 +1,6 @@
 
+warning("off");
+
 function retval=xdate(x)
   retval=strftime("%Y-%m-%d %H:%M:%S",localtime(x));
 endfunction;
@@ -6,15 +8,18 @@ endfunction;
 function savedata(fle)
   global cm;
   global hdata;
-  
+  fprintf(stderr,"Saving file %s ",fle)
   save("-binary", fle);
+  fprintf(stderr,"\n");
 endfunction;
 
 function loaddata(fle)
   global cm;
   global hdata;
   
+  fprintf(stderr,"Loading file %s ",fle)
   load(fle);
+  fprintf(stderr,"\n");
 endfunction;
 
 function ret=datetoseconds(dte)
@@ -58,6 +63,10 @@ function normalize()
       fprintf(stderr,"\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i):\n",hkey,xdate(startx),startx,xdate(endx),endx,round((endx-startx)/delay));
       for [item, key] = host
        if (isstruct(item))
+        if (isfield(item,"xn")) 
+          # Already normalized
+          continue;
+        end
 	cols=columns(item.x);
 	cols2=columns(item.y);
 	hdata.(hkey).(key).xn=[startx:delay:endx];
@@ -88,21 +97,47 @@ endfunction;
 function hostinfo(host) 
   for [item, key] = host
 	  if (isstruct(item))
-	    fprintf(stdout,"%s: minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i=>%i\n",item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn));
+	    fprintf(stdout,"Item %s: minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i)\n",item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn));
 	  end;
   end;
 endfunction;
 
-function hinfo(h) 
+function hostsinfo(h) 
   for [host, hkey] = h
 	  if (isstruct(host))
-	    fprintf(stdout,"%s: minx=%s,maxx=%s,minx2=%s,maxx2=%s,\n",hkey,xdate(h.minx),xdate(h.maxx),xdate(h.minx2),xdate(h.maxx2));
+	    fprintf(stdout,"Host %s: minx=%s,maxx=%s,minx2=%s,maxx2=%s,\n",hkey,xdate(h.minx),xdate(h.maxx),xdate(h.minx2),xdate(h.maxx2));
 	  end;
   end;
 endfunction;
+
+
+function cminfo(cm)
+  for [host, hkey] = cm
+    fprintf(stdout,"CM %s: %i/%i\n",hkey,columns(host),rows(host));
+  end;
+endfunction;
+
+# Remove bad items (small change, ...)
+function remove_bad(minchange) 
+  global hdata;
+      for [host, hkey] = hdata
+       if (isstruct(host))
+	fprintf(stderr,"%s ",hkey);
+	for [item, key] = host
+	  if (isstruct(item))
+	    if (range(item.y)/max(item.y)<minchange)
+	      fprintf(stderr,"%s:%s change less than %f, removing (range=%f,min=%f,max=%f)\n",hkey,item.key,minchange,range(item.y),min(item.y),max(item.y));
+	      hdata.(hkey).(key)=[];
+            endif
+	  end
+	end
+       end
+      end    
+endfunction
 
 function smatrix()
       global hdata;
+      global minchange;
       fprintf(stderr,"Statistics: ");
       for [host, hkey] = hdata
        if (isstruct(host))
@@ -121,6 +156,9 @@ function smatrix()
 		hdata.(hkey).(key).deltan=max(item.yn)-min(item.yn);
 		hdata.(hkey).(key).range=range(item.y);
 		hdata.(hkey).(key).rangen=range(item.yn);
+		hdata.(hkey).(key).chg=hdata.(hkey).(key).range/hdata.(hkey).(key).max;
+		hdata.(hkey).(key).chgn=hdata.(hkey).(key).rangen/hdata.(hkey).(key).maxn;
+		hdata.(hkey).(key).chgn=range(item.yn);
 		hdata.(hkey).(key).avg=mean(item.y);
 		hdata.(hkey).(key).avgn=mean(item.yn);
 		hdata.(hkey).(key).median=median(item.y);
@@ -139,6 +177,10 @@ function cmatrix()
       global cm;
       fprintf(stderr,"Correlation:\n");
       for [host, hkey] = hdata
+        if (isfield(cm,hkey))
+	  # Corelation matrix already computed
+          continue;
+        end
        if (isstruct(host))
 	fprintf(stderr,"%s\n",hkey);
 	col1=1; 
@@ -147,8 +189,8 @@ function cmatrix()
 	  col2=1;
 	  for [item2, key2] = host
 	   if (isstruct(item2))
-	    #fprintf(stderr,"%s(%s)<>%s(%s)\n",item1.key,key1,item2.key,key2);
-	    cols=columns(item1.xn)-2;
+	    #fprintf(stderr,"%s(%s)<=>%s(%s)\n",item1.key,key1,item2.key,key2);
+	    cols=min([columns(item1.xn),columns(item2.xn)]);
 	    cm.(hkey)(col1,col2)=corr(item1.yn(1:cols),item2.yn(1:cols));
 	    col2++;
 	   end;
@@ -160,6 +202,21 @@ function cmatrix()
       end;
       fprintf(stderr,"\n");
 endfunction;
+
+function hoststoany(varargin) 
+  global hdata;
+  
+  for [host, hkey] = hdata
+    if (isstruct(host) && !strcmp(hkey,"any") && (find(strcmp(varargin,hkey)>0) || length(varargin)==0))
+	for [item, key] = host
+	  if (isstruct(item))
+	    hdata.any.(key)=item;
+	    hdata.any.(key).key=[hkey,":",item.key];
+	  end
+	end
+    end
+  end;
+endfunction
 
 function hostplot(host)
       items=1;

@@ -14,6 +14,9 @@ else
 end
 dst=arg_list{2};
 
+
+remove_bad(0.001);
+
 normalize();
 smatrix;
 cmatrix;

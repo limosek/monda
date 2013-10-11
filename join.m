@@ -3,15 +3,28 @@
 source "monda.lib.m";
 
 function ndata=joindata(ndata,fle)
-  fprintf(stderr,"Reading file %s ",fle);
+  global hdata;
+  global cm;
+  
+  ncm=cm;
   loaddata(fle);
-  if (!isstruct(ndata))
-    ndata=hdata;
-  end;
-  fprintf(stderr,"(minx=%s,maxx=%s) ",xdate(hdata.minx),xdate(hdata.maxx));
+  ndata.samehosts=0;
+  
   for [host, hkey] = hdata
      if (isstruct(host))
+       ndata.minx=hdata.minx;
+       ndata.maxx=hdata.maxx;
+       ndata.minx2=hdata.minx2;
+       ndata.maxx2=hdata.maxx2;
+       if (isfield(ndata,hkey))
+	 ndata.samehosts=1;
+       else
+	 ndata.(hkey)=host;
+       end
        for [item, ikey] = host
+         if (!isfield(ndata.(hkey),ikey))
+           ndata.(hkey).(ikey)=item;
+         endif
          xy=sort([item.x;item.y],2);
          ndata.(hkey).(ikey).x=xy(1,:);
          ndata.(hkey).(ikey).y=xy(2,:);
@@ -24,10 +37,16 @@ function ndata=joindata(ndata,fle)
          ndata.time_from=ndata.minx;
          ndata.time_to=ndata.maxx;
        end;
+       ncm.(hkey)=cm.(hkey);
+     else
+       ndata.(hkey)=hdata.(hkey);
      end;
   end;
-  fprintf(stderr,"(newminx=%s,newmaxx=%s,newminx2=%s,newmaxx2=%s)\n",xdate(ndata.minx),xdate(ndata.maxx),xdate(ndata.minx2),xdate(ndata.maxx2));
+  cm=ncm;
 endfunction;
+
+global hdata;
+global cm;
 
 arg_list=argv();
 dst=arg_list{1};
@@ -37,11 +56,13 @@ for i = 2:nargin
   ndata=joindata(ndata,arg_list{i});
 end
 
-global hdata;
-global cm;
+hostsinfo(ndata);
+cminfo(cm);
 
 hdata=ndata;
 ndata=[];
+
+hoststoany();
 
 normalize();
 smatrix;
