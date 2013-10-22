@@ -49,6 +49,9 @@ clean:	$(foreach host,$(HOSTS),$(host)-clean)
 	rm -f config.inc.php *.out
 	$(MAKE) config
 
+%.az:	%.m
+	./analyze.m $< $@
+	
 patchdb:
 	$(ZSQL) <sql_triggers_backuptables.sql
 

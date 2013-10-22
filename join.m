@@ -16,16 +16,15 @@ function ndata=joindata(ndata,fle)
        ndata.maxx=hdata.maxx;
        ndata.minx2=hdata.minx2;
        ndata.maxx2=hdata.maxx2;
-       if (isfield(ndata,hkey))
-	 ndata.samehosts=1;
-       else
-	 ndata.(hkey)=host;
-       end
        for [item, ikey] = host
-         if (!isfield(ndata.(hkey),ikey))
+         if (!isfield(ndata,hkey) || !isfield(ndata.(hkey),ikey))
            ndata.(hkey).(ikey)=item;
-         endif
-         xy=sort([item.x;item.y],2);
+         endif       
+         if (isfield(ndata.(hkey).(ikey),"x")) 
+           xy=sort([item.x,ndata.(hkey).(ikey).x;item.y,ndata.(hkey).(ikey).y],2);
+         else
+	   xy=sort([item.x;item],2);
+         end
          ndata.(hkey).(ikey).x=xy(1,:);
          ndata.(hkey).(ikey).y=xy(2,:);
          ndata.minx=min([hdata.minx,ndata.minx]);
