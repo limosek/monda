@@ -139,7 +139,7 @@ try {
 			  "output" => "extend"
 			  )
 			);
-			$host=$host[0]->name;
+			$host=strtr($host[0]->name,"-","_");
 			if (trim($host)=="") continue;
 			fprintf(STDOUT,"\n\n### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n",$host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history,(int) ($item->history*24*3600/$item->delay), $item->trends,(int) $item->trends*24);
 			if ($stderr) fprintf(STDERR,"\n\n### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n",$host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history,(int) ($item->history*24*3600/$item->delay), $item->trends,(int) $item->trends*24);
