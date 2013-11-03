@@ -68,11 +68,13 @@ function correlplot(hostname,o)
             title(sprintf("%s",hdata.itemindex{i}));
             xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
 	    legend(hdata.itemindex{i});
+	    printplot(h1,sprintf("cm-%i_%i",item1.id,item2.id),o);
             subplot(2,1,2);
             h2=plot(item2.xn-hdata.minx2,item2.yn,"b");
             title(sprintf("%s",hdata.itemindex{j}));
             xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
 	    legend(hdata.itemindex{j});
+	    printplot(h2,sprintf("cm-%i_%i",item2.id,item1.id),o);
           end
         end
       end
@@ -132,6 +134,7 @@ else
   for [ host, hkey ] = hdata
    if (isstruct(host))
      cmplot(hkey,outfmt);
+     hkey
      correlplot(hkey,outfmt);
    end;
   end;
