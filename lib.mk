@@ -20,7 +20,7 @@ endif
 ifeq ($(ZABBIX_HISTORY),backup)
  GH += -B
 endif
-ifeq ($(ZABBIX_HISTORY),real)
+ifeq ($(ZABBIX_HISTORY),sql)
  GH += -S
 endif
 

@@ -191,7 +191,7 @@ function init_api() {
 	  mysql_connect(ZABBIX_DB_SERVER.":".ZABBIX_DB_PORT,ZABBIX_DB_USER,ZABBIX_DB_PASSWORD);
 	  mysql_select_db(ZABBIX_DB);
 	} elseif (ZABBIX_DB_TYPE=="POSTGRESQL") {
-	  pg_connect(sprintf("host=%s port=%s dbname=%s user=%s password=%s"),ZABBIX_DB_SERVER,ZABBIX_DB_PORT,ZABBIX_DB,ZABBIX_DB_USER,ZABBIX_DB_PASSWORD);
+	  pg_connect(sprintf("host=%s port=%s dbname=%s user=%s password=%s",ZABBIX_DB_SERVER,ZABBIX_DB_PORT,ZABBIX_DB,ZABBIX_DB_USER,ZABBIX_DB_PASSWORD));
 	}
 	return($api);
 }
