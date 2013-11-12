@@ -16,3 +16,6 @@ PERSERVER = 'net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|pr
 HOSTGROUP = 'Servers'
 INTERVALS = 4hour 12hour 24hour
 START_TIMES = -1day -2day
+
+# Precision in seconds (all data will be normalized to this seconds intervals)
+#TIME_PRECISION = 60

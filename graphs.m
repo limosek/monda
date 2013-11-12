@@ -36,24 +36,28 @@ function h=itemplot(hostname,item,o)
       end;
 endfunction;
 
-function hostplot(hostname,o)
+function hostplot(hostname,o,maxplots)
       global fig;
       global hdata;
+
+      plots=0;
       for [item, key] = hdata.(hostname)
-       if (isstruct(item))
+       if (isstruct(item) && plots<maxplots)
 	 itemplot(hostname,item,o);
+         plots++;
        end;
       end;
 endfunction;
 
-function correlplot(hostname,o)
+function correlplot(hostname,o,maxplots)
       global fig;
       global hdata;
       
       cmvec=hdata.(hostname).cmvec;
+      plots=0;
       for i=1:rows(cmvec)
         for j=1:columns(cmvec)
-          if (cmvec(i,j)>0.6)
+          if (cmvec(i,j)>0.6 && plots<maxplots)
             item1hkey=hdata.itemhindex{i};
             item1ikey=hdata.itemkindex{i};
             item2hkey=hdata.itemhindex{j};
@@ -75,6 +79,7 @@ function correlplot(hostname,o)
             xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
 	    legend(hdata.itemindex{j});
 	    printplot(h2,sprintf("cm-%i_%i",item2.id,item1.id),o);
+            plots++;
           end
         end
       end
@@ -120,13 +125,13 @@ if (nargin>2)
     type=s(1);
     id=s(2);
     if (strcmp(type,"host")) 
-      hostplot(id,outfmt);
+      hostplot(id,outfmt,10);
     end
     if (strcmp(type,"cm")) 
       cmplot(id,outfmt);
     end
     if (strcmp(type,"corr")) 
-      correlplot(id,outfmt);
+      correlplot(id,outfmt,10);
     end
   end
 else
@@ -134,8 +139,7 @@ else
   for [ host, hkey ] = hdata
    if (isstruct(host))
      cmplot(hkey,outfmt);
-     hkey
-     correlplot(hkey,outfmt);
+     correlplot(hkey,outfmt,10);
    end;
   end;
 end;

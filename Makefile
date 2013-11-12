@@ -6,7 +6,14 @@ include config-$(C).mk
 endif
 include lib.mk
 
-all analyze: _test $(foreach host,$(HOSTS),$(host))
+all: _test
+	$(MAKE) analyze
+
+get: $(foreach host,$(HOSTS),get-$(host))
+
+analyze: $(foreach host,$(HOSTS),analyze-$(host))
+
+graphs: $(foreach host,$(HOSTS),graphs-$(host))
 
 _test: _testconf _testtools _config.inc.php
 
@@ -43,14 +50,40 @@ info:
 	@echo TIME_TO=$(TIME_TO)
 	@echo TIME_STEP=$(TIME_STEP)
 	@echo Starts: $(START_DATES_NICE)
-	@echo Intervals: $(INTERVALS) 
+	@echo Intervals: $(INTERVALS)
+	@echo Out directory: $(O)
 
-clean:	$(foreach host,$(HOSTS),$(host)-clean)
+clean:	$(foreach host,$(HOSTS),clean-$(host))
 	rm -f config.inc.php *.out
 	$(MAKE) config
 
+tmpclean:
+	rm -f $(O)/*tmp
+
+%.az:
+	$(call analyze/octave,$@,$@.tmp) && mv $@.tmp $@
+
 %.az:	%.m
-	./analyze.m $< $@
+	$(call analyze/octave,$<,$@)
+
+%.az:	%.m.gz
+	gunzip $<
+	$(call analyze/octave,$(shell dirname $<)/$(shell basename $< .gz),$@)
+
+%.m.gz:	%.m
+	gzip $<
+
+%.m-gz:	%.m.gz
+	gunzip $<
+	
+gzip: $(shell find $(O) -name '*.m' | sed -e s/\.m\$$/\.m\.gz/)
+	@echo done
+
+gunzip: $(shell find $(O) -name '*.m.gz' | sed -e s/\.m\.gz\$$/\.m\-gz/)
+	@echo done
+	
+analyzem: $(shell find $(O) -name '*.m' | sed -e s/\.m\$$/\.az/)
+	@echo done
 	
 patchdb:
 	$(ZSQL) <sql_triggers_backuptables.sql
@@ -66,4 +99,3 @@ query:
 
 # Create all targets
 $(foreach host,$(HOSTS),$(eval $(call analyze/host,$(host))))
-

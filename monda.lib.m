@@ -341,9 +341,8 @@ return
 end
 
 
-function normalize()
+function normalize(delay)
     global hdata;
-    delay=60;
 
     force_normalize=0;
     for [host, hkey] = hdata
@@ -529,7 +528,6 @@ function cmatrix()
        end;
       end;
       fprintf(stderr,"\n");
-      cmtovector(0.4);
 endfunction;
 
 function cmtovector(limit)
@@ -538,8 +536,10 @@ function cmtovector(limit)
   
   for [host, hkey] = hdata
     if (isstruct(host))
+      k=1;
       tmp=cm.(hkey);
       tmpvec=[];
+      sortvec=[];
       while abs(max(max(tmp)))>limit
        maxc=0;
        maxi=0;
@@ -554,10 +554,12 @@ function cmtovector(limit)
        end
        val=tmp(maxi,maxidx);
        tmpvec(maxi,maxidx)=val;
+       sortvec(k++,:)=[maxi,maxidx];
        fprintf(stdout,"%s(%i)<>%s(%i): %f\n",hdata.itemindex{maxi},maxi,hdata.itemindex{maxidx},maxidx,val);
        tmp(maxi,maxidx)=0;
       end
       hdata.(hkey).cmvec=tmpvec;
+      hdata.(hkey).sortvec=sortvec;
     end
   end
 endfunction

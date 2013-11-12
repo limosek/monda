@@ -196,7 +196,7 @@ try {
 			  if ($stderr) fprintf(STDERR,"### Got %s values for item %s, ignored!\n",count($history),$item->key_);
 			}
 		} else {
-			if ($stderr) fprintf(STDERR,"### Ignoring item %s (type %u)\n",$item->key_,$item->value_type);
+			if ($stderr) fprintf(STDERR,"### Ignoring item %s (type %u),regexp=%u,nregex=%u\n",$item->key_,$item->value_type,preg_match("*$ritem*",$item->key_),!preg_match("*$nritem*",$item->key_));
 		}
 	}
 	if ($datafound) {
