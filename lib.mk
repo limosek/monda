@@ -15,12 +15,12 @@ ifneq ($(V),)
  GH=./gethistory.php -e
  OCTAVE=octave
  GZIP=gzip
- GUNZIP=$(GZIP)
+ GUNZIP=$(GZIP) -f
 else
  GH=@./gethistory.php
  OCTAVE=@octave -q
  GZIP=@gzip
- GUNZIP=$(GZIP) -d
+ GUNZIP=$(GZIP) -fd
 endif
 
 define analyze/octave
@@ -87,6 +87,9 @@ ifneq ($(wildcard config.inc.php),)
  ifeq ($(HOSTS),)
   ifneq ($(HOSTGROUP),)
    HOSTS=$(shell ./gethostsingroup.php $(HOSTGROUP))
+   ifeq ($(HOSTS),)
+     $(error HOSTGROUP $(HOSTGROUP) probably does not exists? Groups are case sensitive!)
+   endif
   endif
  endif
 endif

@@ -20,7 +20,8 @@ try {
 			  )
 			);
 	if (!isset($hg[0])) {
-	  die("Group does not exists!\n");
+	  fprintf(STDERR,"Group does not exists!\n");
+	  exit(1);
 	}
 	$gid=$hg[0]->groupid;
 	$h=$api->hostGet(
