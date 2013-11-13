@@ -14,13 +14,13 @@ endif
 ifneq ($(V),)
  GH=./gethistory.php -e
  OCTAVE=octave
- GZIP=gzip
- GUNZIP=$(GZIP) -f
+ GZIP=gzip -f
+ GUNZIP=gunzip -df
 else
  GH=@./gethistory.php
  OCTAVE=@octave -q
- GZIP=@gzip
- GUNZIP=$(GZIP) -fd
+ GZIP=@gzip -f
+ GUNZIP=@gunzip -df
 endif
 
 define analyze/octave
