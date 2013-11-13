@@ -151,7 +151,7 @@ if nargin<3 | isempty(mode), mode = 'add'; end
 
 % inds
 if nargin<4, inds = 1:m; end
-inds = inds(find(inds>0 & inds<=m));
+inds = inds(find(inds>0 && inds<=m));
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% get a list of the labels to be added to each vector

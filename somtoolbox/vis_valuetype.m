@@ -40,7 +40,7 @@ function flag=vis_valuetype(value, valid, str);
 %  'nxn[0,1]'     numeric square matrix with values in interval [0,1]
 %  'nxm'          any numeric matrix
 %  '1xn'          any 1xn numeric vector
-%  '1x3rgb'       1x3 vector v for which all(v>=0 & v<=1), e.g., a RGB code
+%  '1x3rgb'       1x3 vector v for which all(v>=0 && v<=1), e.g., a RGB code
 %  'nx3rgb'       nx3 numeric matrix that contains n RGB values as rows
 %  'nx3dimrgb'    nx3xdim numeric matrix that contains RGB values
 %  'nxnx3rgb'     nxnx3 numeric matrix of nxn RGB triples
@@ -78,7 +78,7 @@ character=ischar(value);
 % main loop: go through all types in arg. 'valid'
 for i=1:length(valid),
   if isnumeric(valid{i}), % numeric size for double matrix
-    if numeric & length(valid{i}) == dims,
+    if numeric && length(valid{i}) == dims,
       flag(i)=all(sz == valid{i});
     else
       flag(i)=0; % not numeric or wrong dimension
@@ -90,98 +90,98 @@ for i=1:length(valid),
 	
 	% scalar
        case '1x1'
-	flag(i)=numeric & dims == 2 & sz(1)==1 & sz(2) ==1;
+	flag(i)=numeric && dims == 2 & sz(1)==1 & sz(2) ==1;
 	
 	% 1x2 numeric vector
        case '1x2'
-	flag(i)=numeric & dims == 2 & sz(1)==1 & sz(2) == 2;
+	flag(i)=numeric && dims == 2 & sz(1)==1 & sz(2) == 2;
 	
 	% 1xn numeric vector
        case '1xn'
-	flag(i)=numeric & dims == 2 & sz(1) == 1;
+	flag(i)=numeric && dims == 2 & sz(1) == 1;
 	
 	% any numeric matrix
        case 'nxm' 
-	flag(i)=numeric & dims == 2;
+	flag(i)=numeric && dims == 2;
 	
 	% nx3 numeric matrix 
        case 'nx3'
-	flag(i)=numeric & dims == 2 & sz(2) == 3;
+	flag(i)=numeric && dims == 2 & sz(2) == 3;
 	
 	% nx2 numeric matrix 
        case 'nx2'
-	flag(i)=numeric & dims == 2 & sz(2) == 2;
+	flag(i)=numeric && dims == 2 & sz(2) == 2;
 	
 	% nx1 numeric vector
        case 'nx1'
-	flag(i)=numeric & dims == 2 & sz(2) == 1;
+	flag(i)=numeric && dims == 2 & sz(2) == 1;
        
 	% nx1xm numric matrix
        case 'nx1xm'
-	flag(i)=numeric & dims == 3 & sz(2) == 1;
+	flag(i)=numeric && dims == 3 & sz(2) == 1;
 	
 	% nx3 matrix of RGB triples
        case 'nx3rgb'  
-	flag(i)=numeric & dims == 2 & sz(2) == 3 & in0_1(value);
+	flag(i)=numeric && dims == 2 & sz(2) == 3 & in0_1(value);
 	
 	% RGB triple (ColorSpec vector)
        case '1x3rgb'
-	flag(i) = numeric & dims == 2 & sz(1)==1 & sz(2) == 3 & in0_1(value);
+	flag(i) = numeric && dims == 2 & sz(1)==1 & sz(2) == 3 & in0_1(value);
 	
 	% any square matrix
        case 'nxn'
-	flag(i)=numeric & dims == 2 & sz(1) == sz(2);
+	flag(i)=numeric && dims == 2 & sz(1) == sz(2);
 	
 	% nx3xdim array of nxdim RGB triples
        case 'nx3xdimrgb'
-	flag(i)=numeric & dims == 3 & sz(2) == 3 & in0_1(value);
+	flag(i)=numeric && dims == 3 & sz(2) == 3 & in0_1(value);
 	
 	% nxnx3 array of nxn RGB triples
        case 'nxnx3rgb'
-	flag(i)= numeric & dims == 3 & sz(1) == sz(2) & sz(3) == 3 ...
-		 & in0_1(value);
+	flag(i)= numeric && dims == 3 & sz(1) == sz(2) & sz(3) == 3 ...
+		 && in0_1(value);
 	
 	% nxn matrix of values between [0,1]
        case 'nxn[0,1]' 
 	
-	flag(i)=numeric & dims == 2 & sz(1) == sz(2) & in0_1(value);
+	flag(i)=numeric && dims == 2 & sz(1) == sz(2) & in0_1(value);
 	
 	% string 'indexed'
        case 'indexed'
-	flag(i) = ischar(value) & strcmp(value,'indexed');
+	flag(i) = ischar(value) && strcmp(value,'indexed');
 	
 	% string 'none'
        case 'none'
-	flag(i) = character & strcmp(value,'none');
+	flag(i) = character && strcmp(value,'none');
       
 	% string 'xor'
        case 'xor'
-	flag(i) = character & strcmp(value,'xor');
+	flag(i) = character && strcmp(value,'xor');
 	
 	% any string (1xn char array)
        case 'string'
-	flag(i) = character & dims == 2 & sz(1)<=1;
+	flag(i) = character && dims == 2 & sz(1)<=1;
 	
 	% any char array
        case 'chararray'
-	flag(i) = character & dims == 2 & sz(1)>0;
+	flag(i) = character && dims == 2 & sz(1)>0;
 	
 	% ColorSpec string
        case 'colorstyle'
-	flag(i)=(character &  sz(1) == 1 & sz(2) == 1 & ...
+	flag(i)=(character &&  sz(1) == 1 & sz(2) == 1 & ...
 		 any(ismember('ymcrgbwk',value))) | ...
-	(ischar(value) & any(strcmp(value,{'none','yellow','magenta',...
+	(ischar(value) && any(strcmp(value,{'none','yellow','magenta',...
 		    'cyan','red','green','blue','white','black'})));
 	
 	% any valid Matlab's Marker
        case 'markerstyle'
-	flag(i)=character &  sz(1) == 1 & sz(2) == 1 & ...
+	flag(i)=character &&  sz(1) == 1 & sz(2) == 1 & ...
 		any(ismember('.ox+*sdv^<>ph',value));
 	
 	% any valid Matlab's LineStyle
        case 'linestyle'
 	str=strrep(strrep(strrep(value,'z','1'),'--','z'),'-.','z');
-	flag(i)=character & any(ismember(str,'z-:')) & sz(1)==1 & (sz(2)==1 | sz(2)==2);
+	flag(i)=character && any(ismember(str,'z-:')) & sz(1)==1 & (sz(2)==1 | sz(2)==2);
 	
 	% any struct
        case 'struct'
@@ -189,12 +189,12 @@ for i=1:length(valid),
 	
 	% nx1 cell array of strings
        case 'cellcolumn_of_char'
-	flag(i)=iscell(value) & dims == 2 & sz(2)==1;  
+	flag(i)=iscell(value) && dims == 2 & sz(2)==1;  
 	try, char(value); catch, flag(i)=0; end
 	
 	% mxn cell array of strings
        case '2Dcellarray_of_char'  
-	flag(i)=iscell(value) & dims == 2; 
+	flag(i)=iscell(value) && dims == 2; 
 	try, char(cat(2,value{:})); catch, flag(i)=0; end
 	
 	% valid {lattice, msize} 
@@ -266,4 +266,4 @@ end
 
 function f=in0_1(value)
 
-f=all(value(:) >= 0 & value(:)<=1);
+f=all(value(:) >= 0 && value(:)<=1);

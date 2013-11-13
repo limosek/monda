@@ -1578,7 +1578,7 @@ elseif strcmp(action,'c_clear')
   u = get(varargin{1},'UserData');
   s = get(u(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' & s(1)<='9') 
+    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s;
     end
@@ -1663,12 +1663,12 @@ elseif strcmp(action,'do_recolorbar')
   s = get(ud(1),'String');
   e = 1:length(handles);
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' & s(1)<='9') 
+    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s;
     end
     if vis_valuetype(e,{'1xn','nx1','string'}), 
-      if ischar(e) & ~strcmp(e,'all'),
+      if ischar(e) && ~strcmp(e,'all'),
         errordlg({'Only valid string value' ...
                   'for subplot indices is ''all''.'}, ...
                   'Error in SOM_VIS: tools');
@@ -1729,7 +1729,7 @@ elseif strcmp(action,'label')
   end
   s = get(ud(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' & s(1)<='9') 
+    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s; 
     end
@@ -1824,7 +1824,7 @@ elseif strcmp(action,'hit')
 
   s = get(ud(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' & s(1)<='9') 
+    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s; 
     end
@@ -1904,7 +1904,7 @@ elseif strcmp(action,'traj')
   end
   s = get(ud(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' & s(1)<='9') 
+    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s; 
     end
@@ -1967,7 +1967,7 @@ elseif strcmp(action,'comet')
   end
   s = get(ud(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' & s(1)<='9') 
+    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s; 
     end
@@ -2027,7 +2027,7 @@ elseif strcmp(action,'select')
                      'Name','Variable selection',...
                      'PromptString','Select variable', ...
                      'SelectionMode','single');
-  if ok & ~isempty(sel), 
+  if ok && ~isempty(sel), 
     w = {w.name};
     if ishandle(h),
       set(h,'String',w{sel});
@@ -2067,7 +2067,7 @@ elseif strcmp(action,'popup_select')
                        'Name','Variable selection',...
                        'PromptString','Select variable', ...
                        'SelectionMode','single');
-    if ok & ~isempty(sel),
+    if ok && ~isempty(sel),
       w = {w.name};
       i = find(v==h(2:end));
       s = get(h(1),'String');

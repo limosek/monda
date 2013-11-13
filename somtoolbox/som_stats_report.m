@@ -90,7 +90,7 @@ end
 if ~texonly, rep_utils('footer',fmt,fid); end
 if fid~=1, fclose(fid); end
 
-if ~texonly & any(strcmp(fmt,{'ps','pdf'})), rep_utils('compile',fmt); end
+if ~texonly && any(strcmp(fmt,{'ps','pdf'})), rep_utils('compile',fmt); end
 return;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

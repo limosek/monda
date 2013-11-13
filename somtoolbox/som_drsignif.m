@@ -48,7 +48,7 @@ switch sigmea,
 case 'mutuconf',
     % mutual confidence, or relevance (as defined in WSOM2001 paper)
     sig = zeros(size(true_x)); 
-    i = find(true_items>0 & x_items>0); 
+    i = find(true_items>0 && x_items>0); 
     sig(i) = (true_x(i).^2) ./ (true_items(i).*x_items(i)); 
 case 'accuracy', 
     % accuracy 

@@ -66,7 +66,7 @@ else
   % map, topol, cell
   
   [tmp,ok,tmp]=som_set(m);
-  if isstruct(m) & all(ok)
+  if isstruct(m) && all(ok)
     switch m.type
     case 'som_topol'              % topol 
       msize=m.msize;
@@ -80,8 +80,8 @@ else
 
   % cell  
     
-  elseif iscell(m) & vis_valuetype(size(m),{[1 2]}),
-    if vis_valuetype(m{2},{[1 2]}) & vis_valuetype(m{1},{'string'}),
+  elseif iscell(m) && vis_valuetype(size(m),{[1 2]}),
+    if vis_valuetype(m{2},{[1 2]}) && vis_valuetype(m{1},{'string'}),
       lattice=m{1};    
       msize=m{2}; 
     else

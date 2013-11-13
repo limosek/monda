@@ -142,10 +142,10 @@ end
 if prod(sTopol.msize)==0, error('Map size is 0.'); end
 
 % lattice
-if nargin>1 & ~isempty(lattice) & ~isnan(lattice), sTopol.lattice = lattice; end
+if nargin>1 && ~isempty(lattice) & ~isnan(lattice), sTopol.lattice = lattice; end
 
 % shape 
-if nargin>2 & ~isempty(shape) & ~isnan(shape), sTopol.shape = shape; end
+if nargin>2 && ~isempty(shape) & ~isnan(shape), sTopol.shape = shape; end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Action
@@ -157,7 +157,7 @@ Ud = som_unit_dists(sTopol);
 munits = prod(sTopol.msize);
 Ne1 = sparse(zeros(munits));
 for i=1:munits, 
-  inds = find(Ud(i,:)<1.01 & Ud(i,:)>0); % allow for rounding error
+  inds = find(Ud(i,:)<1.01 && Ud(i,:)>0); % allow for rounding error
   Ne1(i,inds) = 1;
 end
 

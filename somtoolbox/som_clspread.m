@@ -55,7 +55,7 @@ end
 % constrained clustering
 if nargin<4, Ne = []; end
 if prod(size(Ne))==1,  
-  if Ne & isempty(sT),
+  if Ne && isempty(sT),
     warning('Cannot use constrained clustering.'); Ne = 0; 
   end
   if Ne, Ne = som_unit_neighs(sT); else Ne = []; end
@@ -72,7 +72,7 @@ if nargin<5, verbosity = 1; end
 
 if size(base,1)==1, base = base'; end
 
-cid = unique(base(isfinite(base) & base~=0)); % cluster IDs
+cid = unique(base(isfinite(base) && base~=0)); % cluster IDs
 nc = length(cid);    
 uind = find(base==0); % unclustered points
 nu = length(uind); 
@@ -103,7 +103,7 @@ end
 Cd = som_cldist(M,clinds,clinds2,cldist,q,mask); 
 			      
 % check out from Ne which of the clusters are not connected
-if ~isempty(Ne) & any(strcmp(cldist,{'centroid','ward'})),
+if ~isempty(Ne) && any(strcmp(cldist,{'centroid','ward'})),
   Clconn = sparse(nc,nu);   
   for i=1:nc, for j=1:nu, Clconn(i,j) = any(any(Ne(clinds{i},uind(j)))); end, end
   Cd(Clconn==0) = Inf; 

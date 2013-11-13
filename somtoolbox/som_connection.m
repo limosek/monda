@@ -99,7 +99,7 @@ function C=som_connection(S)
 error(nargchk(1, 1, nargin));   % check number of input arguments
 
 [tmp,ok,tmp]=som_set(S);
-if isstruct(S) & all(ok),       % check m type
+if isstruct(S) && all(ok),       % check m type
   switch S.type
   case 'som_topol' 
     msize=S.msize;
@@ -132,7 +132,7 @@ end
 
 N=msize(1)*msize(2);
 
-%% Action & Build output arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Action && Build output arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 switch lattice
 case 'hexa'

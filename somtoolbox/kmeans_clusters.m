@@ -104,7 +104,7 @@ for i = 2:n_max, % number of clusters
 %  ind(i)      = db_index(D, c_best, k_best, 2); wrong version in somtbx ??
   ind(i)      = db_index(D, k_best, c_best, 2); % modified by kr 1.10.02
 
-  % if verbose mode, plot the index & SSE
+  % if verbose mode, plot the index && SSE
   if verbose
     subplot(2,1,1), plot(ind), grid
     title('Davies-Bouldin''s index')

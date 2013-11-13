@@ -74,7 +74,7 @@ end
 % Take data from data or map struct
 
 if isstruct(Data);
-  if isfield(Data,'type') & ischar(Data.type),
+  if isfield(Data,'type') && ischar(Data.type),
     ;
   else
     error('Invalid map/data struct?');
@@ -94,7 +94,7 @@ end
 
 if isstruct(Proto),
   
-  if isfield(Proto,'type') & ischar(Proto.type),
+  if isfield(Proto,'type') && ischar(Proto.type),
     ;
   else
     error('Invalid map/data struct?');
@@ -230,7 +230,7 @@ function [nos,names] = class2num(class)
 names = {};
 nos = zeros(length(class),1);
 for i=1:length(class)
-  if ~isempty(class{i}) & ~any(strcmp(class{i},names))
+  if ~isempty(class{i}) && ~any(strcmp(class{i},names))
     names=cat(1,names,class(i));
   end
 end

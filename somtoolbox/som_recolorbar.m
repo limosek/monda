@@ -143,7 +143,7 @@ function h=som_recolorbar(p, ticks, scale, labels)
 % Version 1.0beta Johan 061197 
 % Version 2.0beta juuso 151199 130300 160600 181101
 
-%% Init & check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Init && check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 error(nargchk(0, 4, nargin))    % check no. of input args
 
@@ -165,10 +165,10 @@ if nargin < 2 | isempty(ticks)                   % default tick mode is 'auto'
 elseif isa(ticks,'cell')                         % check for cell
   tickValues = ticks; 
   ticks= 'explicit';
-elseif isa(ticks,'double') & length(ticks)>1,
+elseif isa(ticks,'double') && length(ticks)>1,
   tickValues = {ticks}; 
   ticks = 'explicit'; 
-elseif isa(ticks,'double') & length(ticks)==1,
+elseif isa(ticks,'double') && length(ticks)==1,
   tickValues = max(2,round(ticks)); 
   ticks = 'evenspace'; 
 end
@@ -183,7 +183,7 @@ switch ticks                                     % check ticks
   for i=1:length(handles), tickValues_tmp{i} = tickValues; end
   tickValues = tickValues_tmp; 
  case 'explicit', 
-  if length(tickValues)==1 & length(handles)>1, 
+  if length(tickValues)==1 && length(handles)>1, 
     tickValues_tmp = cell(length(handles),1); 
     for i=1:length(handles), tickValues_tmp{i} = tickValues{1}; end
     tickValues = tickValues_tmp; 
@@ -209,7 +209,7 @@ switch scale                                     % check the string
   error('''normalized'' or ''denormalized'' expected for the third argument.')
 end
 
-if nargin < 4 | isempty(labels)                  % default is autolabeling
+if nargin < 4 || isempty(labels)                  % default is autolabeling
   labels = 'auto';
 elseif ~isa(labels,'cell')                       % check type
   error('The fourth argument should be a cell array of cells containing strings.')
@@ -251,7 +251,7 @@ for i=1:length(handles),                   % MAIN LOOP BEGINS
       limit=caxis;                        
       t=linspace(limit(1),limit(2),n);    % set n ticks between min and max 
       t([1 length(t)])=get(h_(i),Lim); % <- caxis is not necerraily the same 
-      tickValues{i}=t;                    % as the colorbar min & max values
+      tickValues{i}=t;                    % as the colorbar min && max values
      case 'evenspace'
       limit = caxis; 
       t = linspace(limit(1),limit(2),tickValues{i}); 
@@ -336,7 +336,7 @@ r(zero)=0;
 function t=isvector(v)
 % ISVECTOR checks if a matrix is a vector or not
 
-t=(ndims(v) == 2 & min(size(v)) == 1) & isnumeric(v);
+t=(ndims(v) == 2 && min(size(v)) == 1) & isnumeric(v);
 
 %% Subfunction: EPSTO0
 
@@ -344,7 +344,7 @@ function t=epsto0(t)
 % EPSTO0 checks whether first tick value is *very* close to zero, 
 % if so sets it to zero.
 
-if (t(end)-t(1))/t(end) > 1-0.005 & abs(t(1))<1, t(1) = 0; end
+if (t(end)-t(1))/t(end) > 1-0.005 && abs(t(1))<1, t(1) = 0; end
 
 
 

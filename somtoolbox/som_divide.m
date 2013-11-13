@@ -39,7 +39,7 @@ function [V,I]=som_divide(sMap, D, inds, mode)
 % Contributed to SOM Toolbox vs2, Mar 23rd, 2000 by Juha Vesanto
 % http://www.cis.hut.fi/projects/somtoolbox/
 
-%%%% Init & Check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%% Init && Check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 error(nargchk(0, 4, nargin)) % check if no. of input args is correct
 
@@ -62,14 +62,14 @@ isvec = prod(size(inds))==length(inds);
 
 % mode
 if nargin<4, 
-  if isvec & length(inds)==munits, 
+  if isvec && length(inds)==munits, 
     mode = 'class'; 
   else
     mode = 'index'; 
   end
 end
 
-%%% Action & Build output according to the mode string output
+%%% Action && Build output according to the mode string output
 
 if ~isvec, inds = som_sub2ind(msize,inds); end
 

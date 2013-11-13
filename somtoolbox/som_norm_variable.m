@@ -249,7 +249,7 @@ if ischar(method)
   end
 end
 if iscell(method), 
-  if length(method)==1 & isstruct(method{1}), sNorm = method{1}; 
+  if length(method)==1 && isstruct(method{1}), sNorm = method{1}; 
   else
     if length(method)==1 | isempty(method{2}), method{2} = 'x'; end
     sNorm = som_set('som_norm','method','eval','params',method);
@@ -262,17 +262,17 @@ end
 %% action
 
 order = [1:length(sNorm)]; 
-if length(order)>1 & strcmp(operation,'undo'), order = order(end:-1:1); end
+if length(order)>1 && strcmp(operation,'undo'), order = order(end:-1:1); end
 
 for i=order, 
 
   % initialize
   if strcmp(operation,'init') | ...
-     (strcmp(operation,'do') & strcmp(sNorm(i).status,'uninit')), 
+     (strcmp(operation,'do') && strcmp(sNorm(i).status,'uninit')), 
 
     % case method = 'hist'
     if strcmp(sNorm(i).method,'hist'), 
-      inds = find(~isnan(x) & ~isinf(x));
+      inds = find(~isnan(x) && ~isinf(x));
       if length(unique(x(inds)))>20, sNorm(i).method = 'histC'; 
       else sNorm{i}.method = 'histD'; end
     end
@@ -341,13 +341,13 @@ return;
 % linear scaling
 
 function p = norm_variance_init(x)
-  inds = find(~isnan(x) & isfinite(x));
+  inds = find(~isnan(x) && isfinite(x));
   p = [mean(x(inds)), std(x(inds))];
   if p(2) == 0, p(2) = 1; end
   %end of norm_variance_init
 
 function p = norm_scale01_init(x)
-  inds = find(~isnan(x) & isfinite(x));
+  inds = find(~isnan(x) && isfinite(x));
   mi = min(x(inds)); 
   ma = max(x(inds));
   if mi == ma, p = [mi, 1]; else p = [mi, ma-mi]; end
@@ -364,7 +364,7 @@ function x = norm_scale_undo(x,p)
 % logarithm
 
 function p = norm_log_init(x)
-  inds = find(~isnan(x) & isfinite(x));
+  inds = find(~isnan(x) && isfinite(x));
   p = min(x(inds));
   % end of norm_log_init
 
@@ -380,7 +380,7 @@ function x = norm_log_undo(x,p)
 % logistic
 
 function p = norm_logistic_init(x)
-  inds = find(~isnan(x) & isfinite(x));
+  inds = find(~isnan(x) && isfinite(x));
   p = [mean(x(inds)), std(x(inds))];
   if p(2)==0, p(2) = 1; end
   % end of norm_logistic_init
@@ -398,17 +398,17 @@ function x = norm_logistic_undo(x,p)
 % histogram equalization for discrete values
 
 function p = norm_histeqD_init(x)
-  inds = find(~isnan(x) & ~isinf(x));
+  inds = find(~isnan(x) && ~isinf(x));
   p = unique(x(inds));
   % end of norm_histeqD_init
 
 function x = norm_histeqD_do(x,p)
   bins = length(p);
-  inds = find(~isnan(x) & ~isinf(x))';
+  inds = find(~isnan(x) && ~isinf(x))';
   for i = inds, 
     [dummy ind] = min(abs(x(i) - p));
     % data item closer to the left-hand bin wall is indexed after RH wall
-    if x(i) > p(ind) & ind < bins, 
+    if x(i) > p(ind) && ind < bins, 
       x(i) = ind + 1;  
     else 
       x(i) = ind;
@@ -420,7 +420,7 @@ function x = norm_histeqD_do(x,p)
 function x = norm_histeqD_undo(x,p)
   bins = length(p);
   x = round(x*(bins-1)+1);
-  inds = find(~isnan(x) & ~isinf(x));
+  inds = find(~isnan(x) && ~isinf(x));
   x(inds) = p(x(inds));
   % end of norm_histeqD_undo
 
@@ -428,7 +428,7 @@ function x = norm_histeqD_undo(x,p)
 
 function p = norm_histeqC_init(x)
   % investigate x
-  inds = find(~isnan(x) & ~isinf(x));
+  inds = find(~isnan(x) && ~isinf(x));
   samples = length(inds);
   xs = unique(x(inds));
   mi = xs(1);
@@ -466,16 +466,16 @@ function x = norm_histeqC_do(x,p)
   lims = length(p);
   % handle values below minimum
   r = p(2)-p(1); 
-  inds = find(x<=p(1) & isfinite(x)); 
+  inds = find(x<=p(1) && isfinite(x)); 
   if any(inds), xnew(inds) = 0-(p(1)-x(inds))/r; end 
   % handle values above maximum
   r = p(end)-p(end-1); 
-  inds = find(x>p(end) & isfinite(x)); 
+  inds = find(x>p(end) && isfinite(x)); 
   if any(inds), xnew(inds) = lims-1+(x(inds)-p(end))/r; end
   % handle all other values
   for i=1:(lims-1), 
     r0 = p(i); r1 = p(i+1); r = r1-r0; 
-    inds = find(x>r0 & x<=r1); 
+    inds = find(x>r0 && x<=r1); 
     if any(inds), xnew(inds) = i-1+(x(inds)-r0)/r; end
   end
   % scale so that minimum and maximum correspond to 0 and 1
@@ -490,16 +490,16 @@ function x = norm_histeqC_undo(x,p)
 
   % handle values below minimum
   r = p(2)-p(1); 
-  inds = find(x<=0 & isfinite(x)); 
+  inds = find(x<=0 && isfinite(x)); 
   if any(inds), xnew(inds) = x(inds)*r + p(1); end 
   % handle values above maximum
   r = p(end)-p(end-1); 
-  inds = find(x>lims-1 & isfinite(x)); 
+  inds = find(x>lims-1 && isfinite(x)); 
   if any(inds), xnew(inds) = (x(inds)-(lims-1))*r+p(end); end
   % handle all other values
   for i=1:(lims-1), 
     r0 = p(i); r1 = p(i+1); r = r1-r0; 
-    inds = find(x>i-1 & x<=i); 
+    inds = find(x>i-1 && x<=i); 
     if any(inds), xnew(inds) = (x(inds)-(i-1))*r + r0; end
   end
   x = xnew;
@@ -513,16 +513,16 @@ function p = norm_eval_init(method)
 
 function x = norm_eval_do(x,p)
   x_tmp = eval(p{1});
-  if size(x_tmp,1)>=1 & size(x,1)>=1 & ...
-     size(x_tmp,2)==1 & size(x,2)==1,
+  if size(x_tmp,1)>=1 && size(x,1)>=1 & ...
+     size(x_tmp,2)==1 && size(x,2)==1,
     x = x_tmp;
   end
   %end of norm_eval_do
 
 function x = norm_eval_undo(x,p)
   x_tmp = eval(p{2});
-  if size(x_tmp,1)>=1 & size(x,1)>=1 & ...
-     size(x_tmp,2)==1 & size(x,2)==1,
+  if size(x_tmp,1)>=1 && size(x,1)>=1 & ...
+     size(x_tmp,2)==1 && size(x,2)==1,
     x = x_tmp;
   end
   %end of norm_eval_undo

@@ -98,7 +98,7 @@ function som_show_clear(type, p)
 
 error(nargchk(0,2, nargin))     % check no. of input args is correct
 
-%%% Initialize & check & action %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Initialize && check & action %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if nargin == 0 | isempty(type) | strcmp(type,'all') % delete everything 
                                                     % in the gcf
@@ -118,7 +118,7 @@ else                                  % check subplot handles if p is given
     end
 end
 
-switch lower(type)                    % check type & make proper tag names
+switch lower(type)                    % check type && make proper tag names
 case 'hit'  
   tag = 'Hit'; 
 case 'lab'

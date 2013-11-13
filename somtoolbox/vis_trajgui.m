@@ -17,7 +17,7 @@ if nargin == 1
 
   sM_h=trajStruct.figure;
 
-  if size(trajStruct.bmus,1) ~= 1 & size(trajStruct.bmus,2) ~= 1
+  if size(trajStruct.bmus,1) ~= 1 && size(trajStruct.bmus,2) ~= 1
     fuzzy_traj(trajStruct,[]);
     return;
   end
@@ -136,7 +136,7 @@ if nargin == 1
     %
     % 
     
-    if nargin < 5 | isempty(comps) | (isstr(comps) & strcmp(comps,'all'))
+    if nargin < 5 | isempty(comps) | (isstr(comps) && strcmp(comps,'all'))
       comps = 1:size(data1,2);
     end
     
@@ -341,7 +341,7 @@ udata=get(gcf,'UserData');
 udata=get(udata.fig1,'UserData');
 color=udata.color;
 eMode='normal';
-if isstr(udata.color) & strcmp(udata.color,'xor')
+if isstr(udata.color) && strcmp(udata.color,'xor')
   eMode='xor';
   color='black';
 end
@@ -937,7 +937,7 @@ switch arg
       errordlg([{str1};{str2}]);
       return;
     end
-    if ~all([1 3] == size(color)) & ~all([3 1] == size(color))
+    if ~all([1 3] == size(color)) && ~all([3 1] == size(color))
       close gcf;
       errordlg([{str1};{str2}]);
       udata=rmfield(udata,'c_struct',udata);
@@ -1124,7 +1124,7 @@ AGAIN = 0;
 coords=get(gca,'CurrentPoint');
 row=round(coords(1,2));
 
-if strcmp(udata.lattice,'hexa') & ~mod(row,2)
+if strcmp(udata.lattice,'hexa') && ~mod(row,2)
   col = round(coords(1,1) - 0.5);
 else
   col = round(coords(1,1));

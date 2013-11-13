@@ -139,7 +139,7 @@ case 'crisp',
 case 'kernel',
 
  % check that sMap really is a map 
- if ~isstruct(sMap) & ~strcmp(sMap.type,'som_map'), 
+ if ~isstruct(sMap) && ~strcmp(sMap.type,'som_map'), 
    error('Kernel mode can only be used for maps.');
  end	   
 
@@ -194,7 +194,7 @@ case 'fuzzy',
  % scaling factor   
  a = mean(qerrs).^2;
  
- % calculate distances & bmus
+ % calculate distances && bmus
  % (this is better explained in som_batchtrain and som_bmus)
  Known = ~isnan(D); D(find(~Known)) = 0; % unknown components  
  blen = min(munits,dlen); % block size 

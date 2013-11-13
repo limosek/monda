@@ -77,7 +77,7 @@ for i=1:train_len,
 
   % track
   fprintf(1,'%d / %d \r',i,train_len);
-  if 0 & mod(i,50) == 0, 
+  if 0 && mod(i,50) == 0, 
     hold off, plot3(D(:,1),D(:,2),D(:,3),'bo')
     hold on, plot3(Neurons(:,1),Neurons(:,2),Neurons(:,3),'r+')
     drawnow

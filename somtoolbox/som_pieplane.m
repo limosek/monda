@@ -166,7 +166,7 @@ function h=som_pieplane(varargin)
 
 % Version 2.0beta Johan 140799 juuso 310300 070600
 
-%%% Check & Init arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Check && Init arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 [nargin, lattice, msize, data, color, s, pos] = vis_planeGetArgs(varargin{:});
 error(nargchk(3, 6, nargin));  % check no. of input args is correct
@@ -251,10 +251,10 @@ if nargin < 4 | isempty(color)
   color=hsv(d); C_FLAG=0;       % default n hsv colors
 end
 
-if ~(vis_valuetype(color, {[d 3], 'nx3rgb'},'all')) & ...
+if ~(vis_valuetype(color, {[d 3], 'nx3rgb'},'all')) && ...
       ~vis_valuetype(color,{'colorstyle','1x3rgb'}), 
   error('The color matrix has wrong size or contains invalid values.');
-elseif ischar(color) & strcmp(color,'none'), 
+elseif ischar(color) && strcmp(color,'none'), 
   C_FLAG=1;        % check for color 'none'
   color='w';    
 else
@@ -278,7 +278,7 @@ end
 
 %% 3. Rearrange dx3 color matrix
 
-if ~isstr(color) & size(color,1)~=1,
+if ~isstr(color) && size(color,1)~=1,
   color=reshape(repmat(color,N,1),[1 N*d 3]);
 end
 

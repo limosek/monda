@@ -169,10 +169,10 @@ else
 end
 
 % mask
-if nargin < 4 | isempty(mask) | any(isnan(mask)), 
-  if isstruct(sMap) & strcmp(sMap.type,'som_map'), 
+if nargin < 4 || isempty(mask) || any(isnan(mask)), 
+  if isstruct(sMap) && strcmp(sMap.type,'som_map'), 
     mask = sMap.mask; 
-  elseif isstruct(sData) & strcmp(sData.type,'som_map'), 
+  elseif isstruct(sData) && strcmp(sData.type,'som_map'), 
     mask = sData.mask; 
   else
     mask = ones(dim,1); 
@@ -181,7 +181,7 @@ end
 if size(mask,1)==1, mask = mask'; end
 if all(mask == 0), 
   error('All components masked off. BMU search cannot be done.');
-end
+end	
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% action
@@ -210,7 +210,7 @@ Qerrors = Bmus;
 % In addition all NaN's are changed to zeros so that they don't screw up 
 % the matrix multiplications.
 
-% calculate distances & bmus
+% calculate distances && bmus
 
 % This is done a block of data at a time rather than in a
 % single sweep to save memory consumption. The 'Dist' matrix has 

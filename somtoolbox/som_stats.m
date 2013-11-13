@@ -248,8 +248,8 @@ function vstr = numtostring(v,d)
     r = max(v)-min(v); 
     if r==0, r=1; end
     nearzero = (abs(v)/r < 10.^-d);
-    i1 = find(v > 0 & nearzero); 
-    i2 = find(v < 0 & nearzero);     
+    i1 = find(v > 0 && nearzero); 
+    i2 = find(v < 0 && nearzero);     
     vstr = strrep(cellstr(num2str(v,d)),' ','');
     vstr(i1) = {'0.0'};
     vstr(i2) = {'-0.0'};

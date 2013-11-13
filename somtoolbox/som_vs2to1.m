@@ -210,7 +210,7 @@ function sN = convert_normalizations(cnorm)
   nof = zeros(dim,1);
   for i=1:dim, nof(i) = length(cnorm{i}); end
   if any(nof>1), ok=0; 
-  elseif any(nof==1) & any(nof==0), ok=0;
+  elseif any(nof==1) && any(nof==0), ok=0;
   elseif any(nof>0), 
     status = cnorm{1}.status;
     method = cnorm{1}.method;
@@ -276,7 +276,7 @@ function D = redo_hist_norm(D,cnorm,sN)
   for i=1:dim, 
     bins = length(cnorm{i}.params);
     D(:,i) = round(D(:,i)*(bins-1)+1);
-    inds = find(~isnan(D(:,i)) & ~isinf(D(:,i)));
+    inds = find(~isnan(D(:,i)) && ~isinf(D(:,i)));
     D(inds,i) = cnorm{i}.params(D(inds,i));
   end  
   % then - redo the old way
@@ -285,7 +285,7 @@ function D = redo_hist_norm(D,cnorm,sN)
     for i = 1:size(D, 1)
       if ~isnan(D(i, j)),
 	[d ind] = min(abs(D(i, j) - sN.inv_params(1:n_bins(j), j)));
-	if (D(i, j) - sN.inv_params(ind, j)) > 0 & ind < n_bins(j),
+	if (D(i, j) - sN.inv_params(ind, j)) > 0 && ind < n_bins(j),
 	  D(i, j) = ind + 1;   
 	else                   
 	  D(i, j) = ind;

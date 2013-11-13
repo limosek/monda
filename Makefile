@@ -92,7 +92,7 @@ tmpclean:
 %.az.log.gz: %.az.log
 	@$(GZIP) $<
 	
-gzip: $(shell find $(O) -name '*.m' | sed -e s/\.m\$$/\.m\.gz/) $(shell find $(O) -name '*.m.log' | sed -e s/\.m\.log\$$/\.m\.log\.gz/)
+gzip: $(shell find $(O) -name '*.m' | sed -e s/\.m\$$/\.m\.gz/) $(shell find $(O) -name '*.m.log' | sed -e s/\.m\.log\$$/\.m\.log\.gz/) $(shell find $(O) -name '*.az.log' | sed -e s/\.az\.log\$$/\.az\.log\.gz/)
 	@echo $^
 
 gunzip: $(shell find $(O) -name '*.m.gz' | sed -e s/\.m\.gz\$$/\.m\-gz/)

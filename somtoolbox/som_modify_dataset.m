@@ -93,7 +93,7 @@ switch action,
   norm = 0; 
   indsto = []; 
   for i=2:length(varargin),
-    if ischar(varargin{i}) & strcmp(varargin{i},'norm'), norm = 1; 
+    if ischar(varargin{i}) && strcmp(varargin{i},'norm'), norm = 1; 
     elseif isnumeric(varargin{i}), 
       indsto = varargin{i}; 
       if length(indsto) ~= n, 

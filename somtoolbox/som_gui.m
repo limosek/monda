@@ -170,7 +170,7 @@ switch(action)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-%%%%%%%%%%%%%%%%%%%%%%% Help & Info %%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%% Help && Info %%%%%%%%%%%%%%%%%%%%%%%
   case 'help'
     web file:///share/somtoolbox/vs2/html/som_GUI.html;
   case 'helpwin'
@@ -296,7 +296,7 @@ Handle1 = findobj(gcbf,'Tag','EditText1');
 Handle2 = findobj(gcbf,'Tag','EditText2');
 Name1 = get(Handle1,'String');
 Name2 = get(Handle2,'String');
-if isempty(Name1) & not(isempty(Name2))
+if isempty(Name1) && not(isempty(Name2))
   Handle = findobj(gcbf,'Tag','PopupMenu1')
   type = get(Handle,'String');
   val = get(Handle,'Value');
@@ -344,7 +344,7 @@ if isempty(Name1) & not(isempty(Name2))
      LOAD_NAME = name;
      DATA.name = name;	
    end
-elseif isempty(Name2) & not(isempty(Name1))
+elseif isempty(Name2) && not(isempty(Name1))
    LOAD_DATA = evalin('base',Name1);
    if not(isstruct(LOAD_DATA))
       DATA = som_data_struct(LOAD_DATA);
@@ -461,7 +461,7 @@ elseif WorkspaceVal == 1
    for index = 1:length(temp)
       if isnumeric(evalin('base',temp{index}))
 	test = size(evalin('base',temp{index}));
-	if test(1) ~= 1 & test(2) ~= 1
+	if test(1) ~= 1 && test(2) ~= 1
    	   names{index2} = temp{index};	
 	   index2 = index2 + 1;
 	end
@@ -471,7 +471,7 @@ elseif WorkspaceVal == 1
 	variable = evalin('base',temp{index});
 	if isstruct(variable)
 	   fnames = fieldnames(variable);
-	   if size(fnames,1) == 6 & strcmp(fnames(1),'type') & strcmp(variable.type,'som_data')
+	   if size(fnames,1) == 6 && strcmp(fnames(1),'type') & strcmp(variable.type,'som_data')
 	     names{index2} = temp{index};	
 	     index2 = index2 + 1;
 	   end
@@ -1225,7 +1225,7 @@ set(Handle,'String','Status <map saved>');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%				%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%     START OF HELP & INFO	%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%     START OF HELP && INFO	%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%				%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 
@@ -1288,7 +1288,7 @@ delete (file1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%				%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%     END OF HELP & INFO	%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%     END OF HELP && INFO	%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%				%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 
@@ -1571,7 +1571,7 @@ ver_53_or_newer = (str2num(v(1:3)) >= 5.3);
 
 h0 = figure('Units','normalized', ...
 	'Color',[0.85 0.85 0.85], ...
-	'Name','SOM Toolbox -- Initialization & Training', ...
+	'Name','SOM Toolbox -- Initialization && Training', ...
 	'NumberTitle','off', ...
 	'PaperPosition',[18 180 576 432], ...
 	'PaperUnits','points', ...

@@ -51,7 +51,7 @@ nargchk(9,9,nargin);
 NO_FILE=0;
 DIN_FILE = 0;
 
-if ~isstruct(sMap) & ~isstr(sMap)
+if ~isstruct(sMap) && ~isstr(sMap)
   error('Argument ''sMap'' must be a struct or string.');
 end
 
@@ -83,14 +83,14 @@ if isstr(sMap)
 
   end
 end
-if ~isstr(cout) & isempty(cout)
+if ~isstr(cout) && isempty(cout)
   cout = '__abcdef';
   NO_FILE = 1;
-elseif ~isstr(cout) | (isstr(cout) & isempty(cout))
+elseif ~isstr(cout) | (isstr(cout) && isempty(cout))
   error('Argument ''cout'' must be a string or ''[]''.');
 end
 
-if ~NO_FILE & (isempty(ct) | ~(~isempty(ct) & ...
+if ~NO_FILE && (isempty(ct) | ~(~isempty(ct) & ...
    (strcmp(ct,'pak') | strcmp(ct,'box'))))
   error('Argument ''ct'' must be string ''pak'' or ''box''.');
 end
@@ -137,11 +137,11 @@ if ~is_positive_integer(rlen)
   error('Argument ''rlen'' must be positive integer.');
 end
 
-if ~(isreal(alpha) & all(size(alpha)==1))
+if ~(isreal(alpha) && all(size(alpha)==1))
   error('Argument ''alpha'' must be a floating point number.');
 end
 
-if ~(isreal(radius) & all(size(radius)==1) & radius > 0)
+if ~(isreal(radius) && all(size(radius)==1) & radius > 0)
   error('Argument ''radius'' must be a positive floating point number.');
 end
 
@@ -197,9 +197,9 @@ end
 
 function bool = is_positive_integer(x)
 
-bool = ~isempty(x) & isreal(x) & all(size(x) == 1) & x > 0;
+bool = ~isempty(x) && isreal(x) & all(size(x) == 1) & x > 0;
 if ~isempty(bool)
-  if bool & x~=round(x)
+  if bool && x~=round(x)
     bool = 0;
   end
 else

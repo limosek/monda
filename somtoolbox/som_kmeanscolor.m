@@ -53,9 +53,9 @@ function [color,best,kmeans]=som_kmeanscolor(sM,C,initRGB,contrast)
 
 error(nargchk(2, 4, nargin));  % check no. of input args
 
-%%% Check input args & set defaults
+%%% Check input args && set defaults
 
-if isstruct(sM) & isfield(sM,'type') & strcmp(sM.type,'som_map'),
+if isstruct(sM) && isfield(sM,'type') & strcmp(sM.type,'som_map'),
    [tmp,lattice,msize]=vis_planeGetArgs(sM);
    munits=prod(msize);
    if length(msize)>2 

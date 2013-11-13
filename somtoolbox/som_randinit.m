@@ -143,7 +143,7 @@ while i<=length(varargin),
      case {'sheet','cyl','toroid'}, sTopol.shape = varargin{i};
      otherwise argok=0; 
     end
-  elseif isstruct(varargin{i}) & isfield(varargin{i},'type'), 
+  elseif isstruct(varargin{i}) && isfield(varargin{i},'type'), 
     switch varargin{i}.type, 
      case 'som_topol',
       sTopol = varargin{i}; 
@@ -199,7 +199,7 @@ sMap.codebook = rand([munits dim]);
 
 % set interval of each component to correct value
 for i = 1:dim,
-  inds = find(~isnan(D(:,i)) & ~isinf(D(:,i))); 
+  inds = find(~isnan(D(:,i)) && ~isinf(D(:,i))); 
   if isempty(inds), mi = 0; ma = 1; 
   else ma = max(D(inds,i)); mi = min(D(inds,i));  
   end

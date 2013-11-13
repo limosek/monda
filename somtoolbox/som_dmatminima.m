@@ -53,7 +53,7 @@ if length(U) ~= munits, error('Distance matrix has incorrect size.'); end
 minima = []; 
 for i=1:munits, 
   ne = find(Ne(i,:));
-  if all(U(i)<=U(ne)) & ~anycommon(ne,minima), minima(end+1)=i; end
+  if all(U(i)<=U(ne)) && ~anycommon(ne,minima), minima(end+1)=i; end
 end
 
 return; 
@@ -64,7 +64,7 @@ function t = anycommon(i1,i2)
   if isempty(i1) | isempty(i2), t = 0; 
   else 
     m = max(max(i1),max(i2));
-    t = any(sparse(i1,1,1,m,1) & sparse(i2,1,1,m,1)); 
+    t = any(sparse(i1,1,1,m,1) && sparse(i2,1,1,m,1)); 
   end
   return;   
 

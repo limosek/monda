@@ -20,12 +20,12 @@
 % 
 % Creation of structs
 % 
-%              som_set   create & set (& check) values to structs
+%              som_set   create && set (& check) values to structs
 %             som_info   print out information on a given struct  
-%      som_data_struct   create & initialize a data struct 
-%       som_map_struct   create & initialize a map struct 
-%     som_topol_struct   create & initialize a topology struct 
-%     som_train_struct   create & initialize a train struct 
+%      som_data_struct   create && initialize a data struct 
+%       som_map_struct   create && initialize a map struct 
+%     som_topol_struct   create && initialize a topology struct 
+%     som_train_struct   create && initialize a train struct 
 %         som_clstruct   create a cluster struct
 %            som_clset   set properties in a cluster struct
 %            som_clget   get stuff from a cluster struct

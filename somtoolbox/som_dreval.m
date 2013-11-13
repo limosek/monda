@@ -65,14 +65,14 @@ truey = ones(ny,1);
 
 % go through the individual rules
 for i=1:nr,  
-  tx = (X(:,i)>=sR(i).low & X(:,i)<sR(i).high);
+  tx = (X(:,i)>=sR(i).low && X(:,i)<sR(i).high);
   tx(isnan(X(:,i))) = sR(i).nanis;     
 
-  ty = (Y(:,i)>=sR(i).low & Y(:,i)<sR(i).high);
+  ty = (Y(:,i)>=sR(i).low && Y(:,i)<sR(i).high);
   ty(isnan(Y(:,i))) = sR(i).nanis;     
 
   switch andor, 
-   case 'and', truex = (truex & tx); truey = (truey & ty);
+   case 'and', truex = (truex && tx); truey = (truey & ty);
    case 'or',  truex = (truex | tx); truey = (truey | ty);
   end    
 end  

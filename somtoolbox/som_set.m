@@ -316,7 +316,7 @@ if ischar(sS),
     return;
   end  
   
-elseif isstruct(sS) & length(varargin)==0, 
+elseif isstruct(sS) && length(varargin)==0, 
   
   % check all fields
   fields = fieldnames(sS);
@@ -356,12 +356,12 @@ for i=1:p,
   si = size(content);
   isscalar = (prod(si)==1);
   isvector = (sum(si>1)==1);
-  isrowvector = (isvector & si(1)==1);
+  isrowvector = (isvector && si(1)==1);
   if isnumeric(content), 
     iscomplete = all(~isnan(content(:))); 
     ispositive = all(content(:)>0); 
     isinteger  = all(content(:)==ceil(content(:)));
-    isrgb = all(content(:)>=0 & content(:)<=1) & size(content,2)==3;
+    isrgb = all(content(:)>=0 && content(:)<=1) & size(content,2)==3;
   end
   
   switch sS.type, 
@@ -371,7 +371,7 @@ for i=1:p,
      case 'codebook', 
       if ~isnumeric(content), 
 	msg = '''codebook'' should be a numeric matrix'; 
-      elseif size(content) ~= size(sS.codebook) & ~isempty(sS.codebook), 
+      elseif size(content) ~= size(sS.codebook) && ~isempty(sS.codebook), 
 	msg = 'New ''codebook'' must be equal in size to the old one.'; 
       elseif ~iscomplete, 
 	msg = 'Map codebook must not contain NaN''s.'; 
@@ -383,7 +383,7 @@ for i=1:p,
 	sS.labels = cell(munits,1); isok = 1;
       elseif size(content,1) ~= munits, 
 	msg = 'Length of labels array must be equal to the number of map units.';
-      elseif ~iscell(content) & ~ischar(content), 
+      elseif ~iscell(content) && ~ischar(content), 
 	msg = '''labels'' must be a string array or a cell array/matrix.';
       else
 	isok = 1;
@@ -427,7 +427,7 @@ for i=1:p,
      case 'lattice', 
       if ~ischar(content),
 	msg = '''lattice'' should be a string'; 
-      elseif ~strcmp(content,'rect') & ~strcmp(content,'hexa'),
+      elseif ~strcmp(content,'rect') && ~strcmp(content,'hexa'),
 	msg = ['Unknown lattice type: ' content];
 	sS.topol.lattice = content; isok = 1;
       else
@@ -436,7 +436,7 @@ for i=1:p,
      case 'shape', 
       if ~ischar(content),
 	msg = '''shape'' should be a string';
-      elseif ~strcmp(content,'sheet') & ~strcmp(content,'cyl') & ...
+      elseif ~strcmp(content,'sheet') && ~strcmp(content,'cyl') & ...
 	    ~strcmp(content,'toroid'),
 	msg = ['Unknown shape type:' content]; 
 	sS.topol.shape = content; isok = 1;
@@ -446,8 +446,8 @@ for i=1:p,
      case 'neigh', 
       if ~ischar(content),
 	msg = '''neigh'' should be a string'; 
-      elseif ~strcmp(content,'gaussian') & ~strcmp(content,'ep') & ...
-	    ~strcmp(content,'cutgauss') & ~strcmp(content,'bubble'),
+      elseif ~strcmp(content,'gaussian') && ~strcmp(content,'ep') & ...
+	    ~strcmp(content,'cutgauss') && ~strcmp(content,'bubble'),
 	msg = ['Unknown neighborhood function: ' content]; 
 	sS.neigh = content; isok = 1;
       else
@@ -467,7 +467,7 @@ for i=1:p,
 	sS.name = content; isok = 1;
       end
      case 'comp_names', 
-      if ~iscell(content) & ~ischar(content), 
+      if ~iscell(content) && ~ischar(content), 
 	msg = '''comp_names'' should be a cell string or a string array.'; 
       elseif length(content) ~= dim, 
 	msg = 'Length of ''comp_names'' should be equal to dim.'; 
@@ -478,14 +478,14 @@ for i=1:p,
 	isok = 1;
       end        
      case 'comp_norm', 
-      if ~iscell(content) & length(content)>0, 
+      if ~iscell(content) && length(content)>0, 
 	msg = '''comp_norm'' should be a cell array.'; 
       elseif length(content) ~= dim, 
 	msg = 'Length of ''comp_norm'' should be equal to dim.'; 
       else
 	isok = 1;
 	for j=1:length(content), 
-	  if ~isempty(content{j}) & (~isfield(content{j}(1),'type') | ...
+	  if ~isempty(content{j}) && (~isfield(content{j}(1),'type') | ...
 				     ~strcmp(content{j}(1).type,'som_norm')), 
 	    msg = 'Each cell in ''comp_norm'' should be either empty or type ''som_norm''.';
 	    isok = 0; 
@@ -495,7 +495,7 @@ for i=1:p,
 	if isok, sS.comp_norm = content; end
       end        
      case 'trainhist', 
-      if ~isstruct(content) & ~isempty(content), 
+      if ~isstruct(content) && ~isempty(content), 
 	msg = '''trainhist'' should be a struct array or empty.';
       else
 	isok = 1;
@@ -521,7 +521,7 @@ for i=1:p,
 	msg = '''data'' is empty';
       elseif ~isnumeric(content), 
 	msg = '''data'' should be numeric matrix.'; 
-      elseif dim ~= dim2 & ~isempty(sS.data), 
+      elseif dim ~= dim2 && ~isempty(sS.data), 
 	msg = 'New ''data'' must have the same dimension as old one.'; 
       else
 	sS.data = content; isok = 1;
@@ -531,7 +531,7 @@ for i=1:p,
 	sS.labels = cell(dlen,1); isok = 1;
       elseif size(content,1) ~= dlen, 
 	msg = 'Length of ''labels'' must be equal to the number of data vectors.';
-      elseif ~iscell(content) & ~ischar(content), 
+      elseif ~iscell(content) && ~ischar(content), 
 	msg = '''labels'' must be a string array or a cell array/matrix.';
       else
 	isok = 1;
@@ -559,7 +559,7 @@ for i=1:p,
 	sS.name = content; isok = 1;
       end
      case 'comp_names', 
-      if ~iscell(content) & ~ischar(content), 
+      if ~iscell(content) && ~ischar(content), 
 	msg = '''comp_names'' should be a cell string or a string array.'; 
       elseif length(content) ~= dim, 
 	msg = 'Length of ''comp_names'' should be equal to dim.'; 
@@ -570,14 +570,14 @@ for i=1:p,
 	isok = 1;
       end        
      case 'comp_norm', 
-      if ~iscell(content) & length(content)>0, 
+      if ~iscell(content) && length(content)>0, 
 	msg = '''comp_norm'' should be a cell array.'; 
       elseif length(content) ~= dim, 
 	msg = 'Length of ''comp_norm'' should be equal to dim.'; 
       else
 	isok = 1;
 	for j=1:length(content), 
-	  if ~isempty(content{j}) & (~isfield(content{j}(1),'type') | ...
+	  if ~isempty(content{j}) && (~isfield(content{j}(1),'type') | ...
 				     ~strcmp(content{j}(1).type,'som_norm')), 
 	    msg = 'Each cell in ''comp_norm'' should be either empty or type ''som_norm''.';
 	    isok = 0; 
@@ -587,7 +587,7 @@ for i=1:p,
 	if isok, sS.comp_norm = content; end
       end        
      case 'label_names', 
-      if ~iscell(content) & ~ischar(content) & ~isempty(content), 
+      if ~iscell(content) && ~ischar(content) & ~isempty(content), 
 	msg = ['''label_names'' should be a cell string, a string array or' ...
 	       ' empty.']; 
       else
@@ -613,7 +613,7 @@ for i=1:p,
      case 'lattice', 
       if ~ischar(content),
 	msg = '''lattice'' should be a string'; 
-      elseif ~strcmp(content,'rect') & ~strcmp(content,'hexa'),
+      elseif ~strcmp(content,'rect') && ~strcmp(content,'hexa'),
 	msg = ['Unknown lattice type: ' content]; 
 	sS.lattice = content; isok = 1;
       else
@@ -622,7 +622,7 @@ for i=1:p,
      case 'shape', 
       if ~ischar(content),
 	msg = '''shape'' should be a string';
-      elseif ~strcmp(content,'sheet') & ~strcmp(content,'cyl') & ...
+      elseif ~strcmp(content,'sheet') && ~strcmp(content,'cyl') & ...
 	    ~strcmp(content,'toroid'),
 	msg = ['Unknown shape type: ' content]; 
 	sS.shape = content; isok = 1;
@@ -650,8 +650,8 @@ for i=1:p,
      case 'neigh', 
       if ~ischar(content),
 	msg = '''neigh'' should be a string'; 
-      elseif ~isempty(content) & ~strcmp(content,'gaussian') & ~strcmp(content,'ep') & ...
-	    ~strcmp(content,'cutgauss') & ~strcmp(content,'bubble'),
+      elseif ~isempty(content) && ~strcmp(content,'gaussian') & ~strcmp(content,'ep') & ...
+	    ~strcmp(content,'cutgauss') && ~strcmp(content,'bubble'),
 	msg = ['Unknown neighborhood function: ' content]; 
 	sS.neigh = content; isok = 1;
       else
@@ -686,8 +686,8 @@ for i=1:p,
      case 'alpha_type', 
       if ~ischar(content),
 	msg = '''alpha_type'' should be a string'; 
-      elseif ~strcmp(content,'linear') & ~strcmp(content,'inv') & ...
-	    ~strcmp(content,'power') & ~strcmp(content,'constant') & ~strcmp(content,''),
+      elseif ~strcmp(content,'linear') && ~strcmp(content,'inv') & ...
+	    ~strcmp(content,'power') && ~strcmp(content,'constant') & ~strcmp(content,''),
 	msg = ['Unknown alpha type: ' content]; 
 	sS.alpha_type = content; isok = 1;
       else
@@ -722,7 +722,7 @@ for i=1:p,
      case 'status', 
       if ~ischar(content),
 	msg = '''status'' should be a string'; 
-      elseif ~strcmp(content,'done') & ~strcmp(content,'undone') & ...
+      elseif ~strcmp(content,'done') && ~strcmp(content,'undone') & ...
 	    ~strcmp(content,'uninit'),
 	msg = ['Unknown status type: ' content]; 
 	sS.status = content; isok = 1;

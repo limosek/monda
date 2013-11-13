@@ -237,9 +237,9 @@ set(gcf,'UserData',data);
 
 function bool = is_positive_integer(x)
 
-bool = ~isempty(x) & isreal(x) & all(size(x) == 1) & x > 0;
+bool = ~isempty(x) && isreal(x) & all(size(x) == 1) & x > 0;
 if ~isempty(bool)
-  if bool & x~=round(x)
+  if bool && x~=round(x)
     bool = 0;
   end
 else

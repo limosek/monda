@@ -27,7 +27,7 @@ function [base,seed] = som_dmatclusters(sM,linkage,neigh,ignore)
 if nargin<2 | isempty(linkage), linkage = 'centroid'; end
 
 if nargin<3 | isempty(neigh),
-  if isstruct(sM) & strcmp(sM.type,'som_map'),
+  if isstruct(sM) && strcmp(sM.type,'som_map'),
     neigh = 'N1';
   else
     neigh = '10NN';

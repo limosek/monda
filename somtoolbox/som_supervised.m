@@ -239,7 +239,7 @@ while i <= length(varargin)
       mapsize = varargin{i}; 
      otherwise argok=0; 
     end
-  elseif isstruct(varargin{i}) & isfield(varargin{i},'type'), 
+  elseif isstruct(varargin{i}) && isfield(varargin{i},'type'), 
     switch varargin{i}(1).type, 
       case 'som_topol', 
        sTopol = varargin{i}; 
@@ -321,7 +321,7 @@ names = {};
 numbers = zeros(length(class),1);
 
 for i=1:length(class)
-  if ~isempty(class{i}) & ~any(strcmp(class{i},names))
+  if ~isempty(class{i}) && ~any(strcmp(class{i},names))
     names=cat(1,names,class(i));
   end
 end

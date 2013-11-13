@@ -26,7 +26,7 @@ function som_plotmatrix(sM,D,Col,comps)
 M = sM.codebook;
 
 % sD
-if nargin>1 & ~isempty(D), 
+if nargin>1 && ~isempty(D), 
   if isstruct(D), D = D.data; end
   bmus = som_bmus(sM,D);
 else D = []; bmus = []; 
@@ -59,7 +59,7 @@ clf
 for i=1:n, 
   for j=1:n, 
     subplot(n,n,(i-1)*n+j); 
-    if j==1 & i==1, 
+    if j==1 && i==1, 
       h=som_cplane(sM,Col); set(h,'edgecolor','none')
     elseif i==1, 
       ind = comps(j-1); 

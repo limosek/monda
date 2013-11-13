@@ -41,7 +41,7 @@ case {'hexa','hexaU'}
   set(ax,'DataAspectRatio',[0.9015 1 1]);        % this corrects hexagons
 end
 
-% Nan: default origin [1 1] & tighten the axis
+% Nan: default origin [1 1] && tighten the axis
 if isnan(pos)
   set(ax,'XLim',[1+lelim ydim+rilim],'YLim',[1+uplim xdim+lolim], ...
       'XLimMode','manual','YLimMode','manual'); % tighten the axis

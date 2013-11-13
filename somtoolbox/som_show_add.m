@@ -430,7 +430,7 @@ munits=prod(msize);
 Property=init_properties;
 Property.handles=handles; 
 
-%%% Check mode and that D is of right type & size for that mode 
+%%% Check mode and that D is of right type && size for that mode 
 % mode has to be string
 if ~vis_valuetype(mode,{'string'}),
   error('String value expected for first input argument (mode).');
@@ -477,7 +477,7 @@ switch mode         % check mode
   
   if isstruct(D),                  % check if D is a map
     [tmp,ok,tmp]=som_set(D);
-    if all(ok) & strcmp(D.type,'som_map') 
+    if all(ok) && strcmp(D.type,'som_map') 
       ;
     else
       error('Map struct is invalid!');
@@ -536,7 +536,7 @@ for i=1:2:length(varargin),
     switch mode
      case 'mhit'
       if vis_valuetype(value,{'markerstyle'}) | ...
-	    (vis_valuetype(value,{'string'}) & ...
+	    (vis_valuetype(value,{'string'}) && ...
 	     any(strcmp(value,{'lattice','pie'}))),
 	; % ok
       elseif vis_valuetype(value,{'cellcolumn_of_char'}),
@@ -557,14 +557,14 @@ for i=1:2:length(varargin),
      case {'comet','hit'}
       if vis_valuetype(value,{'markerstyle'}) | isempty(value),
 	% ok;
-      elseif ischar(value) & strcmp(value,'lattice'),
+      elseif ischar(value) && strcmp(value,'lattice'),
 	% ok;
       else
 	error(['Marker must be Matlab''s marker style, or string' ...
 	       ' ''lattice''.']);
       end
      case 'traj'
-      if ~vis_valuetype(value,{'markerstyle'}) & ~isempty(value),
+      if ~vis_valuetype(value,{'markerstyle'}) && ~isempty(value),
 	error('In mode ''traj'' Marker must be one of Matlab''s built-in marker styles');
       end
     end
@@ -578,11 +578,11 @@ for i=1:2:length(varargin),
     %%% Marker for hits or trajectories
     switch mode 
      case 'comet'
-      if ~vis_valuetype(value,{'1x2'}) & ~isempty(value), 
+      if ~vis_valuetype(value,{'1x2'}) && ~isempty(value), 
 	error('In mode ''comet'' MarkerSize'' must be a 1x2 vector.');
       end
      case {'hit','traj'}
-      if ~vis_valuetype(value,{'1x1'}) & ~isempty(value), 
+      if ~vis_valuetype(value,{'1x1'}) && ~isempty(value), 
 	error(['In mode ''' mode_ ...
 	       ''' ''MarkerSize'' must be a scalar.']);
       end
@@ -619,14 +619,14 @@ for i=1:2:length(varargin),
     %%% Markercolor
     switch mode
      case 'comet' 
-      if ~vis_valuetype(value,{'colorstyle','1x3rgb'}) & ...
-	    ~vis_valuetype(value,{'nx3rgb',[size(D,1) 3]},'all') & ...
+      if ~vis_valuetype(value,{'colorstyle','1x3rgb'}) && ...
+	    ~vis_valuetype(value,{'nx3rgb',[size(D,1) 3]},'all') && ...
 	    ~isempty(value),
 	error(['MarkerColor in mode ''comet'' must be a ColorSpec,' ...
 	       ' string ''none'' or Mx3 matrix of RGB triples.']);
       end
      case 'mhit'
-      if ~vis_valuetype(value,{[size(D,2) 3],'nx3rgb'},'all') & ...
+      if ~vis_valuetype(value,{[size(D,2) 3],'nx3rgb'},'all') && ...
 	    ~vis_valuetype(value,{'colorstyle','1x3rgb'}),
 	error([' If multiple hit histograms in mode ''hit'' are' ...
 	       char(10) ...
@@ -635,13 +635,13 @@ for i=1:2:length(varargin),
 	       ' of RGB triples where K is the number of histograms.']);
       end
      case 'hit'
-      if ~vis_valuetype(value,{'colorstyle','1x3rgb'}) & ...
+      if ~vis_valuetype(value,{'colorstyle','1x3rgb'}) && ...
 	    ~isempty(value),
 	error(['MarkerColor in mode ''hit'' ' ...
 	       'must be a ColorSpec or string ''none''.']);
       end
      case 'traj'
-      if ~vis_valuetype(value,{'colorstyle','1x3rgb'}) & ...
+      if ~vis_valuetype(value,{'colorstyle','1x3rgb'}) && ...
 	    ~isempty(value),
 	error(['MarkerColor in mode ''traj'' ' ...
 	       'must be a ColorSpec or string ''none''.']);
@@ -656,7 +656,7 @@ for i=1:2:length(varargin),
     
    case 'edgecolor'
     %%% Color for marker edges
-    if ~vis_valuetype(value,{'colorstyle','1x3rgb'}) & ~isempty(value),
+    if ~vis_valuetype(value,{'colorstyle','1x3rgb'}) && ~isempty(value),
       error('''EdgeColor'' must be a ColorSpec or string ''none''.')
     end
     
@@ -673,14 +673,14 @@ for i=1:2:length(varargin),
       %%% Hit count using numbers?
       if isempty(value),
 	value='off';
-      elseif vis_valuetype(value,{'string'}) & ...
+      elseif vis_valuetype(value,{'string'}) && ...
 	    ~any(strcmp(value,{'on','off'})),
 	error('Value for Text in mode ''hit'' should be ''on'' or ''off''.');
       else
 	; % ok
       end
      %case 'traj','comet'
-     % if ~vis_valuetype(value,{'char_array','cellcolumn_of_char'}) & ...
+     % if ~vis_valuetype(value,{'char_array','cellcolumn_of_char'}) && ...
      %	    ~isempty(value)
      %	 error('Value for Text is of wrong type or size.')
      % elseif ischar(value)
@@ -702,7 +702,7 @@ for i=1:2:length(varargin),
    case 'textsize'
     %%% Text size for labels
     
-    if ~vis_valuetype(value,{'1x1'}) & ~isempty(value), 
+    if ~vis_valuetype(value,{'1x1'}) && ~isempty(value), 
       error('TextSize must be scalar.');
     end
     used_in.comet=0;            % Set relevance flags
@@ -714,7 +714,7 @@ for i=1:2:length(varargin),
    case 'textcolor'
     %%% Color for labels
     
-    if ~vis_valuetype(value,{'colorstyle','1x3rgb','xor'}) & ~isempty(value),
+    if ~vis_valuetype(value,{'colorstyle','1x3rgb','xor'}) && ~isempty(value),
       error('''TextColor'' must be ColorSpec, ''xor'' or ''none''.')
     end
     used_in.comet=0;            % Set relevance flags
@@ -725,7 +725,7 @@ for i=1:2:length(varargin),
     
    case 'trajwidth'
     %%% Basic line width for a line trajectory
-    if ~vis_valuetype(value,{'1x1'}) & ~isempty(value), 
+    if ~vis_valuetype(value,{'1x1'}) && ~isempty(value), 
       error('TrajWidth must be a scalar.');
     end
     used_in.comet=0;            % Set relevance flags
@@ -750,7 +750,7 @@ for i=1:2:length(varargin),
    case 'trajcolor'
     %%% Color for trajectory line
     
-    if ~vis_valuetype(value,{'colorstyle','1x3rgb','xor'}) & ~isempty(value),
+    if ~vis_valuetype(value,{'colorstyle','1x3rgb','xor'}) && ~isempty(value),
       error('''TrajColor'' must be a ColorSpec or string ''xor''.')
     end
     used_in.comet=0;            % Set relevance flags
@@ -956,7 +956,7 @@ if ~strcmp(Property.marker,'none')
   
   % som_cplane can't draw one unit with arbitrary
   % coordinates as it its mixed with msize:
-  if size(coord,1)==1 & strcmp(Property.marker,'lattice'),
+  if size(coord,1)==1 && strcmp(Property.marker,'lattice'),
     Size=[Size;Size];
     coord=[coord;coord];
   end
@@ -1155,7 +1155,7 @@ switch mode
      % If multiple colors Copy unit colors so that they match spotSize
      color=Property.markercolor(reshape(repmat([1:n_Hits]',1,munits)',...
 					munits*n_Hits,1),:);
-     % drop zeros away & order
+     % drop zeros away && order
      color=color(notZero,:);
      color=color(sizeOrder,:);
    else
@@ -1170,7 +1170,7 @@ switch mode
      marker=char(Property.marker);
      marker=marker(reshape(repmat([1:n_Hits]',1,munits)',...
 			   munits*n_Hits,1),:);
-     % Drop zeros, order & make to cell array (for som_grid)
+     % Drop zeros, order && make to cell array (for som_grid)
      marker=marker(notZero,:);
      marker=cellstr(marker(sizeOrder,:));
    else
@@ -1179,7 +1179,7 @@ switch mode
 
    % som_cplane can't draw one unit with arbitrary
    % coordinates as it its mixed with msize:
-   if size(coord,1)==1 & strcmp(mode,'lattice'),
+   if size(coord,1)==1 && strcmp(mode,'lattice'),
      spotSize = [spotSize; spotSize];
      coord = [coord; coord];
    end
@@ -1302,7 +1302,7 @@ end
 
 %%% Set object tags %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-set(h_,'Tag','Lab');
+#set(h_,'Tag','Lab');
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -54,7 +54,7 @@ function [color,centroids]=som_kmeanscolor2(mode,sM,C,initRGB,contrast,R)
 
 error(nargchk(3, 6, nargin));  % check no. of input args
 
-%%% Check input args & set defaults
+%%% Check input args && set defaults
 
 if ~vis_valuetype(mode,{'string'}),
    error('Mode must be a string.');
@@ -66,7 +66,7 @@ otherwise
    error('Mode must be string ''average'' or ''best''.');
 end
 
-if isstruct(sM) & isfield(sM,'type') & strcmp(sM.type,'som_map'),
+if isstruct(sM) && isfield(sM,'type') & strcmp(sM.type,'som_map'),
    [tmp,lattice,msize]=vis_planeGetArgs(sM);
    munits=prod(msize);
    if length(msize)>2 

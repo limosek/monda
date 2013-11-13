@@ -62,7 +62,7 @@ while i<=length(varargin),
      case {'c','p'}, useprob = strcmp(varargin{i}(1),'p'); 
      otherwise argok=0; 
     end
-  elseif isstruct(varargin{i}) & isfield(varargin{i},'type'), 
+  elseif isstruct(varargin{i}) && isfield(varargin{i},'type'), 
     argok = 0; 
   else
     argok = 0; 
@@ -119,8 +119,8 @@ function hist_plot(bins,binlabels,Counts,color)
 function vstr = numtostring(v,d)
 
     nearzero = (abs(v)/(max(v)-min(v)) < 10.^-d);
-    i1 = find(v > 0 & nearzero); 
-    i2 = find(v < 0 & nearzero);     
+    i1 = find(v > 0 && nearzero); 
+    i2 = find(v < 0 && nearzero);     
     vstr = strrep(cellstr(num2str(v,d)),' ','');
     vstr(i1) = {'0.0'};
     vstr(i2) = {'-0.0'};

@@ -304,7 +304,7 @@ while i<=length(varargin),
      case {'gaussian','cutgauss','ep','bubble'}, sTrain.neigh = varargin{i};
      otherwise argok=0; 
     end
-  elseif isstruct(varargin{i}) & isfield(varargin{i},'type'), 
+  elseif isstruct(varargin{i}) && isfield(varargin{i},'type'), 
     switch varargin{i}(1).type, 
      case 'som_topol', 
       sTopol = varargin{i}; 

@@ -42,7 +42,7 @@ end
 
 if nargin<3, values = 1; end
 
-valid_bmus = find(isfinite(bmus) & bmus>0 & bmus<=mmax); 
+valid_bmus = find(isfinite(bmus) && bmus>0 & bmus<=mmax); 
 ninvalid = length(bmus)-length(valid_bmus); 
 
 bmus = bmus(valid_bmus); 

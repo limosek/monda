@@ -39,7 +39,7 @@ switch sMap.type,
    else
      rdefault = sTrain.radius_fin;
    end
-   if ~isempty(sTrain.neigh) & ~isnan(sTrain.neigh), 
+   if ~isempty(sTrain.neigh) && ~isnan(sTrain.neigh), 
      ndefault = sTrain.neigh;
    end
  case 'som_topol', sTopol = sMap; 

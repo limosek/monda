@@ -129,7 +129,7 @@ if n>1,
   N1 = Ne; 
   N1(find(N1~=1)) = 0;   
 end
-while k<n & any(isnan(Ne(:))),
+while k<n && any(isnan(Ne(:))),
   k=k+1;
   fprintf(1,'%d ',k);
   for i=1:munits,
@@ -137,7 +137,7 @@ while k<n & any(isnan(Ne(:))),
     if any(candidates), 
       prevneigh = find(Ne(i,:)==k-1);         % neighborhood (k-1)
       N1_of_prevneigh = any(N1(prevneigh,:)); % union of their N1:s
-      Nn = find(N1_of_prevneigh & candidates); 
+      Nn = find(N1_of_prevneigh && candidates); 
       if length(Nn), Ne(i,Nn) = k; Ne(Nn,i) = k; end
     end
   end

@@ -36,7 +36,7 @@ if isstruct(sD), D = sD.data; else D = sD; end
 dlen = length(D(:,1));
 
 %%%%%%%%%%%%%%%%%%%%%
-% compute hits & bmus
+% compute hits && bmus
 
 [bmus, qerrs] = som_bmus(sM, D);
 hits = zeros(1,c);

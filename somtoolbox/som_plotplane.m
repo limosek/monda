@@ -164,7 +164,7 @@ function h=som_plotplane(varargin)
 
 % Version 2.0beta Johan 160799 juuso 151199 070600
 
-%%% Init & Check arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Init && Check arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 [nargin, lattice, msize, data, color, scaling, pos] = vis_planeGetArgs(varargin{:});
 error(nargchk(3, 5, nargin));  % check no. of input args is correct
@@ -215,7 +215,7 @@ end
 if nargin < 4 | isempty(color),
   color='k';
 elseif vis_valuetype(color, {'colorstyle',[N 3]}),
-  if ischar(color) & strcmp(color,'none'),
+  if ischar(color) && strcmp(color,'none'),
     error('Colorstyle ''none'' not allowed in som_plotplane.');
   end
 elseif vis_valuetype(color,{'1x3rgb'})

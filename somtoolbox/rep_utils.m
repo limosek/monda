@@ -91,7 +91,7 @@ case 'p_str',        aout = p_str(pars{:}); printable = 1;
 end 
 
 % if output file is given, print lines
-if ~isnan(fid) & printable,
+if ~isnan(fid) && printable,
     if ~iscell(aout), aout = {aout}; end
     for i = 1:length(aout), fprintf(fid,'%s\n',fmtline(aout{i})); end
 end
@@ -275,7 +275,7 @@ function vstr = defaultformat(val)
   elseif isnumeric(val), 
     if val==round(val), fmt = '%d'; else fmt = '%.3g'; end 
     if abs(val)<=eps, vstr = '0'; else vstr = sprintf(fmt,val); end
-  elseif isstruct(val) & isfield(val,'values') & isfield(val,'headers'), 
+  elseif isstruct(val) && isfield(val,'values') & isfield(val,'headers'), 
     % a table
     vstr = joinstr(inserttable(val,0),'\n');
     if any(strcmp(REPORT_OUTPUT_FMT,{'ps','pdf'})), 
@@ -374,7 +374,7 @@ function csout = tablerow(cs,emp,span)
     %end    
     s0 = ''; 
     for i=1:length(cs), 
-      if rowspan(i) & colspan(i), 
+      if rowspan(i) && colspan(i), 
 	 sp1 = ''; sp2 = '';
          if colspan(i)>1, sp1 = [sp1 ' \multicolumn{' num2str(colspan(i)) '}{|c|}{']; sp2 = [sp2 '}']; end
          if rowspan(i)>1, sp1 = [sp1 ' \multirow{' num2str(rowspan(i)) '}{2cm}{']; sp2 = [sp2 '}']; end
@@ -383,7 +383,7 @@ function csout = tablerow(cs,emp,span)
 	 csout{end+1} = [s sp1 emp1 content{1}]; 
 	 for j=2:length(content), csout{end+1} = content{j}; end
 	 csout{end} = [csout{end} emp2 sp2]; 
-	 s0 = ' & '; 
+	 s0 = ' && '; 
       end
     end
     csout{end} = [csout{end} ' \\']; 
@@ -391,7 +391,7 @@ function csout = tablerow(cs,emp,span)
     tag = 'TD';
     csout{end+1} = '<TR>';     
     for i=1:length(cs),
-      if rowspan(i) & colspan(i), 
+      if rowspan(i) && colspan(i), 
          sp = '';
          if rowspan(i)>1, sp = [sp ' ROWSPAN=' num2str(rowspan(i))]; end
          if colspan(i)>1, sp = [sp ' COLSPAN=' num2str(colspan(i))]; end

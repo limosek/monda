@@ -212,7 +212,7 @@ end
 [dlen dim] = size(D);
 
 % comps
-if nargin<3 | (ischar(comps) & strcmp(comps,'all')), 
+if nargin<3 || (ischar(comps) && strcmp(comps,'all')), 
   comps = [1:dim]; 
 end
 if isempty(comps), return; end

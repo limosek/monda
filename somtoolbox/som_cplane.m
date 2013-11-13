@@ -235,14 +235,14 @@ function h=som_cplane(varargin)
 
 % Version 2.0beta Johan 061099 juuso 151199 juuso 070600
 
-%%% Check & Init  arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Check && Init  arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 [nargin, lattice, msize, color, s, pos]=vis_planeGetArgs(varargin{:});
 error(nargchk(3, 5, nargin));  % check no. of input args is correct
 
 %% Translation?
 
-if nargin < 5 | isempty(pos)
+if nargin < 5 || isempty(pos)
   pos=NaN;              % "no translation" flag
 elseif ~vis_valuetype(pos,{'1x2'}),
   error('Position of origin has to be given as an 1x2 vector.');
@@ -319,7 +319,7 @@ end
 
 %% Color matrix %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if ~isnumeric(color) & ~ischar(color),
+if ~isnumeric(color) && ~ischar(color),
   error('Color matrix is invalid.');
 else
   d=size(color);           
@@ -330,11 +330,11 @@ else
 	color=NaN;
       end
     else               
-      if ~(d(1)== 1 & d(2) == 3) & ...
-	    ~(d(1) == munits & (d(2)==1 | d(2)==3))
+      if ~(d(1)== 1 && d(2) == 3) && ...
+	    ~(d(1) == munits && (d(2)==1 || d(2)==3))
 	error('Color data matrix has wrong size.');
-      elseif d(1)~=1 & d(2)==3 
-	if any(color>1 | color<0)
+      elseif d(1)~=1 && d(2)==3 
+	if any(color>1 || color<0)
 	  error('Color data matrix has invalid RGB values.');
 	end
 	color=reshape(color,[1 munits 3]);  % RGB colors
@@ -343,9 +343,9 @@ else
       end
     end
   case 3   %% Interpolated colors
-    if d(1) == 1 & d(2) == munits & d(3) == l,  
+    if d(1) == 1 && d(2) == munits && d(3) == l,  
       color=reshape(color, l, munits);
-    elseif ~(d(1) == l & d(2) == munits & d(3) == 3) 
+    elseif ~(d(1) == l && d(2) == munits && d(3) == 3) 
       error('Color data matrix has wrong size.');
     end
   otherwise
@@ -355,7 +355,7 @@ end
 
 %% Size matrix? %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if nargin < 4 | isempty(s),  
+if nargin < 4 || isempty(s),  
    s=1;      % default value for s (no scaling)
 elseif ~isnumeric(s)
   error('Size matrix is not numeric.');
@@ -365,26 +365,26 @@ end
 d=size(s);                  
 switch length(d)
 case 2  
-  if (d(1)==1 & d(2)==1),
+  if (d(1)==1 && d(2)==1),
     % Each node gets the same, uniform scaling.
     s=s'; sx=s; sy=s;	
-  elseif (d(1)==munits & d(2)==l),
+  elseif (d(1)==munits && d(2)==l),
     % Each vertex is scaled radially respetc to the 
     % node center.
     s=s'; sx=s; sy=s;          
-  elseif d(1)==munits & d(2)==1  
+  elseif d(1)==munits && d(2)==1  
     % Each node gets an individual uniform scaling.
     sx=repmat(s',l,1); sy=sx;
   else
     error('Size matrix has wrong size.');
   end
 case 3  
-  if d(1)==munits & d(2)==1 & d(3)==2,     
+  if d(1)==munits && d(2)==1 && d(3)==2,     
     % Each node is individually and uniformly 
     % scaled separately to x- and y-directions.
     sx=repmat(shiftdim(s(:,:,1))',l,1);   
     sy=repmat(shiftdim(s(:,:,2))',l,1);   
-  elseif d(1)==munits & d(2)==l & d(3)==2,
+  elseif d(1)==munits && d(2)==l && d(3)==2,
     % Each vertex is scaled separately to x- and y-directions
     % with respect to the node center.
     sx=shiftdim(s(:,:,1))';                
@@ -443,7 +443,10 @@ end                         % to pos
 %% Set axes properties  
 %% Command view([0 90]) shows the map in 2D properly oriented
 
-ax=newplot();                               % set new plot
+newplot();
+ax=gca();
+
+% set new plot
 vis_PlaneAxisProperties(ax,lattice,msize,pos);
 
 %% Draw the map! 

@@ -93,7 +93,7 @@ elseif ischar(input)
     [sel,ok] = listdlg('ListString',udata.sM.comp_names,...
                        'Name','Component selection',...
                        'PromptString','Select components to add');  
-    if ok & ~isempty(sel), 
+    if ok && ~isempty(sel), 
       for i=1:length(sel),
         plot_array(tmp+i-1).string = udata.sM.comp_names{sel(i)}; 
         plot_array(tmp+i-1).args = {'comp' sel(i)};
