@@ -92,12 +92,15 @@ if (isset($opts["e"])) {
 	$stderr=true;
 }
 
-try {
-	$api=init_api();
-	
+try {	
 	if ($rhost=="" && $rgroup=="" && $ritem=="") {
 	  if ($stderr) fprintf(STDERR,"### Fetching all hosts and items!\n");
 	}
+	$start=microtime(1);
+	$ftime=date("Y-m-d H:i:s",$hist);
+	$now=date("Y-m-d H:i:s",$to_time);
+	fprintf(STDOUT,"### Data from: %s to %s (actual time %s)\n",$ftime,$now,date("Y-m-d H:i:s"));
+	$api=init_api();
 	$sq=Array(
 	  "output" => 'extend',
 	);
@@ -110,9 +113,6 @@ try {
 	}
 	$itemids=Array();
 	$history=array();
-	$ftime=date("Y-m-d H:i:s",$hist);
-	$now=date("Y-m-d H:i:s",$to_time);
-	fprintf(STDOUT,"### Data from: %s to %s\n",$ftime,$now);
 	if ($stderr) fprintf(STDERR,"### Data from: %s to %s\n",$ftime,$now);
 	if ($to_time<=$hist) {
 	  errorexit("End time is lower than start time??\n",6);
@@ -122,6 +122,7 @@ try {
 	}
 	fprintf(STDOUT,"format short; fixed_point_format(1); global hdata; hdata.time_from=%u;hdata.time_to=%u;hdata.date_from='%s';hdata.date_to='%s';\n",$hist,$to_time,$ftime,$now);
 	$itemcount=0;
+	$valuescount=0;
 	$arrid=1;
 	$maxitems=0;
 	$delay=false;
@@ -170,6 +171,7 @@ try {
 			  fprintf(STDOUT,"${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n",$item->itemid,addslashes($item->key_),$h,$item->delay,$item->history);
 			  fprintf(STDOUT,"### Got %s values for item %s\n",count($history),$item->key_);
 			  if ($stderr) fprintf(STDERR,"### Got %s values for item %s\n",count($history),$item->key_);
+			  $valuescount+=count($history);
 			  fprintf(STDOUT,"${h}.x=[");
 			  $c=1;
 			  $last=count($history);
@@ -199,8 +201,10 @@ try {
 			if ($stderr) fprintf(STDERR,"### Ignoring item %s (type %u),regexp=%u,nregex=%u\n",$item->key_,$item->value_type,preg_match("*$ritem*",$item->key_),!preg_match("*$nritem*",$item->key_));
 		}
 	}
+	$duration=microtime(1)-$start;
 	if ($datafound) {
-	  fprintf(STDOUT,"hdata.minx=%s;hdata.minx2=%s;hdata.maxx=%s;hdata.maxx2=%s;\n",$minclock,$minclock2,$maxclock,$maxclock2);
+	  fprintf(STDOUT,"hdata.minx=%s;hdata.minx2=%s;hdata.maxx=%s;hdata.maxx2=%s;hdata.gettime=%s;\n",$minclock,$minclock2,$maxclock,$maxclock2,$duration);
+	  if ($stderr) fprintf(STDERR,"### Took %s seconds to get %i items and %i values.\n",$duration,$itemcount,$valuescount);
 	} else {
 	  errorexit("No data in history found!\n",15);
 	}

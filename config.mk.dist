@@ -11,11 +11,35 @@ ZABBIX_DB = zabbix
 ZABBIX_DB_USER = zabbix
 ZABBIX_DB_PASSWORD = somedbpasword
 
-# Analyzation parameters
-PERSERVER = 'net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|proc.num\[,,run\]|vfs.fs.size\[/,free\]|vfs.fs.size\[\/,used\]'
-HOSTGROUP = 'Servers'
-INTERVALS = 4hour 12hour 24hour
-START_TIMES = -1day -2day
+# Defaults:
+# Servers has to be set manualy, either static or get all hosts from zabbix group
+# HOSTS=host1 host2 host3 
+# or
+# HOSTGROUP=Servers
 
-# Precision in seconds (all data will be normalized to this seconds intervals)
+# Get all items from host
+#PERSERVER = 
+
+# Get 24hour interval from 00:00 yesterday to 00:00 today
+#TIME_START = 00:00 -1 days
+#INTERVALS = 24hour
+
+# Time precision for normalizing is 60 seconds
 #TIME_PRECISION = 60
+
+
+# Example to get only some items from all hosts in group Servers
+#HOSTGROUP = 'Servers'
+#PERSERVER = 'net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|proc.num\[,,run\]|vfs.fs.size\[/,free\]|vfs.fs.size\[\/,used\]'
+# Get 7 days back, each day will be one file YYYY-mm-dd-00-00-24hour
+#TIME_START = 00:00 -7 days
+#INTERVALS = 24hour
+
+# Example to get all data from Cisco group. We need less precision because SNMP data have bigger delay
+#HOSTGROUP = 'Servers'
+#PERSERVER = 'net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|proc.num\[,,run\]|vfs.fs.size\[/,free\]|vfs.fs.size\[\/,used\]'
+# Get 7 days back, each day will be one file YYYY-mm-dd-00-00-24hour
+#TIME_START = 00:00 -7 days
+#INTERVALS = 24hour
+#TIME_PRECISION=300
+
