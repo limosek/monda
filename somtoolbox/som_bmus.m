@@ -156,7 +156,7 @@ if dim ~= ddim,
 end
 
 % which_bmus
-if nargin < 3 | isempty(which_bmus) | any(isnan(which_bmus)), 
+if nargin < 3 || isempty(which_bmus) || any(isnan(which_bmus)), 
   which_bmus = 1; 
 else
   if ischar(which_bmus), 

@@ -33,7 +33,7 @@ end
 
 % check off-limits
 [n d] = size(Subs);
-offl = find(Subs < 1 | Subs > msize(ones(n,1),1:d)); 
+offl = find(Subs < 1 || Subs > msize(ones(n,1),1:d)); 
 Subs(offl) = NaN;
 
 % indexes

@@ -80,7 +80,7 @@ rand('state',sum(100*clock));
 sample_inds = ceil(noc*rand(train_len,1));
 
 % mutual distances
-if nargin<4 | isempty(Mdist) | all(isnan(Mdist(:))),
+if nargin<4 || isempty(Mdist) || all(isnan(Mdist(:))),
   fprintf(2, 'computing mutual distances\r');
   dim_x_1 = ones(dim,1);
   for i = 1:noc,
@@ -101,10 +101,10 @@ else
 end
 
 % alpha and lambda
-if nargin<5 | isempty(alpha0) | isnan(alpha0), alpha0 = 0.5; end
+if nargin<5 || isempty(alpha0) || isnan(alpha0), alpha0 = 0.5; end
 alpha = potency_curve(alpha0,alpha0/100,train_len);
 
-if nargin<6 | isempty(lambda0) | isnan(lambda0), lambda0 = max(st)*3; end
+if nargin<6 || isempty(lambda0) || isnan(lambda0), lambda0 = max(st)*3; end
 lambda = potency_curve(lambda0,0.01,train_len);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -274,7 +274,7 @@ function p = project_point(P,x,dx)
   
     i=i+1;
     p(i,:) = y;   
-    ready = (norm(step)/norm(y) < eps | i > i_max);
+    ready = (norm(step)/norm(y) < eps || i > i_max);
 
   end
   fprintf(2,'\n');

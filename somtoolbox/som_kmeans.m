@@ -33,7 +33,7 @@ else
 end
 [l dim]   = size(data);
 
-if nargin < 4 | isempty(epochs) | isnan(epochs), epochs = 100; end
+if nargin < 4 || isempty(epochs) || isnan(epochs), epochs = 100; end
 if nargin < 5, verbose = 0; end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

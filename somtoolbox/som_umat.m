@@ -268,7 +268,7 @@ end
 
 % values on the units
 
-if (uy == 1 | ux == 1),
+if (uy == 1 || ux == 1),
   % in 1-D case, mean is equal to median 
 
   ma = max([ux uy]);
@@ -285,15 +285,15 @@ elseif strcmp(lattice, 'rect')
 
   for j=1:2:uy, 
     for i=1:2:ux,
-      if i>1 && j>1 & i<ux & j<uy,    % middle part of the map
+      if i>1 && j>1 && i<ux && j<uy,    % middle part of the map
 	a = [U(j,i-1) U(j,i+1) U(j-1,i) U(j+1,i)];        
-      elseif j==1 && i>1 & i<ux,        % upper edge
+      elseif j==1 && i>1 && i<ux,        % upper edge
 	a = [U(j,i-1) U(j,i+1) U(j+1,i)];
-      elseif j==uy && i>1 & i<ux,       % lower edge
+      elseif j==uy && i>1 && i<ux,       % lower edge
 	a = [U(j,i-1) U(j,i+1) U(j-1,i)];
-      elseif i==1 && j>1 & j<uy,        % left edge
+      elseif i==1 && j>1 && j<uy,        % left edge
 	a = [U(j,i+1) U(j-1,i) U(j+1,i)];
-      elseif i==ux && j>1 & j<uy,       % right edge
+      elseif i==ux && j>1 && j<uy,       % right edge
 	a = [U(j,i-1) U(j-1,i) U(j+1,i)];
       elseif i==1 && j==1,              % top left corner
 	a = [U(j,i+1) U(j+1,i)];
@@ -314,21 +314,21 @@ elseif strcmp(lattice, 'hexa')
   
   for j=1:2:uy, 
     for i=1:2:ux,
-      if i>1 && j>1 & i<ux & j<uy,      % middle part of the map
+      if i>1 && j>1 && i<ux && j<uy,      % middle part of the map
 	a = [U(j,i-1) U(j,i+1)];
 	if rem(j-1,4)==0, a = [a, U(j-1,i-1) U(j-1,i) U(j+1,i-1) U(j+1,i)];
 	else a = [a, U(j-1,i) U(j-1,i+1) U(j+1,i) U(j+1,i+1)]; end       
-      elseif j==1 && i>1 & i<ux,        % upper edge
+      elseif j==1 && i>1 && i<ux,        % upper edge
 	a = [U(j,i-1) U(j,i+1) U(j+1,i-1) U(j+1,i)];
-      elseif j==uy && i>1 & i<ux,       % lower edge
+      elseif j==uy && i>1 && i<ux,       % lower edge
 	a = [U(j,i-1) U(j,i+1)];
 	if rem(j-1,4)==0, a = [a, U(j-1,i-1) U(j-1,i)];
 	else a = [a, U(j-1,i) U(j-1,i+1)]; end
-      elseif i==1 && j>1 & j<uy,        % left edge
+      elseif i==1 && j>1 && j<uy,        % left edge
 	a = U(j,i+1);
 	if rem(j-1,4)==0, a = [a, U(j-1,i) U(j+1,i)];
 	else a = [a, U(j-1,i) U(j-1,i+1) U(j+1,i) U(j+1,i+1)]; end
-      elseif i==ux && j>1 & j<uy,       % right edge
+      elseif i==ux && j>1 && j<uy,       % right edge
 	a = U(j,i-1);
 	if rem(j-1,4)==0, a=[a, U(j-1,i) U(j-1,i-1) U(j+1,i) U(j+1,i-1)];
 	else a = [a, U(j-1,i) U(j+1,i)]; end

@@ -248,7 +248,7 @@ end
 %% make the map struct
 
 %% map size
-if isempty(sTopol.msize) | ~prod(sTopol.msize), 
+if isempty(sTopol.msize) || ~prod(sTopol.msize), 
   if tracking>0, fprintf(1,'Determining map size...\n'); end
   if ~munits,     
     sTemp = som_topol_struct('dlen',dlen);

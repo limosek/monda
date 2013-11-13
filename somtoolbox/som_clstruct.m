@@ -120,7 +120,7 @@ if isempty(base),
   base = 1:dlen; 
 else
   dlen = length(base); 
-  if any(base)>clen | any(base)<1, error('Incorrect base partition vector.'); end
+  if any(base)>clen || any(base)<1, error('Incorrect base partition vector.'); end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

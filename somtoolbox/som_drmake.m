@@ -36,9 +36,9 @@ function [sR,best,sig,Cm] = som_drmake(D,inds1,inds2,sigmea,nanis)
 %
 %          G    not G    
 %       ---------------    accuracy  = (a+d) / (a+b+c+d)
-% true  |  a  |   b   |    
+% true  ||  a  ||   b   ||    
 %       |--------------    mutuconf  =  a*a  / ((a+b)(a+c)) 
-% false |  c  |   d   | 
+% false ||  c  ||   d   || 
 %       ---------------    accuracyI =   a   / (a+b+c)
 %
 % See also  SOM_DREVAL, SOM_DRTABLE.
@@ -63,8 +63,8 @@ else
 end
 
 [dlen,dim] = size(D);
-if nargin<2 | isempty(inds1), inds1 = 1:dlen; end
-if nargin<3 | isempty(inds2), i = ones(dlen,1); i(inds1) = 0; inds2 = find(i); end
+if nargin<2 || isempty(inds1), inds1 = 1:dlen; end
+if nargin<3 || isempty(inds2), i = ones(dlen,1); i(inds1) = 0; inds2 = find(i); end
 if nargin<4, sigmea = 'mutuconf'; end
 if nargin<5, nanis = 0; end
 

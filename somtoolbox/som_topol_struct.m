@@ -240,7 +240,7 @@ else % determine map size based on eigenvalues
   %me     = mean(D);
   %D      = D - me(ones(length(ind),1),:); % remove mean from data
   %eigval = sort(eig((D'*D)./size(D,1))); 
-  if eigval(end)==0 | eigval(end-1)*munits<eigval(end), 
+  if eigval(end)==0 || eigval(end-1)*munits<eigval(end), 
     ratio = 1; 
   else
     ratio  = sqrt(eigval(end)/eigval(end-1)); % ratio between map sidelengths

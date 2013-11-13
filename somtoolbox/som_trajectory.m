@@ -132,7 +132,7 @@ for i=1:2:length(varargin)
       value=[];
     elseif vis_valuetype(value,{'nxm'})
       Traj.primary_data=value;
-    elseif isstruct(value) && isfield(value,'type') & ...
+    elseif isstruct(value) && isfield(value,'type') && ...
 	  ischar(value.type) && strcmp(value.type,'som_data'),
       Traj.primary_data=value.data;
       if isempty(Traj.primary_names),
@@ -146,7 +146,7 @@ for i=1:2:length(varargin)
       value=[];
     elseif vis_valuetype(value,{'nxm'})
       Traj.secondary_data=value;
-    elseif isstruct(value) && isfield(value,'type') & ...
+    elseif isstruct(value) && isfield(value,'type') && ...
 	  ischar(value.type) && strcmp(value.type,'som_data'),
       Traj.secondary_data=value.data;
       if isempty(Traj.secondary_names),
@@ -217,7 +217,7 @@ munits=prod(msize);
 % Check BMU (or response) and map match 
 
 if vis_valuetype(bmus,{'nx1'});
-  if max(bmus)>prod(msize) | min(bmus) <1
+  if max(bmus)>prod(msize) || min(bmus) <1
     error('BMU indexes out of range.')
   elseif any(round(bmus)~=bmus)
     error('BMU indexes must be integer.');

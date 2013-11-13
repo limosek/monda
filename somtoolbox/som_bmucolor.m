@@ -77,7 +77,7 @@ if ~vis_valuetype(bmus,{'nx1'}),
   error('Need a column vector of BMU indexes!');
 else
   bmus=round(bmus);
-  if max(bmus) > n | min(bmus) < 1
+  if max(bmus) > n || min(bmus) < 1
     error('BMU indexes exeed the map size!')
   end
 end

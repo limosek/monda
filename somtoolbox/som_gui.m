@@ -471,7 +471,7 @@ elseif WorkspaceVal == 1
 	variable = evalin('base',temp{index});
 	if isstruct(variable)
 	   fnames = fieldnames(variable);
-	   if size(fnames,1) == 6 && strcmp(fnames(1),'type') & strcmp(variable.type,'som_data')
+	   if size(fnames,1) == 6 && strcmp(fnames(1),'type') && strcmp(variable.type,'som_data')
 	     names{index2} = temp{index};	
 	     index2 = index2 + 1;
 	   end
@@ -1311,7 +1311,7 @@ if isempty(value)
    return;
 end
 [test1 test2] = size(value);
-if test1 ~= 1 | test2 ~= 1
+if test1 ~= 1 || test2 ~= 1
    msgs_nro = 2;	  
    return; 
 end
@@ -1327,7 +1327,7 @@ if isempty(value)
    return;
 end
 [test1 test2] = size(value);
-if test1 ~= 1 | test2 ~= 2
+if test1 ~= 1 || test2 ~= 2
    msgs_nro = 2;	  
    return; 
 end
@@ -2863,7 +2863,7 @@ function print_info(sS,level,fid)
 %error(nargchk(1, 2, nargin))  % check no. of input args is correct
 
 if ~isstruct(sS),
-  if ~iscell(sS) | ~isstruct(sS{1}), 
+  if ~iscell(sS) || ~isstruct(sS{1}), 
     error('Input argument is not a struct or a cell array of structs.')
   end
   csS = sS;
@@ -2871,7 +2871,7 @@ else
   csS = {sS};
 end
 
-if nargin<2 | isempty(level) | isnan(level), level = 1; end
+if nargin<2 || isempty(level) || isnan(level), level = 1; end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% print struct information

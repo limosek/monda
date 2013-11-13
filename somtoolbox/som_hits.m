@@ -148,7 +148,7 @@ case 'kernel',
  sTrain = sMap.trainhist(end); 
  if ~isempty(sTrain), 
    rad = sTrain.radius_fin; 
-   if isempty(rad) | isnan(rad), rad = 1; end 
+   if isempty(rad) || isnan(rad), rad = 1; end 
  else 
    rad = 1; 
  end    

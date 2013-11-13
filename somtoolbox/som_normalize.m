@@ -220,7 +220,7 @@ if size(comps,1)>1, comps = comps'; end  % make it a row vector
 
 % method
 csNorm = cell(dim,1); 
-if nargin<2 | isempty(method), 
+if nargin<2 || isempty(method), 
   if ~struct_mode, 
     warning('No normalization method given. Data left unchanged.');
     return; 

@@ -27,9 +27,9 @@ function [sig,cm,truex,truey] = som_dreval(sR,D,sigmea,inds1,inds2,andor)
 % 
 %          G1    G2   
 %       ---------------    accuracy  = (a+d) / (a+b+c+d)
-% true  |  a  |   b   |    
+% true  ||  a  ||   b   ||    
 %       |--------------    mutuconf  =  a*a  / ((a+b)(a+c)) 
-% false |  c  |   d   | 
+% false ||  c  ||   d   || 
 %       ---------------    accuracyI =   a   / (a+b+c)
 %
 % See also  SOM_DRSIGNIF, SOM_DRMAKE.
@@ -72,8 +72,8 @@ for i=1:nr,
   ty(isnan(Y(:,i))) = sR(i).nanis;     
 
   switch andor, 
-   case 'and', truex = (truex && tx); truey = (truey & ty);
-   case 'or',  truex = (truex | tx); truey = (truey | ty);
+   case 'and', truex = (truex && tx); truey = (truey && ty);
+   case 'or',  truex = (truex || tx); truey = (truey || ty);
   end    
 end  
 

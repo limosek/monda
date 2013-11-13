@@ -33,11 +33,11 @@ else D = []; bmus = [];
 end
 
 % Col
-if nargin<3 | isempty(Col), Col = som_colorcode(sM); end
+if nargin<3 || isempty(Col), Col = som_colorcode(sM); end
 if ischar(Col), Col = som_colorcode(sM,Col); end
 
 % comps
-if nargin<4 | isempty(comps), comps = 1:dim; end
+if nargin<4 || isempty(comps), comps = 1:dim; end
 n = length(comps)+1;
 
 % histogram bins
@@ -91,7 +91,7 @@ for i=1:n,
       vn=som_denormalize(v,sM.comp_norm{ind})'; 
       h=colorbar('vert');
       set(h,'YTick',v,'YTickLabel',cellstr(num2str(vn,2)));
-    elseif i<j | ~isempty(D), 
+    elseif i<j || ~isempty(D), 
       if i>j, i1 = i-1; i2 = j-1; else i1 = j-1; i2 = i-1; end
       ind1 = comps(i1); ind2 = comps(i2); 
       if i<j, 

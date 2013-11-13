@@ -173,7 +173,7 @@ error(nargchk(3, 6, nargin));  % check no. of input args is correct
 
 % check pos
 
-if nargin < 6 | isempty(pos)
+if nargin < 6 || isempty(pos)
   pos=NaN;                            % default value for pos (no translation) 
 elseif ~vis_valuetype(pos,{'1x2'})
   error('Position of origin has to be given as an 1x2 vector');
@@ -201,7 +201,7 @@ if any(data(:)<0)
 end
 
 % Check lattice
-if ~ischar(lattice) | ~any(strcmp(lattice,{'hexa','rect'})),
+if ~ischar(lattice) || ~any(strcmp(lattice,{'hexa','rect'})),
   error('Invalid lattice.');
 end
 
@@ -234,7 +234,7 @@ y=reshape(repmat(coord(:,2),1,l*d)',l,d*N);
 
 % Check size
 
-if nargin < 5 | isempty(s),  
+if nargin < 5 || isempty(s),  
   s=0.8;                              % default value for scaling
 elseif ~vis_valuetype(s, {'1x1', [N 1], [N d]}),
   error('Size matrix does not match with the data matrix.');
@@ -247,7 +247,7 @@ end
 % Check color
 % C_FLAG is a flag for color 'none' 
 
-if nargin < 4 | isempty(color)
+if nargin < 4 || isempty(color)
   color=hsv(d); C_FLAG=0;       % default n hsv colors
 end
 

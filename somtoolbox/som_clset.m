@@ -152,7 +152,7 @@ function sC = Z2sC(Z)
     sC        = clstruct(nb,nc);
     sC.base   = [1:nb];
     for i=1:nc, 
-        j = find(Z(:,1)==i | Z(:,2)==i); 
+        j = find(Z(:,1)==i || Z(:,2)==i); 
         sC.parent(i) = nb+j;
         sC.children{sC.parent(i)}(end+1) = i; 
     end 

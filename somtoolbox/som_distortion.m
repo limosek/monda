@@ -90,7 +90,7 @@ if nargin>3,
 end
 
 % neighborhood radius
-if isempty(rad) | isnan(rad), 
+if isempty(rad) || isnan(rad), 
   if ~isempty(sM.trainhist), rad = sM.trainhist(end).radius_fin;
   else rad = 1; 
   end

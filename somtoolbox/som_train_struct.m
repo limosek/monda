@@ -269,7 +269,7 @@ if ~isempty(sTprev) && isnan(dim), dim = length(sTprev.mask); end
 if isempty(sTrain.mask) && ~isnan(dim), sTrain.mask = ones(dim,1); end
 
 % msize, munits
-if ~msize | isempty(msize), 
+if ~msize || isempty(msize), 
   if isnan(munits), msize = [10 10]; 
   else s = round(sqrt(munits)); msize = [s round(munits/s)]; 
   end
@@ -354,9 +354,9 @@ else
   % radius
   ms = max(msize);   
   if isnan(sTrain.radius_ini),     
-    if isempty(sTprev) | strcmp(sTprev.algorithm,'randinit'), 
+    if isempty(sTprev) || strcmp(sTprev.algorithm,'randinit'), 
       sTrain.radius_ini = max(1,ceil(ms/4));
-    elseif strcmp(sTprev.algorithm,'lininit') | isnan(sTprev.radius_fin),
+    elseif strcmp(sTprev.algorithm,'lininit') || isnan(sTprev.radius_fin),
       sTrain.radius_ini = max(1,ceil(ms/8));
     else
       sTrain.radius_ini = sTprev.radius_fin;

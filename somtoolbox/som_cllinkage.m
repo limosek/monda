@@ -148,7 +148,7 @@ if isempty(base), base = 1:dlen; end
 if ~isempty(ignore), base(ignore) = NaN; end
 cid = unique(base(isfinite(base))); 
 nc = length(cid); 
-if max(cid)>nc | min(cid)<1, 
+if max(cid)>nc || min(cid)<1, 
   b = base; for i=1:nc, base(find(b==cid(i))) = i; end
 end
 
@@ -172,7 +172,7 @@ if strcmp(linkage,'neighf')
   if isempty(sTr), error('Cannot use neighf linkage.'); end
   q = som_unit_dists(sT).^2; 
   r = sTr.radius_fin^2; 
-  if isnan(r) | isempty(r), r = 1; end 
+  if isnan(r) || isempty(r), r = 1; end 
   switch sTr.neigh,
    case 'bubble',   q = (q <= r);
    case 'gaussian', q = exp(-q/(2*r));

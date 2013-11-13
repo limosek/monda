@@ -1578,7 +1578,7 @@ elseif strcmp(action,'c_clear')
   u = get(varargin{1},'UserData');
   s = get(u(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
+    if s(1)=='[' || (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s;
     end
@@ -1592,7 +1592,7 @@ elseif strcmp(action,'c_clear')
         else
           e=1:length(handles);
         end
-      elseif any(e<1) | any(e>length(handles)),
+      elseif any(e<1) || any(e>length(handles)),
         errordlg({'Subplot indices must be in', ...
                'range 1...number_of_subplots!'}, ...
               'Error in SOM_VIS: tools');
@@ -1663,7 +1663,7 @@ elseif strcmp(action,'do_recolorbar')
   s = get(ud(1),'String');
   e = 1:length(handles);
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
+    if s(1)=='[' || (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s;
     end
@@ -1673,7 +1673,7 @@ elseif strcmp(action,'do_recolorbar')
                   'for subplot indices is ''all''.'}, ...
                   'Error in SOM_VIS: tools');
         return;
-      elseif any(e<1) | any(e>length(handles)),
+      elseif any(e<1) || any(e>length(handles)),
         errordlg({'Subplot indices must be in', ...
                'range 1...number_of_subplots.'}, ...
               'Error in SOM_VIS: tools');
@@ -1687,7 +1687,7 @@ elseif strcmp(action,'do_recolorbar')
   args = [args {e}];
   s = get(ud(3),'String');
   tmp = 'auto';
-  if strcmp(s,'auto') | strcmp(s,'border'),
+  if strcmp(s,'auto') || strcmp(s,'border'),
     tmp = s;
   elseif ~isempty(s)
     tmp = evalin('base',s);
@@ -1729,7 +1729,7 @@ elseif strcmp(action,'label')
   end
   s = get(ud(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
+    if s(1)=='[' || (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s; 
     end
@@ -1743,7 +1743,7 @@ elseif strcmp(action,'label')
         else
           e=1:length(handles);
         end
-      elseif any(e<1) | any(e>length(handles)),
+      elseif any(e<1) || any(e>length(handles)),
         errordlg({'Subplot indices must be in', ...
                'range 1...number_of_subplots!'}, ...
               'Error in SOM_VIS: tools');
@@ -1824,7 +1824,7 @@ elseif strcmp(action,'hit')
 
   s = get(ud(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
+    if s(1)=='[' || (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s; 
     end
@@ -1838,7 +1838,7 @@ elseif strcmp(action,'hit')
         else
           e=1:length(handles);
         end
-      elseif any(e<1) | any(e>length(handles)),
+      elseif any(e<1) || any(e>length(handles)),
         errordlg({'Subplot indices must be in', ...
                'range 1...number_of_subplots!'}, ...
               'Error in SOM_VIS: tools');
@@ -1904,7 +1904,7 @@ elseif strcmp(action,'traj')
   end
   s = get(ud(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
+    if s(1)=='[' || (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s; 
     end
@@ -1918,7 +1918,7 @@ elseif strcmp(action,'traj')
         else
           e=1:length(handles);
         end
-      elseif any(e<1) | any(e>length(handles)),
+      elseif any(e<1) || any(e>length(handles)),
         errordlg({'Subplot indices must be in', ...
                'range 1...number_of_subplots!'}, ...
               'Error in SOM_VIS: tools');
@@ -1967,7 +1967,7 @@ elseif strcmp(action,'comet')
   end
   s = get(ud(1),'String');
   if ~isempty(s)
-    if s(1)=='[' | (s(1)>='1' && s(1)<='9') 
+    if s(1)=='[' || (s(1)>='1' && s(1)<='9') 
       sprintf(s,'[%s]',s);
       e = eval(s); else e = s; 
     end
@@ -1981,7 +1981,7 @@ elseif strcmp(action,'comet')
         else
           e=1:length(handles);
         end
-      elseif any(e<1) | any(e>length(handles)),
+      elseif any(e<1) || any(e>length(handles)),
         errordlg({'Subplot indices must be in', ...
                'range 1...number_of_subplots!'}, ...
               'Error in SOM_VIS: tools');

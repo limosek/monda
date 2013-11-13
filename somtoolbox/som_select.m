@@ -310,7 +310,7 @@ hold on;
 if gco == udata.patch_h
   gui=findobj(get(0,'Children'),'Tag','SELECT_GUI');
   gui=get(gui,'UserData');
-  if isnan(gui.curr_col) | strcmp(gui.mode,'clear'), return; end
+  if isnan(gui.curr_col) || strcmp(gui.mode,'clear'), return; end
   h=fill(coords(:,1),coords(:,2),gui.curr_col);
   str=cat(2,'som_select([],[],''click'')');
   set(h,'ButtonDownFcn',str,'Tag','SEL_PATCH');

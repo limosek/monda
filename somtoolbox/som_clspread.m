@@ -87,7 +87,7 @@ if strcmp(cldist,'neighf')
   if isempty(sT), error('Cannot use neighf linkage.'); end
   q = som_unit_dists(sT).^2; 
   r = sM.trainhist(end).radius_fin^2; 
-  if isnan(r) | isempty(r), r = 1; end 
+  if isnan(r) || isempty(r), r = 1; end 
   switch sM.neigh,
    case 'bubble',   q = (q <= r);
    case 'gaussian', q = exp(-q/(2*r));

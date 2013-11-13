@@ -18,9 +18,9 @@ function sig = som_drsignif(sigmea,Cm)
 %
 %          G    not G    
 %       ---------------    accuracy  = (a+d) / (a+b+c+d)
-% true  |  a  |   b   |    
+% true  ||  a  ||   b   ||    
 %       |--------------    mutuconf  =  a*a  / ((a+b)(a+c)) 
-% false |  c  |   d   | 
+% false ||  c  ||   d   || 
 %       ---------------    accuracyI =   a   / (a+b+c)
 %
 % See also  SOM_DREVAL, SOM_DRMAKE.

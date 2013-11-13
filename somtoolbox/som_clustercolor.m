@@ -102,7 +102,7 @@ else
       error('Only 2D maps allowed!');
    end
    % Check colorcode
-   if nargin<3 | isempty(colorcode)
+   if nargin<3 || isempty(colorcode)
       colorcode='rgb2';
    end
 end

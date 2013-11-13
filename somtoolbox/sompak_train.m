@@ -86,12 +86,12 @@ end
 if ~isstr(cout) && isempty(cout)
   cout = '__abcdef';
   NO_FILE = 1;
-elseif ~isstr(cout) | (isstr(cout) && isempty(cout))
+elseif ~isstr(cout) || (isstr(cout) && isempty(cout))
   error('Argument ''cout'' must be a string or ''[]''.');
 end
 
-if ~NO_FILE && (isempty(ct) | ~(~isempty(ct) & ...
-   (strcmp(ct,'pak') | strcmp(ct,'box'))))
+if ~NO_FILE && (isempty(ct) || ~(~isempty(ct) && ...
+   (strcmp(ct,'pak') || strcmp(ct,'box'))))
   error('Argument ''ct'' must be string ''pak'' or ''box''.');
 end
 
@@ -107,7 +107,7 @@ else
 end
 
 if ~DIN_FILE
-  if isempty(dt) | ~isstr(dt) | ~(strcmp(dt,'box') | strcmp(dt,'pak'))
+  if isempty(dt) || ~isstr(dt) || ~(strcmp(dt,'box') || strcmp(dt,'pak'))
     error('Argument ''dt'' must be string ''pak'' or ''box''.');
   end
   if strcmp(dt,'box');
@@ -141,7 +141,7 @@ if ~(isreal(alpha) && all(size(alpha)==1))
   error('Argument ''alpha'' must be a floating point number.');
 end
 
-if ~(isreal(radius) && all(size(radius)==1) & radius > 0)
+if ~(isreal(radius) && all(size(radius)==1) && radius > 0)
   error('Argument ''radius'' must be a positive floating point number.');
 end
 
@@ -168,7 +168,7 @@ if ~NO_FILE
   else
     dos(cat(2,'del ',cout));
   end
-  if isempty(ct) | ~isstr(ct) | ~(strcmp(ct,'pak') | strcmp(ct,'box'))
+  if isempty(ct) || ~isstr(ct) || ~(strcmp(ct,'pak') || strcmp(ct,'box'))
     error('Argument ''ct'' must be string ''pak'' or ''box''.');
   elseif strcmp(ct,'box');
     eval(cat(2,'save ',cout,' sMap'));
@@ -197,7 +197,7 @@ end
 
 function bool = is_positive_integer(x)
 
-bool = ~isempty(x) && isreal(x) & all(size(x) == 1) & x > 0;
+bool = ~isempty(x) && isreal(x) && all(size(x) == 1) && x > 0;
 if ~isempty(bool)
   if bool && x~=round(x)
     bool = 0;

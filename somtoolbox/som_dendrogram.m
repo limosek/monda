@@ -114,7 +114,7 @@ end
 
 switch Coordtype, 
  case 'SOM', 
-  if isempty(M) | ~any(strcmp(M.type,{'som_map','som_topol'})) , 
+  if isempty(M) || ~any(strcmp(M.type,{'som_map','som_topol'})) , 
     error('Cannot determine SOM coordinates without a SOM.'); 
   end
   if strcmp(M.type,'som_map'), M = M.topol; end

@@ -268,7 +268,7 @@ elseif ischar(input)
     args = [args {'footnote' tmp}];
     % subplots
     tmp = get(udata.h(8),'String');
-    if ~(strcmp(tmp,'default') | isempty(tmp))
+    if ~(strcmp(tmp,'default') || isempty(tmp))
       tmp2 = sscanf(tmp,'%i %i');
       if length(tmp2)<2, tmp2 = sscanf(tmp,'%ix%i'); end
       if length(tmp2)<2, tmp = eval(tmp);

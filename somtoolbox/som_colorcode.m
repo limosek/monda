@@ -26,15 +26,15 @@ function colors=som_colorcode(m, colorcode, scaling)
 % Following heuristic color codings are available:
 %
 %  'rgb1' slice of RGB-cube so that       green - yellow
-%         the corners have colors:          |       |
+%         the corners have colors:          ||       |
 %                                         blue  - magenta
 %
 %  'rgb2' slice of RGB-cube so that       red   - yellow
-%         the corners have colors:          |       |
+%         the corners have colors:          ||       |
 %                                         blue  - cyan   
 %
 %  'rgb3' slice of RGB-cube so that   mixed_green - orange
-%         the corners have colors:          |        |
+%         the corners have colors:          ||        |
 %                                     light_blue  - pink 
 %
 %  'rgb4' has 'rgb1' on the diagonal + additional colors in corners
@@ -114,7 +114,7 @@ end
 
 % Check colorcode
 
-if nargin < 2 | isempty(colorcode),
+if nargin < 2 || isempty(colorcode),
   colorcode='rgb1';
 end
 if ~ischar(colorcode)
@@ -129,7 +129,7 @@ end
 
 % Check scaling
 
-if nargin < 3 | isempty(scaling) 
+if nargin < 3 || isempty(scaling) 
   scaling=1;
 end
 
@@ -233,7 +233,7 @@ function coords=get_coords(coords)
 % coords (3x1 vector) x,y and z-coordinates.
 %
 
-if ~(all(size(coords) == [1 2]) | all(size(coords) == [2 1]))
+if ~(all(size(coords) == [1 2]) || all(size(coords) == [2 1]))
   error('Argument ''coords'' must be an 2x1 or 1x2 vector.');
 end
 

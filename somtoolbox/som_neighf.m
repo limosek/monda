@@ -34,7 +34,7 @@ switch sMap.type,
  case 'som_map',   
    sTopol = sMap.topol; 
    sTrain = sMap.trainhist(end); 
-   if isempty(sTrain.radius_fin) | isnan(sTrain.radius_fin), 
+   if isempty(sTrain.radius_fin) || isnan(sTrain.radius_fin), 
      rdefault = 1; 
    else
      rdefault = sTrain.radius_fin;
@@ -47,9 +47,9 @@ end
 munits = prod(sTopol.msize); 
 
 % other parameters
-if nargin<2 | isempty(radius), radius = rdefault; end
-if nargin<3 | isempty(neigh), neigh = ndefault; end
-if nargin<4 | isempty(ntype), ntype = tdefault; end
+if nargin<2 || isempty(radius), radius = rdefault; end
+if nargin<3 || isempty(neigh), neigh = ndefault; end
+if nargin<4 || isempty(ntype), ntype = tdefault; end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% initialize

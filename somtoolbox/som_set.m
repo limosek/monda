@@ -361,7 +361,7 @@ for i=1:p,
     iscomplete = all(~isnan(content(:))); 
     ispositive = all(content(:)>0); 
     isinteger  = all(content(:)==ceil(content(:)));
-    isrgb = all(content(:)>=0 && content(:)<=1) & size(content,2)==3;
+    isrgb = all(content(:)>=0 && content(:)<=1) && size(content,2)==3;
   end
   
   switch sS.type, 
@@ -407,8 +407,8 @@ for i=1:p,
      case 'topol', 
       if ~isstruct(content), 
 	msg = '''topol'' should be a topology struct.'; 
-      elseif ~isfield(content,'msize') | ...
-	    ~isfield(content,'lattice') | ...
+      elseif ~isfield(content,'msize') || ...
+	    ~isfield(content,'lattice') || ...
 	    ~isfield(content,'shape'), 
 	msg = '''topol'' is not a valid topology struct.'; 
       elseif prod(content.msize) ~= munits, 
@@ -417,7 +417,7 @@ for i=1:p,
 	sS.topol = content; isok = 1;
       end
      case 'msize', 
-      if ~isnumeric(content) | ~isvector | ~ispositive | ~isinteger, 
+      if ~isnumeric(content) || ~isvector || ~ispositive || ~isinteger, 
 	msg = '''msize'' should be a vector with positive integer elements.'; 
       elseif prod(content) ~= munits, 
 	msg = '''msize'' does not match the map size.'; 
@@ -436,7 +436,7 @@ for i=1:p,
      case 'shape', 
       if ~ischar(content),
 	msg = '''shape'' should be a string';
-      elseif ~strcmp(content,'sheet') && ~strcmp(content,'cyl') & ...
+      elseif ~strcmp(content,'sheet') && ~strcmp(content,'cyl') && ...
 	    ~strcmp(content,'toroid'),
 	msg = ['Unknown shape type:' content]; 
 	sS.topol.shape = content; isok = 1;
@@ -446,7 +446,7 @@ for i=1:p,
      case 'neigh', 
       if ~ischar(content),
 	msg = '''neigh'' should be a string'; 
-      elseif ~strcmp(content,'gaussian') && ~strcmp(content,'ep') & ...
+      elseif ~strcmp(content,'gaussian') && ~strcmp(content,'ep') && ...
 	    ~strcmp(content,'cutgauss') && ~strcmp(content,'bubble'),
 	msg = ['Unknown neighborhood function: ' content]; 
 	sS.neigh = content; isok = 1;
@@ -455,7 +455,7 @@ for i=1:p,
       end
      case 'mask', 
       if size(content,1) == 1, content = content'; end
-      if ~isnumeric(content) | size(content) ~= [dim 1], 
+      if ~isnumeric(content) || size(content) ~= [dim 1], 
 	msg = '''mask'' should be a column vector (size dim x 1).'; 
       else
 	sS.mask = content; isok = 1;
@@ -485,7 +485,7 @@ for i=1:p,
       else
 	isok = 1;
 	for j=1:length(content), 
-	  if ~isempty(content{j}) && (~isfield(content{j}(1),'type') | ...
+	  if ~isempty(content{j}) && (~isfield(content{j}(1),'type') || ...
 				     ~strcmp(content{j}(1).type,'som_norm')), 
 	    msg = 'Each cell in ''comp_norm'' should be either empty or type ''som_norm''.';
 	    isok = 0; 
@@ -500,7 +500,7 @@ for i=1:p,
       else
 	isok = 1;
 	for j=1:length(content), 
-	  if ~isfield(content(j),'type') | ~strcmp(content(j).type,'som_train'), 
+	  if ~isfield(content(j),'type') || ~strcmp(content(j).type,'som_train'), 
 	    msg = 'Each cell in ''trainhist'' should be of type ''som_train''.';
 	    isok = 0; 
 	    break; 
@@ -577,7 +577,7 @@ for i=1:p,
       else
 	isok = 1;
 	for j=1:length(content), 
-	  if ~isempty(content{j}) && (~isfield(content{j}(1),'type') | ...
+	  if ~isempty(content{j}) && (~isfield(content{j}(1),'type') || ...
 				     ~strcmp(content{j}(1).type,'som_norm')), 
 	    msg = 'Each cell in ''comp_norm'' should be either empty or type ''som_norm''.';
 	    isok = 0; 
@@ -587,7 +587,7 @@ for i=1:p,
 	if isok, sS.comp_norm = content; end
       end        
      case 'label_names', 
-      if ~iscell(content) && ~ischar(content) & ~isempty(content), 
+      if ~iscell(content) && ~ischar(content) && ~isempty(content), 
 	msg = ['''label_names'' should be a cell string, a string array or' ...
 	       ' empty.']; 
       else
@@ -605,7 +605,7 @@ for i=1:p,
    case 'som_topol', 
     switch field,      
      case 'msize', 
-      if ~isnumeric(content) | ~isvector | ~ispositive | ~isinteger, 
+      if ~isnumeric(content) || ~isvector || ~ispositive || ~isinteger, 
 	msg = '''msize'' should be a vector with positive integer elements.'; 
       else
 	sS.msize = content; isok=1;
@@ -622,7 +622,7 @@ for i=1:p,
      case 'shape', 
       if ~ischar(content),
 	msg = '''shape'' should be a string';
-      elseif ~strcmp(content,'sheet') && ~strcmp(content,'cyl') & ...
+      elseif ~strcmp(content,'sheet') && ~strcmp(content,'cyl') && ...
 	    ~strcmp(content,'toroid'),
 	msg = ['Unknown shape type: ' content]; 
 	sS.shape = content; isok = 1;
@@ -650,7 +650,7 @@ for i=1:p,
      case 'neigh', 
       if ~ischar(content),
 	msg = '''neigh'' should be a string'; 
-      elseif ~isempty(content) && ~strcmp(content,'gaussian') & ~strcmp(content,'ep') & ...
+      elseif ~isempty(content) && ~strcmp(content,'gaussian') && ~strcmp(content,'ep') && ...
 	    ~strcmp(content,'cutgauss') && ~strcmp(content,'bubble'),
 	msg = ['Unknown neighborhood function: ' content]; 
 	sS.neigh = content; isok = 1;
@@ -660,25 +660,25 @@ for i=1:p,
      case 'mask', 
       if size(content,1) == 1, content = content'; end
       dim = size(content,1); %[munits dim] = size(sS.data); 
-      if ~isnumeric(content) | size(content) ~= [dim 1], 
+      if ~isnumeric(content) || size(content) ~= [dim 1], 
 	msg = '''mask'' should be a column vector (size dim x 1).'; 
       else
 	sS.mask = content; isok = 1;
       end
      case 'radius_ini', 
-      if ~isnumeric(content) | ~isscalar, 
+      if ~isnumeric(content) || ~isscalar, 
 	msg = '''radius_ini'' should be a scalar.'; 
       else
 	sS.radius_ini = content; isok = 1;
       end
      case 'radius_fin', 
-      if ~isnumeric(content) | ~isscalar, 
+      if ~isnumeric(content) || ~isscalar, 
 	msg = '''radius_fin'' should be a scalar.'; 
       else
 	sS.radius_fin = content; isok = 1;
       end
      case 'alpha_ini', 
-      if ~isnumeric(content) | ~isscalar,
+      if ~isnumeric(content) || ~isscalar,
 	msg = '''alpha_ini'' should be a scalar.'; 
       else
 	sS.alpha_ini = content; isok = 1;
@@ -686,15 +686,15 @@ for i=1:p,
      case 'alpha_type', 
       if ~ischar(content),
 	msg = '''alpha_type'' should be a string'; 
-      elseif ~strcmp(content,'linear') && ~strcmp(content,'inv') & ...
-	    ~strcmp(content,'power') && ~strcmp(content,'constant') & ~strcmp(content,''),
+      elseif ~strcmp(content,'linear') && ~strcmp(content,'inv') && ...
+	    ~strcmp(content,'power') && ~strcmp(content,'constant') && ~strcmp(content,''),
 	msg = ['Unknown alpha type: ' content]; 
 	sS.alpha_type = content; isok = 1;
       else
 	sS.alpha_type = content; isok = 1;
       end        
      case 'trainlen', 
-      if ~isnumeric(content) | ~isscalar, 
+      if ~isnumeric(content) || ~isscalar, 
 	msg = '''trainlen'' should be a scalar.'; 
       else
 	sS.trainlen = content; isok = 1;
@@ -722,7 +722,7 @@ for i=1:p,
      case 'status', 
       if ~ischar(content),
 	msg = '''status'' should be a string'; 
-      elseif ~strcmp(content,'done') && ~strcmp(content,'undone') & ...
+      elseif ~strcmp(content,'done') && ~strcmp(content,'undone') && ...
 	    ~strcmp(content,'uninit'),
 	msg = ['Unknown status type: ' content]; 
 	sS.status = content; isok = 1;

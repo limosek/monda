@@ -699,7 +699,7 @@ for i=1:2:length(args),
     end
     
    case 'bar'
-    %%% Colorbar existence && direction: check & set
+    %%% Colorbar existence && direction: check && set
     
     if ~vis_valuetype(value,{'string'})
       error('String value expected for ''bar''.')

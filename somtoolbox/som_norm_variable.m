@@ -251,7 +251,7 @@ end
 if iscell(method), 
   if length(method)==1 && isstruct(method{1}), sNorm = method{1}; 
   else
-    if length(method)==1 | isempty(method{2}), method{2} = 'x'; end
+    if length(method)==1 || isempty(method{2}), method{2} = 'x'; end
     sNorm = som_set('som_norm','method','eval','params',method);
   end
 else 
@@ -267,7 +267,7 @@ if length(order)>1 && strcmp(operation,'undo'), order = order(end:-1:1); end
 for i=order, 
 
   % initialize
-  if strcmp(operation,'init') | ...
+  if strcmp(operation,'init') || ...
      (strcmp(operation,'do') && strcmp(sNorm(i).status,'uninit')), 
 
     % case method = 'hist'
@@ -513,7 +513,7 @@ function p = norm_eval_init(method)
 
 function x = norm_eval_do(x,p)
   x_tmp = eval(p{1});
-  if size(x_tmp,1)>=1 && size(x,1)>=1 & ...
+  if size(x_tmp,1)>=1 && size(x,1)>=1 && ...
      size(x_tmp,2)==1 && size(x,2)==1,
     x = x_tmp;
   end
@@ -521,7 +521,7 @@ function x = norm_eval_do(x,p)
 
 function x = norm_eval_undo(x,p)
   x_tmp = eval(p{2});
-  if size(x_tmp,1)>=1 && size(x,1)>=1 & ...
+  if size(x_tmp,1)>=1 && size(x,1)>=1 && ...
      size(x_tmp,2)==1 && size(x,2)==1,
     x = x_tmp;
   end

@@ -63,7 +63,7 @@ function [Class,P]=knn_old(Data, Proto, proto_class, K)
 classnames='';
 
 % Check K 
-if nargin<4 | isempty(K),
+if nargin<4 || isempty(K),
   K=1;
 end
 
@@ -111,7 +111,7 @@ else
 end
 
 % Check that inputs are matrices
-if ~vis_valuetype(proto,{'nxm'}) | ~vis_valuetype(data,{'nxm'}),
+if ~vis_valuetype(proto,{'nxm'}) || ~vis_valuetype(data,{'nxm'}),
   error('Prototype or data input not valid.')
 end
 
@@ -125,7 +125,7 @@ end
 % Check if the classes are given as labels (no class input arg.)
 % if they are take them from prototype struct
 
-if nargin<3 | isempty(proto_class)
+if nargin<3 || isempty(proto_class)
   if ~isstruct(Proto)
     error(['If prototypes are not in labeled map or data struct' ...
 	   'class must be given.']);  

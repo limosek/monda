@@ -23,7 +23,7 @@ if nargin == 1
   end
   
   
-  if size(trajStruct.bmus,1) == 1 | size(trajStruct.bmus,2) == 1
+  if size(trajStruct.bmus,1) == 1 || size(trajStruct.bmus,2) == 1
 
     udata.bmus = trajStruct.bmus;
     udata.a_h=[findobj(get(sM_h,'Children'),'Tag','Uplane');...
@@ -136,7 +136,7 @@ if nargin == 1
     %
     % 
     
-    if nargin < 5 | isempty(comps) | (isstr(comps) && strcmp(comps,'all'))
+    if nargin < 5 || isempty(comps) || (isstr(comps) && strcmp(comps,'all'))
       comps = 1:size(data1,2);
     end
     
@@ -353,7 +353,7 @@ end
 old = gcf;
 set(0,'CurrentFigure',udata.sM_h);
 hold on;
-if isempty(udata.traj) | length(udata.traj.h) ~= length(udata.a_h)
+if isempty(udata.traj) || length(udata.traj.h) ~= length(udata.a_h)
   
   % trajectory does not exist
   
@@ -1370,7 +1370,7 @@ end
 
 answer=inputdlg('Enter the name of the output variable:','',1);
 
-if isempty(answer) | isempty(answer{1})
+if isempty(answer) || isempty(answer{1})
   msgbox('Output is not set to workspace.');
   return;
 else
@@ -1384,7 +1384,7 @@ function load_data()
 
 answer = inputdlg('Enter the name of the struct to be loaded:','',1);
 
-if isempty(answer) | isempty(answer{1})
+if isempty(answer) || isempty(answer{1})
   msgbox('Data is not loaded.');
   return;
 end
@@ -1548,7 +1548,7 @@ if isempty(arg)
   udata.orig_x=get(udata.patch_h(1),'XData');
   udata.orig_y=get(udata.patch_h(1),'YData');
   
-  %  if interval(1) < 1 | interval(2) > size(trajStruct.primary_data,1)
+  %  if interval(1) < 1 || interval(2) > size(trajStruct.primary_data,1)
   %    error('Invalid argument ''interval''.');
   %  end
   

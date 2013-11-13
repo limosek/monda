@@ -483,7 +483,7 @@ switch mode         % check mode
       error('Map struct is invalid!');
     end
     % Size check
-    if length(msize) ~= length(D.topol.msize) | ...
+    if length(msize) ~= length(D.topol.msize) || ...
 	  munits ~= prod(D.topol.msize),
       error(['The size of the input map and the map in the figure' ...
 	     ' do not match.']);
@@ -535,7 +535,7 @@ for i=1:2:length(varargin),
     %%% Marker for hits or trajectories
     switch mode
      case 'mhit'
-      if vis_valuetype(value,{'markerstyle'}) | ...
+      if vis_valuetype(value,{'markerstyle'}) || ...
 	    (vis_valuetype(value,{'string'}) && ...
 	     any(strcmp(value,{'lattice','pie'}))),
 	; % ok
@@ -555,7 +555,7 @@ for i=1:2:length(varargin),
 	       char(10) ' See detailed documentation.'])
       end
      case {'comet','hit'}
-      if vis_valuetype(value,{'markerstyle'}) | isempty(value),
+      if vis_valuetype(value,{'markerstyle'}) || isempty(value),
 	% ok;
       elseif ischar(value) && strcmp(value,'lattice'),
 	% ok;
@@ -597,13 +597,13 @@ for i=1:2:length(varargin),
     %%% Hit dependent size factor
     switch mode
      case 'traj'
-      if ~vis_valuetype(value,{'string'}) | ...
+      if ~vis_valuetype(value,{'string'}) || ...
 	    ~any(strcmp(value,{'hit', 'equal'})),
 	error(['In mode ''traj'' ''SizeFactor'' must be ' ...
 	       'string ''equal'' or ''hit''.']);
       end
      case 'mhit'
-      if ~vis_valuetype(value,{'string'}) | ...
+      if ~vis_valuetype(value,{'string'}) || ...
 	    ~any(strcmp(value,{'common', 'separate'})),
 	error(['In mode ''hit'' ''SizeFactor'' must be ' ...
 	       'string ''common'' or ''separate''.']);
@@ -736,7 +736,7 @@ for i=1:2:length(varargin),
     
    case 'widthfactor'
     %%% Hit factor for a line trajectory
-    if ~vis_valuetype(value,{'string'}) | ...
+    if ~vis_valuetype(value,{'string'}) || ...
 	  ~any(strcmp(value,{'hit', 'equal'})),
       error(['In mode ''traj'' ''WidthFactor'' must be ' ...
 	     'string ''equal'' or ''hit''.']);
@@ -764,7 +764,7 @@ for i=1:2:length(varargin),
     error('Not yet implemented.');
    
    case 'shift'
-    if ~vis_valuetype(value,{'1x1'}) | ((value < 0) | (value > 1)),
+    if ~vis_valuetype(value,{'1x1'}) || ((value < 0) || (value > 1)),
       error('''Shift'' must be a scalar in range [0,1].')
     end
     used_in.comet=0;            % Set relevance flags
@@ -783,7 +783,7 @@ for i=1:2:length(varargin),
 	else
 	  value=1:length(handles);
 	end
-      elseif any(value<1) | any(value>length(handles)),
+      elseif any(value<1) || any(value>length(handles)),
 	error('Subplot indices must be in range 1...number_of_subplots!');
       end
     elseif ~isempty(value)
@@ -814,7 +814,7 @@ end
 if isempty(Property.subplot)
   % search the subplot number for current axis
   value=find(gca==handles);    
-  if isempty(value) | value>length(handles) 
+  if isempty(value) || value>length(handles) 
     error('SubPlot default value setting: current axis is not in the figure!');
   else
     Property.subplot=value;

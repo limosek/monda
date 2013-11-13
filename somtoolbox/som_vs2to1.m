@@ -90,7 +90,7 @@ switch sS.type,
   
   % trainhist 
   tl = length(sS.trainhist); 
-  if tl==0 | strcmp(sS.trainhist(1).algorithm,'lininit'), 
+  if tl==0 || strcmp(sS.trainhist(1).algorithm,'lininit'), 
     init_type = 'linear';
   else
     init_type = 'random';
@@ -215,7 +215,7 @@ function sN = convert_normalizations(cnorm)
     status = cnorm{1}.status;
     method = cnorm{1}.method;
     for i=2:dim, 
-      if ~strcmp(cnorm{i}.status,status) | ~strcmp(cnorm{i}.method,method), 
+      if ~strcmp(cnorm{i}.status,status) || ~strcmp(cnorm{i}.method,method), 
 	ok = 0; 
       end
     end    

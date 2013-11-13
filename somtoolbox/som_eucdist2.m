@@ -70,7 +70,7 @@ else
 end
 
 % Check that inputs are matrices
-if ~vis_valuetype(proto,{'nxm'}) | ~vis_valuetype(data,{'nxm'}),
+if ~vis_valuetype(proto,{'nxm'}) || ~vis_valuetype(data,{'nxm'}),
   error('Prototype or data input not valid.')
 end
 

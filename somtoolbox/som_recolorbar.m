@@ -150,7 +150,7 @@ error(nargchk(0, 4, nargin))    % check no. of input args
 % Check the subplot vector p and  get the handles, exit if error
 % Default subplot vector is 'all'
 
-if nargin < 1 | isempty(p)                       % default p
+if nargin < 1 || isempty(p)                       % default p
   p= 'all';
 end
 
@@ -160,7 +160,7 @@ end
     vis_som_show_data(p, gcf);
 error(msg);                                       
 
-if nargin < 2 | isempty(ticks)                   % default tick mode is 'auto'
+if nargin < 2 || isempty(ticks)                   % default tick mode is 'auto'
   ticks = 'auto';
 elseif isa(ticks,'cell')                         % check for cell
   tickValues = ticks; 
@@ -195,7 +195,7 @@ otherwise
   error('''auto'' or ''border'' expected for the second argument.');
 end
 
-if nargin < 3 | isempty(scale)                   % default mode is normalized
+if nargin < 3 || isempty(scale)                   % default mode is normalized
   scale= 'normalized';
 end
 if ~ischar(scale)                                % check scale type
@@ -336,7 +336,7 @@ r(zero)=0;
 function t=isvector(v)
 % ISVECTOR checks if a matrix is a vector or not
 
-t=(ndims(v) == 2 && min(size(v)) == 1) & isnumeric(v);
+t=(ndims(v) == 2 && min(size(v)) == 1) && isnumeric(v);
 
 %% Subfunction: EPSTO0
 

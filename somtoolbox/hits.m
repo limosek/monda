@@ -29,7 +29,7 @@ function [hits,ninvalid] = hits(bmus, mmax, values)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if nargin<2 | isempty(mmax), 
+if nargin<2 || isempty(mmax), 
   mmax = max(bmus);
 elseif isstruct(mmax), 
   switch mmax.type, 
@@ -42,7 +42,7 @@ end
 
 if nargin<3, values = 1; end
 
-valid_bmus = find(isfinite(bmus) && bmus>0 & bmus<=mmax); 
+valid_bmus = find(isfinite(bmus) && bmus>0 && bmus<=mmax); 
 ninvalid = length(bmus)-length(valid_bmus); 
 
 bmus = bmus(valid_bmus); 

@@ -24,9 +24,9 @@ function [base,seed] = som_dmatclusters(sM,linkage,neigh,ignore)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% input arguments
 
-if nargin<2 | isempty(linkage), linkage = 'centroid'; end
+if nargin<2 || isempty(linkage), linkage = 'centroid'; end
 
-if nargin<3 | isempty(neigh),
+if nargin<3 || isempty(neigh),
   if isstruct(sM) && strcmp(sM.type,'som_map'),
     neigh = 'N1';
   else
