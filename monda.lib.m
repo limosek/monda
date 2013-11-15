@@ -340,7 +340,6 @@ return
 
 end
 
-
 function normalize(delay)
     global hdata;
 
@@ -351,9 +350,12 @@ function normalize(delay)
        if (isstruct(item))
          minx=min([hdata.minx,hdata.(hkey).(key).x]);
          maxx=max([hdata.maxx,hdata.(hkey).(key).x]);
-         if (hdata.minx!=minx || hdata.maxx!=maxx)
+         xy=transpose(sortrows(transpose([item.x;item.y])));
+         hdata.(hkey).(key).x=xy(1,:);
+         hdata.(hkey).(key).y=xy(2,:);
+         #if (hdata.minx!=minx || hdata.maxx!=maxx)
            force_normalize=1;
-         end
+         #end
          hdata.minx=minx;
 	 hdata.maxx=maxx;
 	 hdata.minx2=min([hdata.minx2,hdata.(hkey).(key).x(2:end)]);
@@ -404,19 +406,30 @@ endfunction;
 function hostinfo(host) 
   for [item, key] = host
 	  if (isstruct(item))
-	    fprintf(stdout,"Item %s: minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i)\n",item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn));
+	    fprintf(stdout,"Item %s: minx=(%i,%i),maxx=(%i,%i),miny=%i,maxy=%i,size=(%i=>%i),seconds=%i\n",item.key,min(item.x),item.minx,max(item.x),item.maxx,min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x));
 	  end;
   end;
+  fprintf(stdout,"\n");
 endfunction;
 
-function hostsinfo(h) 
+function hostsinfo(h)
+  allitems=0;
   for [host, hkey] = h
+      items=0;
+      if (isstruct(host))
+       for [item, key] = host
+        if (isfield(item,'x'))
+          items++;
+          allitems++;
+        end
+       end;
+      end;
 	  if (isstruct(host))
-	    fprintf(stdout,"Host %s: minx=%s,maxx=%s,minx2=%s,maxx2=%s,\n",hkey,xdate(h.minx),xdate(h.maxx),xdate(h.minx2),xdate(h.maxx2));
+	    fprintf(stdout,"Host %s: items=%i,minx=%s(%i),maxx=%s(%i),minx2=%s,maxx2=%s,\n",hkey,items,xdate(h.minx),h.minx,xdate(h.maxx),h.maxx,xdate(h.minx2),xdate(h.maxx2));
 	  end;
   end;
+  fprintf(stdout,"\n\n");
 endfunction;
-
 
 function cminfo(cm)
   for [host, hkey] = cm
@@ -555,7 +568,7 @@ function cmtovector(limit)
        val=tmp(maxi,maxidx);
        tmpvec(maxi,maxidx)=val;
        sortvec(k++,:)=[maxi,maxidx];
-       fprintf(stdout,"%s(%i)<>%s(%i): %f\n",hdata.itemindex{maxi},maxi,hdata.itemindex{maxidx},maxidx,val);
+       #fprintf(stdout,"%s(%i)<>%s(%i): %f\n",hdata.itemindex{maxi},maxi,hdata.itemindex{maxidx},maxidx,val);
        tmp(maxi,maxidx)=0;
       end
       hdata.(hkey).cmvec=tmpvec;
@@ -566,15 +579,16 @@ endfunction
 
 function hoststoany(varargin) 
   global hdata;
-  
   for [host, hkey] = hdata
-    if (isstruct(host) && !strcmp(hkey,"any") && (find(strcmp(varargin,hkey)>0) || length(varargin)==0))
+    if (isstruct(host) && !strcmp(hkey,"any"))
+      if (find(strcmp(varargin,hkey)>0) || find(strcmp(varargin,"all")>0))
 	for [item, key] = host
 	  if (isstruct(item))
 	    hdata.any.(key)=item;
 	    hdata.any.(key).key=[hkey,":",item.key];
 	  end
 	end
+     end;
     end
   end;
 endfunction

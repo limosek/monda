@@ -9,24 +9,28 @@ function ndata=joindata(ndata,fle)
   ncm=cm;
   loaddata(fle);
   ndata.samehosts=0;
-  
   for [host, hkey] = hdata
      if (isstruct(host))
-       ndata.minx=hdata.minx;
-       ndata.maxx=hdata.maxx;
-       ndata.minx2=hdata.minx2;
-       ndata.maxx2=hdata.maxx2;
+       if (!isfield(ndata,'minx'))
+         ndata.minx=hdata.minx;
+         ndata.maxx=hdata.maxx;
+         ndata.minx2=hdata.minx2;
+         ndata.maxx2=hdata.maxx2;
+       end
        for [item, ikey] = host
+         if (!isstruct(item))
+           continue;
+         end
          if (!isfield(ndata,hkey) || !isfield(ndata.(hkey),ikey))
            ndata.(hkey).(ikey)=item;
-         endif       
-         if (isfield(ndata.(hkey).(ikey),"x")) 
-           xy=sort([item.x,ndata.(hkey).(ikey).x;item.y,ndata.(hkey).(ikey).y],2);
-         else
-	   xy=sort([item.x;item],2);
-         end
+         endif
+         #[ndata.(hkey).(ikey).x;ndata.(hkey).(ikey).y]
+         xy=cat(2,[item.x;item.y],[ndata.(hkey).(ikey).x;ndata.(hkey).(ikey).y]);
+         xy=transpose(sortrows(transpose(xy)));
          ndata.(hkey).(ikey).x=xy(1,:);
          ndata.(hkey).(ikey).y=xy(2,:);
+         ndata.(hkey).(ikey).minx=min(ndata.(hkey).(ikey).x);
+         ndata.(hkey).(ikey).maxx=max(ndata.(hkey).(ikey).x);
          ndata.minx=min([hdata.minx,ndata.minx]);
          ndata.maxx=max([hdata.maxx,ndata.maxx]);
          ndata.minx2=min([hdata.minx2,ndata.minx2]);
@@ -37,11 +41,10 @@ function ndata=joindata(ndata,fle)
          ndata.time_to=ndata.maxx;
        end;
        ncm.(hkey)=cm.(hkey);
-     else
-       ndata.(hkey)=hdata.(hkey);
      end;
   end;
   cm=ncm;
+  hdata=ndata;
 endfunction;
 
 global hdata;
@@ -51,6 +54,8 @@ arg_list=argv();
 dst=arg_list{1};
 ndata=[];
 
+start1=time();
+
 for i = 2:nargin
   ndata=joindata(ndata,arg_list{i});
 end
@@ -58,15 +63,23 @@ end
 hostsinfo(ndata);
 cminfo(cm);
 
-hdata=ndata;
-ndata=[];
+remove_bad(0.001);
+start3=time();
 
-hoststoany();
-
-normalize();
-smatrix;
-cmatrix;
+normalize(60);
+hoststoany("all");
+start4=time();
+smatrix();
+start5=time();
+cmatrix();
+start6=time();
+cmtovector(0.4);
+start7=time();
 
 savedata(dst);
+start8=time();
+
+fprintf(stderr,"Analyze took %i seconds\n",start8-start1);
+
 
 exit;

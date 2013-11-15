@@ -60,6 +60,29 @@ function historyGetMysql($query) {
 	  return($lines);
 }
 
+function clocksort($a, $b) {
+    return( ($a->clock <$b->clock) ? -1:1);
+}
+
+function findeventsbyitem($host,$item) {
+      global $triggers,$events;
+      foreach ($triggers as $t) {
+	if (strstr($t->expression,$host.":".$item.".")) {
+	  foreach ($events as $e) {
+	    if ($e->objectid==$t->triggerid) {
+	      $ev[]=Array(
+	        "clock" => $e->clock,
+	        "priority" => $t->priority,
+	        "value" => $e->value,
+	        "triggerid" => $t->triggerid
+	      );
+	    }
+	  }
+	}
+      }
+      return($ev);
+}
+
 function trendsGetMysql($query) {
 	  global $backuptable;
 	  

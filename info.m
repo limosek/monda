@@ -12,7 +12,7 @@ loaddata(src);
 hostsinfo(hdata);
 
 for [host, hkey] = hdata
-  if (isstruct(host))
+  if (isstruct(host) && nargin>1)
     hostinfo(host);
   end
 end

@@ -120,6 +120,26 @@ try {
 	if ($to_time>time()) {
 	  errorexit("End time is in future??\n",6);
 	}
+		
+	$sq["time_from"]=$hist;
+	$sq["time_to"]=$to_time;
+	$sq["select_acknowledges"]="message";
+	$sq["selectHosts"]=true;
+	$sq["selectRelatedObject"]=true;
+	$sq["sortfield"]="clock";
+	$events=$api->eventGet($sq);
+	$triggerids=Array();
+	foreach ($events as $event) {
+	  $triggerids[$event->objectid]=$event->objectid;
+	}
+	$triggers=($api->triggerGet(
+	      Array(
+		"triggerids"=>$triggerids,
+		"expandExpression" => true,
+		"output" => "extend"
+		)
+	    ));
+	
 	fprintf(STDOUT,"format short; fixed_point_format(1); global hdata; hdata.time_from=%u;hdata.time_to=%u;hdata.date_from='%s';hdata.date_to='%s';\n",$hist,$to_time,$ftime,$now);
 	$itemcount=0;
 	$valuescount=0;
@@ -131,6 +151,7 @@ try {
 	$minclock2=time();
 	$maxclock2=0;
 	$datafound=false;
+	#print_r($events);exit;
 	foreach ($items as $item) {
 		if (preg_match("*$ritem*",$item->key_) && (!preg_match("*$nritem*",$item->key_)) && ($item->value_type==0 || $item->value_type==2 || $item->value_type==3)) {
 			$itemid=$item->itemid;
@@ -140,6 +161,7 @@ try {
 			  "output" => "extend"
 			  )
 			);
+			$hostname=$host[0]->name;
 			$host=strtr($host[0]->name,"-","_");
 			if (trim($host)=="") continue;
 			fprintf(STDOUT,"\n\n### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n",$host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history,(int) ($item->history*24*3600/$item->delay), $item->trends,(int) $item->trends*24);
@@ -169,12 +191,23 @@ try {
 			if (count($history)>10) {
 			  $datafound=true;
 			  fprintf(STDOUT,"${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n",$item->itemid,addslashes($item->key_),$h,$item->delay,$item->history);
+			  $revents=findeventsbyitem($hostname,$item->key_);
+			  if (is_array($revents)) {
+			    fprintf(STDOUT,"${h}.events=[");
+			    foreach ($revents as $e) {
+			      fprintf(STDOUT,"%s,%s,%s,%s;",$e["clock"],$e["value"],$e["priority"],$e["triggerid"]);
+			    }
+			    fprintf(STDOUT,"];\n");
+			  }
 			  fprintf(STDOUT,"### Got %s values for item %s\n",count($history),$item->key_);
 			  if ($stderr) fprintf(STDERR,"### Got %s values for item %s\n",count($history),$item->key_);
 			  $valuescount+=count($history);
 			  fprintf(STDOUT,"${h}.x=[");
 			  $c=1;
 			  $last=count($history);
+			  if ($histapi) {
+			    uasort($history,'clocksort');
+			  }
 			  foreach ($history as $i=>$k) {
 			    if ($c==2) {
 			      $minclock2=min($k->clock,$minclock2);
@@ -200,6 +233,11 @@ try {
 		} else {
 			if ($stderr) fprintf(STDERR,"### Ignoring item %s (type %u),regexp=%u,nregex=%u\n",$item->key_,$item->value_type,preg_match("*$ritem*",$item->key_),!preg_match("*$nritem*",$item->key_));
 		}
+	}
+	foreach ($triggers as $t) {
+	  fprintf(STDOUT,"hdata.triggers.t%s.expression='%s';",$t->triggerid,$t->expression);
+	  fprintf(STDOUT,"hdata.triggers.t%s.description='%s';",$t->triggerid,$t->description);
+	  fprintf(STDOUT,"hdata.triggers.t%s.priority='%s';",$t->triggerid,$t->priority);
 	}
 	$duration=microtime(1)-$start;
 	if ($datafound) {
