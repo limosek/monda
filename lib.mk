@@ -13,19 +13,26 @@ endif
 # Verbose
 ifneq ($(V),)
  GH=./gethistory.php -e
- OCTAVE=octave
+ OCTAVE=octave --no-window-system --norc
  GZIP=gzip -f
  GUNZIP=gunzip -df
 else
  GH=@./gethistory.php
- OCTAVE=@octave -q
+ OCTAVE=@octave -q --no-window-system --norc
  GZIP=@gzip -f
  GUNZIP=@gunzip -df
 endif
 
-define analyze/octave
-      $(OCTAVE) analyze.m "$(1)" "$(2)" $(TIME_PRECISION) 2>&1 | tee "$(2).log"
-endef
+ifeq ($(V),)
+ define analyze/octave
+  $(OCTAVE) analyze.m "$(1)" "$(2)" $(TIME_PRECISION) 1>"$(2).log" 2> >(tee -a "$(2).log" >&2)
+ endef
+else
+ define analyze/octave
+  @echo "Analyzing $(1)>$(2)";
+  $(OCTAVE) analyze.m "$(1)" "$(2)" $(TIME_PRECISION) 2>&1 | tee "$(2).log"
+ endef
+endif
 
 define analyze/octave/graphs
       $(OCTAVE) graphs.m "$(1)" png
@@ -63,9 +70,10 @@ define analyze/host/interval
 	@$(call analyze/octave/graphs,$(O)/$(1)-$(2)-$(3).az)
  $(1)-$(2)-$(3): $(O)/$(1)-$(2)-$(3).az
  $(O)/$(1)-$(2)-$(3).m:
-	@echo Getting host $(1) from $(2), interval $(3)
+	@echo "Getting history to $(O)/$(1)-$(2)-$(3).m"
 	$(call get/history,$(4),$(3),$(1),$(O)/$(1)-$(2)-$(3).m.tmp,$(O)/$(1)-$(2)-$(3).m.log) && mv $(O)/$(1)-$(2)-$(3).m.tmp $(O)/$(1)-$(2)-$(3).m;
  $(O)/$(1)-$(2)-$(3).az: $(O)/$(1)-$(2)-$(3).m
+	@echo "Analyzing $(O)/$(1)-$(2)-$(3).m";
 	@$(call analyze/octave,$(O)/$(1)-$(2)-$(3).m,$(O)/$(1)-$(2)-$(3).az);
 endef
 
@@ -86,7 +94,7 @@ endef
 ifneq ($(wildcard config.inc.php),)
  ifeq ($(HOSTS),)
   ifneq ($(HOSTGROUP),)
-   HOSTS=$(shell ./gethostsingroup.php $(HOSTGROUP))
+   HOSTS:=$(shell ./gethostsingroup.php $(HOSTGROUP))
    ifeq ($(HOSTS),)
      $(error HOSTGROUP $(HOSTGROUP) probably does not exists? Groups are case sensitive!)
    endif
@@ -107,7 +115,7 @@ endif
 START_DATES=$(TIME_START)
 ifneq ($(TIME_TO),)
  ifneq ($(TIME_STEP),)
-  START_DATES=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D '@U')
-  START_DATES_NICE=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D 'Y_m_d_H_i')
+  START_DATES:=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D '@U')
+  START_DATES_NICE:=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D 'Y_m_d_H_i')
  endif
 endif

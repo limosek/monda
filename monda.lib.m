@@ -21,18 +21,18 @@ end
 function savedata(fle)
   global cm;
   global hdata;
-  fprintf(stderr,"Saving file %s ",fle)
+  fprintf(stdout,"Saving file %s ",fle)
   save("-binary", fle);
-  fprintf(stderr,"\n");
+  fprintf(stdout,"\n");
 endfunction;
 
 function loaddata(fle)
   global cm;
   global hdata;
   
-  fprintf(stderr,"Loading file %s ",fle)
+  fprintf(stdout,"Loading file %s ",fle)
   load(fle);
-  fprintf(stderr,"\n");
+  fprintf(stdout,"\n");
 endfunction;
 
 function ret=datetoseconds(dte)
@@ -81,7 +81,7 @@ function normalize(delay)
     
     for [host, hkey] = hdata
      if (ishost(host))
-      fprintf(stderr,"\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i):\n",hkey,xdate(startx),startx,xdate(endx),endx,round((endx-startx)/delay));
+      fprintf(stdout,"\nNormalize %s (start=%s(%i),stop=%s(%i),values=%i):\n",hkey,xdate(startx),startx,xdate(endx),endx,round((endx-startx)/delay));
       for [item, key] = host
        if (isitem(item))
         if (isfield(item,"xn") && !force_normalize) 
@@ -92,7 +92,7 @@ function normalize(delay)
 	cols2=columns(item.y);
 	hdata.(hkey).(key).xn=[startx:delay:endx];
 	cols3=columns(hdata.(hkey).(key).xn);
-	fprintf(stderr,"%s(%i,%i)>%i\n",item.key,cols,cols2,cols3);
+	fprintf(stdout,"%s(%i,%i)>%i\n",item.key,cols,cols2,cols3);
 	hdata.(hkey).(key).yn=[];
 	for x=hdata.(hkey).(key).xn
 	    index=lookup(hdata.(hkey).(key).x,x);
@@ -112,7 +112,7 @@ function normalize(delay)
       end;
     end;
     end;
-    fprintf(stderr,"\n\n");
+    fprintf(stdout,"\n\n");
 endfunction;
 
 function hostinfo(host) 
@@ -154,11 +154,11 @@ function remove_bad(minchange)
   global hdata;
       for [host, hkey] = hdata
        if (ishost(host))
-	fprintf(stderr,"%s ",hkey);
+	fprintf(stdout,"%s ",hkey);
 	for [item, key] = host
 	  if (isitem(item))
 	    if (range(item.y)/max(item.y)<minchange)
-	      fprintf(stderr,"%s:%s change less than %f, removing (range=%f,min=%f,max=%f)\n",hkey,item.key,minchange,range(item.y),min(item.y),max(item.y));
+	      fprintf(stdout,"%s:%s change less than %f, removing (range=%f,min=%f,max=%f)\n",hkey,item.key,minchange,range(item.y),min(item.y),max(item.y));
 	      hdata.(hkey).(key)=[];
             endif
 	  end
@@ -170,10 +170,10 @@ endfunction
 function smatrix()
       global hdata;
       global minchange;
-      fprintf(stderr,"Statistics: ");
+      fprintf(stdout,"Statistics: ");
       for [host, hkey] = hdata
        if (ishost(host))
-	fprintf(stderr,"%s ",hkey);
+	fprintf(stdout,"%s ",hkey);
 	for [item, key] = host
 	  if (isitem(item))
 		hdata.(hkey).(key).std=std(item.y);
@@ -201,7 +201,7 @@ function smatrix()
 	end;
        end;
       end;
-      fprintf(stderr,"\n");
+      fprintf(stdout,"\n");
 endfunction;
 
 function itemindex()
@@ -227,14 +227,14 @@ function cmatrix()
       global cm;
       
       itemindex();
-      fprintf(stderr,"Correlation:\n");
+      fprintf(stdout,"Correlation:\n");
       for [host, hkey] = hdata
 	if (isfield(cm,hkey))
 	  # Corelation matrix already computed
 	  continue;
 	end
        if (ishost(host))
-	fprintf(stderr,"%s\n",hkey);
+	fprintf(stdout,"%s\n",hkey);
 	col1=1; 
 	for [item1, key1] = host
 	if (isitem(item1))
@@ -252,7 +252,7 @@ function cmatrix()
 	#cm.(hkey)=snip(cm.(hkey),nan);
        end;
       end;
-      fprintf(stderr,"\n");
+      fprintf(stdout,"\n");
 endfunction;
 
 function cmtovector(limit)

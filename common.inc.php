@@ -64,6 +64,10 @@ function clocksort($a, $b) {
     return( ($a->clock <$b->clock) ? -1:1);
 }
 
+function hostsort($a, $b) {
+    return( strcmp($a->name,$b->name));
+}
+
 function findeventsbyitem($host,$item) {
       global $triggers,$events;
       foreach ($triggers as $t) {

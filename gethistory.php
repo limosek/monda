@@ -103,6 +103,7 @@ try {
 	$api=init_api();
 	$sq=Array(
 	  "output" => 'extend',
+	  "monitored" => true
 	);
 	if ($rhost) $sq["host"]=$rhost;
 	if ($rgroup) $sq["group"]=$rgroup;

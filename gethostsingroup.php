@@ -16,7 +16,8 @@ try {
 	$hg=$api->hostGroupGet(
 			  Array(
 			  "filter" => Array("name" => array($argv[1])),
-			  "output" => "extend"
+			  "output" => "extend",
+			  "sortfield" => "name"
 			  )
 			);
 	if (!isset($hg[0])) {
@@ -30,8 +31,11 @@ try {
 			  "output" => "extend"
 			  )
 			);
+	uasort($h,'hostsort');
 	foreach ($h as $host) {
-	  echo $host->name."\n";
+	  if ($host->status==0) {
+	    echo $host->name."\n";
+	  }
 	}
 
 } catch(Exception $e) {

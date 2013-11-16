@@ -7,7 +7,7 @@ endif
 include lib.mk
 
 all: _test
-	@$(MAKE) analyze
+	@$(MAKE) analyze 
 
 get: $(foreach host,$(HOSTS),get-$(host))
 
