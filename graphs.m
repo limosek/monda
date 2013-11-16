@@ -42,7 +42,7 @@ function hostplot(hostname,o,maxplots)
 
       plots=0;
       for [item, key] = hdata.(hostname)
-       if (isstruct(item) && plots<maxplots)
+       if (isitem(item) && plots<maxplots)
 	 itemplot(hostname,item,o);
          plots++;
        end;
@@ -137,7 +137,7 @@ if (nargin>2)
 else
   fig=1;
   for [ host, hkey ] = hdata
-   if (isstruct(host))
+   if (ishost(host))
      cmplot(hkey,outfmt);
      correlplot(hkey,outfmt,10);
    end;

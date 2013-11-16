@@ -10,7 +10,7 @@ function ndata=joindata(ndata,fle)
   loaddata(fle);
   ndata.samehosts=0;
   for [host, hkey] = hdata
-     if (isstruct(host))
+     if (ishost(host))
        if (!isfield(ndata,'minx'))
          ndata.minx=hdata.minx;
          ndata.maxx=hdata.maxx;
@@ -18,7 +18,7 @@ function ndata=joindata(ndata,fle)
          ndata.maxx2=hdata.maxx2;
        end
        for [item, ikey] = host
-         if (!isstruct(item))
+         if (!isitem(item))
            continue;
          end
          if (!isfield(ndata,hkey) || !isfield(ndata.(hkey),ikey))

@@ -153,7 +153,7 @@ try {
 	$datafound=false;
 	#print_r($events);exit;
 	foreach ($items as $item) {
-		if (preg_match("*$ritem*",$item->key_) && (!preg_match("*$nritem*",$item->key_)) && ($item->value_type==0 || $item->value_type==2 || $item->value_type==3)) {
+		if (preg_match("*$ritem*",$item->key_) && (!preg_match("*$nritem*",$item->key_)) && ($item->value_type==0 || $item->value_type==3)) {
 			$itemid=$item->itemid;
 			$host=$api->hostGet(
 			  Array(
@@ -190,7 +190,7 @@ try {
 			}
 			if (count($history)>10) {
 			  $datafound=true;
-			  fprintf(STDOUT,"${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n",$item->itemid,addslashes($item->key_),$h,$item->delay,$item->history);
+			  fprintf(STDOUT,"hdata.%s.ishost=1;${h}.isitem=1;${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n",$host,$item->itemid,addslashes($item->key_),$h,$item->delay,$item->history);
 			  $revents=findeventsbyitem($hostname,$item->key_);
 			  if (is_array($revents)) {
 			    fprintf(STDOUT,"${h}.events=[");
@@ -214,12 +214,21 @@ try {
 			    }
 			    if ($c==$last-1) {
 			      $maxclock2=max($k->clock,$maxclock2);
+			      $minstep=$k->clock-$lastclock;
+			      $maxstep=$minstep;
+			    }
+			    if ($c>1) {
+			      $maxstep=max($maxstep,$k->clock-$lastclock);
+			      $minstep=min($minstep,$k->clock-$lastclock);
+			      $avgstep+=$k->clock-$lastclock;
 			    }
 			    $minclock=min($k->clock,$minclock);
 			    $maxclock=max($k->clock,$maxclock);
 			    fprintf(STDOUT,"%s,",$k->clock);
 			    $c++;
+			    $lastclock=$k->clock;
 			  }
+			  $avgstep=round($avgstep/$c);
 			  fprintf(STDOUT,"];\n");
 			  fprintf(STDOUT,"${h}.y=[");
 			  foreach ($history as $i=>$k) {
@@ -235,13 +244,15 @@ try {
 		}
 	}
 	foreach ($triggers as $t) {
-	  fprintf(STDOUT,"hdata.triggers.t%s.expression='%s';",$t->triggerid,$t->expression);
-	  fprintf(STDOUT,"hdata.triggers.t%s.description='%s';",$t->triggerid,$t->description);
-	  fprintf(STDOUT,"hdata.triggers.t%s.priority='%s';",$t->triggerid,$t->priority);
+	  fprintf(STDOUT,"hdata.t%s.expression='%s';",$t->triggerid,addslashes($t->expression));
+	  fprintf(STDOUT,"hdata.t%s.description='%s';",$t->triggerid,addslashes($t->description));
+	  fprintf(STDOUT,"hdata.t%s.priority='%s';",$t->triggerid,$t->priority);
+	  fprintf(STDOUT,"hdata.t%s.istrigger=1;\n",$t->triggerid);
 	}
 	$duration=microtime(1)-$start;
 	if ($datafound) {
-	  fprintf(STDOUT,"hdata.minx=%s;hdata.minx2=%s;hdata.maxx=%s;hdata.maxx2=%s;hdata.gettime=%s;\n",$minclock,$minclock2,$maxclock,$maxclock2,$duration);
+	  if ($maxstep>4*$avgstep) fprintf(STDERR,"### Probably hole in data (avgstep=%s, maxstep=%s)!.\n",$avgstep);
+	  fprintf(STDOUT,"hdata.minx=%s;hdata.minx2=%s;hdata.maxx=%s;hdata.maxx2=%s;hdata.gettime=%s;hdata.minstep=%s;hdata.maxstep=%s;hdata.avgstep=%s;\n",$minclock,$minclock2,$maxclock,$maxclock2,$duration,$minstep,$maxstep,$avgstep);
 	  if ($stderr) fprintf(STDERR,"### Took %s seconds to get %i items and %i values.\n",$duration,$itemcount,$valuescount);
 	} else {
 	  errorexit("No data in history found!\n",15);
