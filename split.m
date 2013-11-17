@@ -1,6 +1,6 @@
 #!/usr/bin/octave -qf
 
-source "monda.lib.m";
+source("monda.lib.m");
 
 function ret=splitdata(src,from,to,items)
   global hdata;
