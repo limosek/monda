@@ -1,58 +1,61 @@
 #!/usr/bin/octave -qf 
 
-source "monda.lib.m";
+global opt;
+source("monda.lib.m");
 
-function ret=newfigure(o)
-  if (!strcmp(o,"")) 
+function ret=newfigure()
+  if (!strcmp(getopt("imgformat"),"")) 
     ret=figure("visible","off");
   else
     ret=figure();
   end
 endfunction
 
-function printplot(h,id,o)
+function printplot(h,id)
     global file;
     [dir, name, ext, ver] = fileparts(file);
     
-    if (!strcmp(o,""))
+    if (!strcmp(getopt("imgformat"),""))
       dir=sprintf("%s/%s",dir,name);
       mkdir(dir);
-      fle=sprintf("%s/%s.%s",dir,id,o)
-      print(fle,"-r600","-S4000x768");
+      fle=sprintf("%s/%s.%s",dir,id,getopt("imgformat"));
+      print(fle,["-r",getopt("imgdpi")],["-S",getopt("imgsizex"),"x",getopt("imgsizey")]);
     end
 endfunction
 
-function h=itemplot(hostname,item,o)
+function h=itemplot(hostname,item)
       global fig;
       global hdata;
 
       if (item.delta>0)
-        newfigure(o);
+        newfigure();
         h=plot(item.xn-hdata.minx2,item.yn,"g",item.x-hdata.minx,item.y,"b");
         title(sprintf("%s:%s",hostname,item.key));
         xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
         legend(sprintf("Raw (%i values)",columns(item.x)),sprintf("Normalized (%i values)",columns(item.xn)));
-        printplot(h,sprintf("item-%i",item.id),o);
+        printplot(h,sprintf("item-%i",item.id));
       end;
 endfunction;
 
-function hostplot(hostname,o,maxplots)
+function hostplot(hostname)
       global fig;
       global hdata;
 
       plots=0;
+      maxplots=getopt("maxplots");
       for [item, key] = hdata.(hostname)
        if (isitem(item) && plots<maxplots)
-	 itemplot(hostname,item,o);
+	 itemplot(hostname,item);
          plots++;
        end;
       end;
 endfunction;
 
-function correlplot(hostname,o,maxplots)
+function correlplot(hostname)
       global fig;
       global hdata;
       
+      maxplots=getopt("maxplots");
       cmvec=hdata.(hostname).cmvec;
       plots=0;
       for i=1:rows(cmvec)
@@ -64,7 +67,7 @@ function correlplot(hostname,o,maxplots)
             item2ikey=hdata.itemkindex{j};
             item1=hdata.(item1hkey).(item1ikey);
             item2=hdata.(item2hkey).(item2ikey);
-            newfigure(o);
+            newfigure();
             c=corr(item1.yn,item2.yn);
             set(gcf,"name",sprintf("Correlation of %s and %s (%f,%f)",hdata.itemindex{i},hdata.itemindex{j},cmvec(i,j),c));
             subplot(2,1,1);
@@ -72,32 +75,33 @@ function correlplot(hostname,o,maxplots)
             title(sprintf("%s",hdata.itemindex{i}));
             xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
 	    legend(hdata.itemindex{i});
-	    printplot(h1,sprintf("cm-%i_%i",item1.id,item2.id),o);
+	    printplot(h1,sprintf("cm-%i_%i",item1.id,item2.id));
             subplot(2,1,2);
             h2=plot(item2.xn-hdata.minx2,item2.yn,"b");
             title(sprintf("%s",hdata.itemindex{j}));
             xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
 	    legend(hdata.itemindex{j});
-	    printplot(h2,sprintf("cm-%i_%i",item2.id,item1.id),o);
+	    printplot(h2,sprintf("cm-%i_%i",item2.id,item1.id));
             plots++;
           end
         end
       end
 endfunction
 
-function cmplot(hostname,o)
+function cmplot(hostname)
 	global cm;
 	global hdata;
 	
 	cmhost=cm.(hostname);
-	newfigure(o);
-	x=1:rows(cmhost);
-	y=1:rows(cmhost);
-	h=surface(x,y,cmhost);
+	newfigure();
+        [nzx,nzy]=find(cmhost!=0);
+	x=[min(nzx):max(nzx)];
+	y=x;
+	h=surface(x,y,cmhost(x,y));
 	title(sprintf("Correlation of items on host %s",hostname));
 	xlabel('Item');
 	ylabel('Item');
-	printplot(h,sprintf("cm-%s",hostname),o);
+	printplot(h,sprintf("cm-%s",hostname));
 	colorbar();
 endfunction;
 
@@ -106,44 +110,47 @@ global hdata;
 global fig;
 global file;
 
-arg_list=argv();
+parseopts({"cmplot","hostplot","corrplot","maxplots"});
+
+arg_list=getrestopts();
 items=[];
 file=arg_list{1};
 loaddata(file);
 
-graphics_toolkit("gnuplot");
+graphics_toolkit(getopt("gtoolkit"));
 
-if (nargin>1)
-  outfmt=arg_list{2};
-else
-  outfmt="";
+if (isopt("cmplot"))
+    for [host,hkey] = hdata
+        if (ishost(host))
+            cmplot(hkey);
+        end
+    end
 end
 
-if (nargin>2)
-  for i=3:nargin
-    s=strsplit(arg_list{i},":");
-    type=s(1);
-    id=s(2);
-    if (strcmp(type,"host")) 
-      hostplot(id,outfmt,10);
+if (isopt("hostplot"))
+    for [host,hkey] = hdata
+        if (ishost(host))
+            hostplot(hkey);
+        end
     end
-    if (strcmp(type,"cm")) 
-      cmplot(id,outfmt);
-    end
-    if (strcmp(type,"corr")) 
-      correlplot(id,outfmt,10);
-    end
-  end
-else
-  fig=1;
-  for [ host, hkey ] = hdata
-   if (ishost(host))
-     cmplot(hkey,outfmt);
-     correlplot(hkey,outfmt,10);
-   end;
-  end;
-end;
+end
 
-if (strcmp(outfmt,""))
+if (isopt("corrplot"))
+    for [host,hkey] = hdata
+        if (ishost(host))
+            correlplot(hkey);
+        end
+    end
+end
+
+if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot"))
+    for [host,hkey] = hdata
+        if (ishost(host))
+            cmplot(hkey);
+        end
+    end
+end
+
+if (!isopt("imgformat"))
   pause();
 end;

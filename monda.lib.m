@@ -6,14 +6,37 @@ more off;
 addpath("./somtoolbox/");
 addpath("./jsonlab/");
 
-aversion=1; # Analyze version
+aversion=10; # Analyze version
 global aversion;
+
+global globalopts;
+globalopts = {"h","help","delay:","hosts:","items:","minchange","imgformat","gtoolkit"};
+opt.delay=60;
+#opt.hosts=
+#opt.items=
+opt.minchange=0.01;
+#opt.imgformat="png";
+opt.gtoolkit="gnuplot";
+opt.imgdpi="600";
+opt.imgsizex="1024";
+opt.imgsizey="768";
+opt.maxplots=10;
+
+global opt;
 
 function retval=xdate(x)
   retval=strftime("%Y-%m-%d %H:%M:%S",localtime(x));
 endfunction;
 
 function r=ishost(h)
+  global hdata;
+
+  if (isopt("hosts") && isfield(h,"hostname"))
+    if (max(strcmp(h.hostname,getopt("hosts")))==0)
+        r=0;
+        return
+    end
+  end
   r=isfield(h,"ishost");
 end
 
@@ -84,13 +107,90 @@ function loaddata(fle,version)
        fprintf(stderr,"Data does not have required analyze version (needed %i)!",version);
     end;
   end
+  preprocess();
   fprintf(stdout,"\n");
+end
+
+function loadsrc(fle)
+  global cm;
+  global hdata;
+
+  fprintf(stdout,"Loading file %s ",fle)
+  source(fle);
+  fprintf(stdout,"\n");
+end
+
+function o=parseopts(opts)
+    global globalopts;
+    global opt;
+
+    i = 1;
+    args=argv();
+    
+    if (nargin()==1)
+        opts=[globalopts,opts];
+    else
+        opts=globalopts;
+    end
+    while (i<=length(args))
+        option = args{i};
+        for j=1:length(opts)
+           o=strsplit(opts{j},":");
+           if (strcmp(strcat("--",o(1)),args{i}) || strcmp(strcat("-",o(1)),args{i}))
+                if (length(o)>1)
+                    if (length(args)>i)
+                        opt.(o(1))=args{i+1};
+                        args{i}="_-_";
+                        args{i+1}="_-_";
+                        i++;
+                    else
+                        fprintf(stderr,"Missing argument for --%s!\n",opts{j});
+                        exit;
+                    end
+                else
+                    opt.(o(1))=1;
+                    args{i}="_-_";
+                end
+           end
+        end
+        i++;
+    endwhile
+    opt.rest={args{!strcmp("_-_",args)}};
+    if (isopt("h")||isopt("help"))
+        fprintf(stdout,"Some usefull help\n\n");
+        exit;
+    end
+    o=opt;
+end
+
+function r=isopt(o)
+    global opt
+    r=(isfield(opt,o));
+end
+
+function r=getopt(o)
+    global opt  
+    if (isfield(opt,o))
+        r=opt.(o);
+    else
+        r="";
+    end
+end
+
+function o=getrestopts()
+    global opt;
+    o=opt.rest;
 end
 
 function jsonsave(fle)
     global hdata;
-    
-    savejson("",hdata,'ExcludeNames',{'xn','yn','x','y'},'FileName',fle);
+    global cm;
+
+    tmp=hdata;
+    tmp.cm=cm;
+    fprintf(stdout,"Saving json file %s ",fle)
+    savejson("",tmp,'ExcludeNames',{'xn','yn','x','y'},'FileName',fle);
+    fprintf(stdout,"\n");
 end
 
 function ret = datetoseconds(dte)
@@ -110,7 +210,33 @@ function ret = datetoseconds(dte)
     endif
 end
 
-function i=finditem(host,key)
+function h=findhost(host)
+  global hdata;
+  for [hst,hname] = hdata
+    if (ishost(hst))
+      if (strcmp(hname,host))
+        h=hst;
+        return;
+      end
+    end
+  end
+  fprintf(stderr,"Host %s not found!\n",host);
+end
+
+% Finditem 
+% 'host:item'
+% 'host','item'
+% hdata.host,'item'
+function i=finditem(varargin)
+  if (length(varargin)==1)
+    i=findhitem(varargin{1});
+    return
+  end
+  host=varargin{1};
+  key=varargin{2};
+  if (!ishost(host))
+    host=findhost(host);
+  end
   for [item,k] = host
     if (isitem(item))
       if (strcmp(item.key,key))
@@ -119,7 +245,43 @@ function i=finditem(host,key)
       end
     end
   end
+  fprintf(stderr,"Item %s not found!\n",key);
 end
+
+function i=findhitem(hi)
+  global hdata;
+
+  s=strsplit(hi,":");
+  h=s(1);
+  hi=s(2);
+  for [host, hkey] = hdata
+    if (!ishost(host) || !strcmp(hkey,h))
+        continue;
+    end
+    for [item,k] = host
+        if (isitem(item))
+            if (strcmp(item.key,hi))
+                i=item;
+                return;
+            end
+        end
+     end
+  end
+  fprintf(stderr,"Item %s not found!\n",hi);
+end
+
+function idx=findcmindex(host,item)
+    item=finditem(host,item);
+    idx=item.index;
+end
+
+function item=cmindex(idx)
+    global cm;
+    global hdata;
+    
+    item=finditem(hdata.itemindex{idx});
+end
+
 
 function yn=eventnormalize(e,xn)
    x1=find(xn<e(1));
@@ -128,9 +290,10 @@ function yn=eventnormalize(e,xn)
    yn(x2)=e(2);
 end
 
-function normalize(delay)
+function normalize()
   global hdata;
 
+    delay=getopt("delay");
     if (isnormalized(hdata))
       return;
     end
@@ -205,10 +368,14 @@ function normalize(delay)
   fprintf(stdout,"\n\n");
 end
 
-function hostinfo(host)
+function hostinfo(host,hkey)
   for [item, key] = host
 	  if (isitem(item))
-	    fprintf(stdout,"Item %s: minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i),seconds=%i\n",item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x));
+            if (isfield(item,"xn"))
+                fprintf(stdout,"Item %s:%s minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i),seconds=%i\n",hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x));
+            else
+                fprintf(stdout,"Item %s:%s minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i,seconds=%i\n",hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),max(item.x)-min(item.x));
+            end
 	  end;
   end;
   fprintf(stdout,"\n");
@@ -244,7 +411,6 @@ function remove_bad(minchange)
   global hdata;
       for [host, hkey] = hdata
        if (ishost(host))
-	fprintf(stdout,"%s ",hkey);
 	for [item, key] = host
 	  if (isitem(item))
 	    if (range(item.y)/max(item.y)<minchange)
@@ -257,9 +423,15 @@ function remove_bad(minchange)
       end
 endfunction
 
+function preprocess()
+    global hdata;
+
+    remove_bad(getopt("minchange"));
+    indexes();
+end
+
 function smatrix()
       global hdata;
-      global minchange;
       fprintf(stdout,"Statistics: ");
       for [host, hkey] = hdata
        if (ishost(host))
@@ -294,29 +466,42 @@ function smatrix()
       fprintf(stdout,"\n");
 end
 
-function itemindex()
+function r=indexes()
     global hdata;
     itemid=1;
-
+    hostid=1;
+    
+    if (isfield(hdata,"itemindex"))
+        r=length(hdata.itemindex);
+    else
+        r=0;
+    end
     for [host, hkey] = hdata
      if (ishost(host))
+      if (r==0)
+        hdata.hostindex{hostid++}=hkey;
+      end
+      hdata.(hkey).hostname=hkey;
       for [item, key] = host
        if (isitem(item))
-         hdata.(hkey).(key).index=itemid;
-         hdata.itemhindex{itemid}=hkey;
-         hdata.itemkindex{itemid}=key;
-         hdata.itemindex{itemid++}=[hkey,":",item.key];
+         if (r==0)
+            hdata.(hkey).(key).index=itemid;
+            hdata.itemhindex{itemid}=hkey;
+            hdata.itemkindex{itemid}=key;
+            hdata.itemindex{itemid++}=[hkey,":",item.key];
+         end
        end
       end
      end
     end
+    r=itemid;
 endfunction
 
 function cmatrix()
       global hdata;
       global cm;
 
-      itemindex();
+      numitems=length(hdata.itemindex);
       fprintf(stdout,"Correlation:\n");
       for [host, hkey] = hdata
 	if (isfield(cm,hkey))
@@ -325,6 +510,7 @@ function cmatrix()
 	end
        if (ishost(host))
 	fprintf(stdout,"%s\n",hkey);
+        tmpcm=sparse(zeros(numitems,numitems));
 	col1=1;
 	for [item1, key1] = host
 	if (isitem(item1))
@@ -332,7 +518,8 @@ function cmatrix()
 	  for [item2, key2] = host
 	   if (isitem(item2))
 	    cols=min([columns(item1.xn),columns(item2.xn)]);
-	    cm.(hkey)(item1.index,item2.index)=corr(item1.yn(1:cols),item2.yn(1:cols));
+            c=corr(item1.yn(1:cols),item2.yn(1:cols));
+	    tmpcm(item1.index,item2.index)=c;
 	    col2++;
 	   end;
 	  end;
@@ -340,6 +527,7 @@ function cmatrix()
 	 end;
 	end;
 	#cm.(hkey)=snip(cm.(hkey),nan);
+        cm.(hkey)=tmpcm;
        end;
       end;
       fprintf(stdout,"\n");
@@ -411,3 +599,4 @@ function hoststoany(varargin)
     end
   end;
 endfunction
+

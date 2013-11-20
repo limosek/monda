@@ -59,6 +59,8 @@ function json=savejson(rootname,obj,varargin)
 %                         wrapped inside a function call as 'foo(...);'
 %        opt.UnpackHex [1|0]: conver the 0x[hex code] output by loadjson 
 %                         back to the string form
+%        opt.ExcludeNames cell of names to exclude from export (default empty)
+%        opt.IncludeNames cell of names to include for export (default empty => all to export)
 %        opt can be replaced by a list of ('param',value) pairs. The param 
 %        string is equivallent to a field in opt.
 % output:
@@ -186,17 +188,19 @@ else
 end
 for e=1:len
   names = fieldnames(item(e));
-  if(~isempty(name) && len==1)
+  if(~isempty(name) && len==1 && isexported(name,varargin{:}))
         txt=sprintf('%s%s"%s": {\n',txt,repmat(sprintf('\t'),1,level+(len>1)), checkname(name,varargin{:})); 
   else
         txt=sprintf('%s%s{\n',txt,repmat(sprintf('\t'),1,level+(len>1))); 
   end
   if(~isempty(names))
     for i=1:length(names)
-	txt=sprintf('%s%s',txt,obj2json(names{i},getfield(item(e),...
-             names{i}),level+1+(len>1),varargin{:}));
-        if(i<length(names)) txt=sprintf('%s%s',txt,','); end
-        txt=sprintf('%s%s',txt,sprintf('\n'));
+        if (isexported(names{i},varargin{:}))
+            txt=sprintf('%s%s',txt,obj2json(names{i},getfield(item(e),...
+                names{i}),level+1+(len>1),varargin{:}));
+            if(i<length(names)) txt=sprintf('%s%s',txt,','); end
+            txt=sprintf('%s%s',txt,sprintf('\n'));
+        end
     end
   end
   txt=sprintf('%s%s}',txt,repmat(sprintf('\t'),1,level+(len>1)));
@@ -383,3 +387,23 @@ if(isunpack)
     end
 end
 
+function flag=isexported(name,varargin)
+    if(length(varargin)==1 && ischar(varargin{1}))
+        opt=struct('FileName',varargin{1});
+    else
+        opt=varargin2struct(varargin{:});
+    end
+
+    if(~isempty(jsonopt("ExcludeNames","",opt)))
+        if(max(strcmp(opt.ExcludeNames,name))==1)
+            flag=0;
+            return;
+        end
+    end
+    if(~isempty(jsonopt("IncludeNames","",opt)))
+        if(max(strcmp(opt.IncludeNames,name))==0)
+            flag=0;
+            return;
+        end
+    end
+    flag=1;

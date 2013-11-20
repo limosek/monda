@@ -1,37 +1,34 @@
 #!/usr/bin/octave -q
 
+global opt;
 source("monda.lib.m");
 
 global cm;
 global hdata;
 
-if (nargin < 2)
+parseopts();
+
+start1 = time();
+
+arg_list = getrestopts();
+if (length(arg_list)<2)
     fprintf(stderr, "Error in arguments!\n analyze.m src dst [normalize_interval]\n");
     exit;
 end
 
-start1 = time();
-
-arg_list = argv();
 src = arg_list{1};
 if (index(src, ".m") > 0)
-    source(src);
+    loadsrc(src);
 else
-    load(src);
+    loaddata(src);
 end
 start2 = time();
 dst = arg_list{2};
 
-if (nargin == 3)
-    delay = str2num(arg_list{3});
-else
-    delay = 60;
-end
-
-remove_bad(0.001);
+preprocess(opt.delay);
 start3 = time();
 
-normalize(delay);
+normalize();
 start4 = time();
 smatrix();
 start5 = time();
