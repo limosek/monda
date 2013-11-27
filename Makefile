@@ -91,7 +91,34 @@ tmpclean:
 
 %.az.log.gz: %.az.log
 	@$(GZIP) $<
+
+testm: $(shell find $(O) -name '*.m' -o -name '*.m.gz' | while read line; do echo test/$$line;done)
 	
+test/%.m:
+	@$(call gettarget,$@) \
+	if ! $(OCTAVE) <$$TS; then rm "$$TS"; echo "Removed $$TS!"; fi
+
+test/%.m.gz:
+	@$(call gettarget,$@) \
+	echo Testing $$TS; \
+	$(GUNZIP) -c $$TS |$(OCTAVE) || rm $$TS
+
+analyze/%.m:
+	@$(call gettarget,$@) \
+	$(call analyze/octave,$$TS,$$T.az)
+
+analyze/%.m.gz:
+	@$(call gettarget,$@) \
+	$(MAKE) gunzip/$$TS; \
+	$(MAKE) analyze/$$T2.m
+	@echo Done
+
+gzip/%.m:
+	gzip $@
+
+gunzip/%.m.gz:
+	gunzip $@
+
 gzip: $(shell find $(O) -name '*.m' | sed -e s/\.m\$$/\.m\.gz/) $(shell find $(O) -name '*.m.log' | sed -e s/\.m\.log\$$/\.m\.log\.gz/) $(shell find $(O) -name '*.az.log' | sed -e s/\.az\.log\$$/\.az\.log\.gz/)
 	@echo $^
 

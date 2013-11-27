@@ -18,9 +18,9 @@ ifneq ($(V),)
  GUNZIP=gunzip -df
 else
  GH=@./gethistory.php
- OCTAVE=@octave -q --no-window-system --norc
- GZIP=@gzip -f
- GUNZIP=@gunzip -df
+ OCTAVE=octave -q --no-window-system --norc
+ GZIP=gzip -f
+ GUNZIP=gunzip -df
 endif
 
 ifeq ($(V),)
@@ -58,6 +58,12 @@ endif
 
 define testtool
 	@if ! which $(1) >/dev/null; then echo $(2); exit 2; fi
+endef
+
+define gettarget
+ TS=$(shell echo $1 | cut -d '/' -f 2-); \
+ T=$(basename $(shell echo $1 | cut -d '/' -f 2-)); \
+ T2=$(basename $(basename $(shell echo $1 | cut -d '/' -f 2-)));
 endef
 
 # Parameter: host start_date interval start_time

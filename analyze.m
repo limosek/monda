@@ -34,7 +34,7 @@ smatrix();
 start5 = time();
 cmatrix();
 start6 = time();
-cmtovector(0.6);
+cmtovector();
 start7 = time();
 savedata(dst);
 start8 = time();

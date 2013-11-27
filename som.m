@@ -1,4 +1,4 @@
-#!/usr/bin/octave -q
+#!/usr/bin/octave --norc
 
 global opt;
 source("monda.lib.m");

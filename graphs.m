@@ -1,4 +1,4 @@
-#!/usr/bin/octave -qf 
+#!/usr/bin/octave -q
 
 global opt;
 source("monda.lib.m");
@@ -89,10 +89,9 @@ function correlplot(hostname)
 endfunction
 
 function cmplot(hostname)
-	global cm;
 	global hdata;
 	
-	cmhost=cm.(hostname);
+	cmhost=hdata.cm;
 	newfigure();
         [nzx,nzy]=find(cmhost!=0);
 	x=[min(nzx):max(nzx)];
@@ -105,7 +104,6 @@ function cmplot(hostname)
 	colorbar();
 endfunction;
 
-global cm;
 global hdata;
 global fig;
 global file;
