@@ -16,6 +16,14 @@ if (file_exists('config.inc.php')) {
 function timetoseconds($t, $r = false) {
     if (is_numeric($t)) {
         return($t);
+    } elseif (preg_match("/(\d\d\d\d)\_(\d\d)\_(\d\d)\_(\d\d)(\d\d)/",$t,$r)) {
+       $y=$r[1];
+       $m=$r[2];
+       $d=$r[3];
+       $h=$r[4];
+       $M=$r[5];
+       $dte=New DateTime("$y-$m-$d $h:$M");
+       return(date_format($dte, "U"));
     } else {
         $dte = New DateTime($t);
         return(date_format($dte, "U"));

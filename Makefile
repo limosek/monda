@@ -53,12 +53,16 @@ info1:
 	@echo Starts: $(START_DATES_NICE)
 	@echo Intervals: $(INTERVALS)
 	@echo Out directory: $(O)
+	@echo Find filter: $(FIND)
 	@echo Targets:
 
 info2:	$(foreach host,$(HOSTS),info-$(host))
 
 info3:
 	@echo Done
+
+find:
+	@$(FIND)
 
 clean:	$(foreach host,$(HOSTS),clean-$(host)) tmpclean
 	rm -f config.inc.php *.out
@@ -92,7 +96,7 @@ tmpclean:
 %.az.log.gz: %.az.log
 	@$(GZIP) $<
 
-testm: $(shell find $(O) -name '*.m' -o -name '*.m.gz' | while read line; do echo test/$$line;done)
+testm: $(shell $(FIND) -a '(' -name '*.m' -o -name '*.m.gz' ')' | while read line; do echo test/$$line;done)
 	
 test/%.m:
 	@$(call gettarget,$@) \
@@ -119,13 +123,13 @@ gzip/%.m:
 gunzip/%.m.gz:
 	gunzip $@
 
-gzip: $(shell find $(O) -name '*.m' | sed -e s/\.m\$$/\.m\.gz/) $(shell find $(O) -name '*.m.log' | sed -e s/\.m\.log\$$/\.m\.log\.gz/) $(shell find $(O) -name '*.az.log' | sed -e s/\.az\.log\$$/\.az\.log\.gz/)
+gzip: $(shell $(FIND) -and -name '*.m' | sed -e s/\.m\$$/\.m\.gz/) $(shell $(FIND) -and -name '*.m.log' | sed -e s/\.m\.log\$$/\.m\.log\.gz/) $(shell $(FIND) -a -name '*.az.log' | sed -e s/\.az\.log\$$/\.az\.log\.gz/)
 	@echo $^
 
-gunzip: $(shell find $(O) -name '*.m.gz' | sed -e s/\.m\.gz\$$/\.m\-gz/)
+gunzip: $(shell $(FIND) -and -name '*.m.gz' | sed -e s/\.m\.gz\$$/\.m\-gz/)
 	@echo $^
 	
-analyzem: $(shell find $(O) -name '*.m' | sed -e s/\.m\$$/\.az/)
+analyzem: $(shell $(FIND) -and -name '*.m' | sed -e s/\.m\$$/\.az/)
 	@echo $^
 	
 patchdb:

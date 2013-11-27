@@ -56,6 +56,8 @@ else
 O=$(OUTDIR)
 endif
 
+FIND=find $(O) -name '*' 
+
 define testtool
 	@if ! which $(1) >/dev/null; then echo $(2); exit 2; fi
 endef
@@ -86,13 +88,13 @@ endef
 # Parameter: host
 define analyze/host
  TARGETS += get-$(1) analyze-$(1)
- info-$(1): $(foreach start_date,$(START_DATES),$(foreach interval,$(INTERVALS),info-$(1)-$(shell date -d "$(start_date)" +%Y_%m_%d_%H00)-$(interval)))
+ info-$(1): $(foreach start_date,$(START_DATES_NICE),$(foreach interval,$(INTERVALS),info-$(1)-$(start_date)-$(interval)))
 	@echo
- get-$(1): $(foreach start_date,$(START_DATES),$(foreach interval,$(INTERVALS),get-$(1)-$(shell date -d "$(start_date)" +%Y_%m_%d_%H00)-$(interval)))
- analyze-$(1): $(foreach start_date,$(START_DATES),$(foreach interval,$(INTERVALS),analyze-$(1)-$(shell date -d "$(start_date)" +%Y_%m_%d_%H00)-$(interval)))
- graphs-$(1): $(foreach start_date,$(START_DATES),$(foreach interval,$(INTERVALS),graphs-$(1)-$(shell date -d "$(start_date)" +%Y_%m_%d_%H00)-$(interval)))
+ get-$(1): $(foreach start_date,$(START_DATES_NICE),$(foreach interval,$(INTERVALS),get-$(1)-$(start_date)-$(interval)))
+ analyze-$(1): $(foreach start_date,$(START_DATES_NICE),$(foreach interval,$(INTERVALS),analyze-$(1)-$(start_date)-$(interval)))
+ graphs-$(1): $(foreach start_date,$(START_DATES_NICE),$(foreach interval,$(INTERVALS),graphs-$(1)-$(start_date)-$(interval)))
  $(1): analyze-$(1)
- $(foreach start_date,$(START_DATES),$(foreach interval,$(INTERVALS),$(eval $(call analyze/host/interval,$(1),$(shell date -d "$(start_date)" +%Y_%m_%d_%H00),$(interval),$(start_date)))))
+ $(foreach start_date,$(START_DATES_NICE),$(foreach interval,$(INTERVALS),$(eval $(call analyze/host/interval,$(1),$(start_date),$(interval),$(start_date)))))
  clean-$(1):
 	rm -rf $(O)/$(1)*
 endef
@@ -122,6 +124,19 @@ START_DATES=$(TIME_START)
 ifneq ($(TIME_TO),)
  ifneq ($(TIME_STEP),)
   START_DATES:=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D '@U')
-  START_DATES_NICE:=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D 'Y_m_d_H_i')
+  START_DATES_NICE:=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D 'Y_m_d_Hi')
  endif
 endif
+
+ifneq ($(START_DATES_NICE),)
+ FIND += -and '(' $(foreach dte,$(START_DATES_NICE),-name '*-$(dte)-*' -o) -name 'nonpossible_file' ')'
+endif
+
+ifneq ($(HOSTS),)
+  FIND += -and '(' $(foreach hst,$(HOSTS),-name '$(hst)-*' -o) -name 'nonpossible_host' ')'
+endif
+
+ifneq ($(INTERVALS),)
+  FIND += -and '(' $(foreach int,$(INTERVALS),-name '*-$(int)\.*' -o) -name 'nonpossible_interval' ')'
+endif
+
