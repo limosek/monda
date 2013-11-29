@@ -62,7 +62,7 @@ info3:
 	@echo Done
 
 find:
-	@$(FIND)
+	$(FIND)
 
 clean:	$(foreach host,$(HOSTS),clean-$(host)) tmpclean
 	rm -f config.inc.php *.out
@@ -73,9 +73,6 @@ distclean: tmpclean
 
 tmpclean:
 	rm -f $(O)/*tmp $(O)/*log
-
-%.az:
-	$(call analyze/octave,$@,$@.tmp) && mv $@.tmp $@
 
 %.az:	%.m
 	$(call analyze/octave,$<,$@)
@@ -97,15 +94,33 @@ tmpclean:
 	@$(GZIP) $<
 
 testm: $(shell $(FIND) -a '(' -name '*.m' -o -name '*.m.gz' ')' | while read line; do echo test/$$line;done)
+cleanbadm: $(shell $(FIND) -a '(' -name '*.m' -o -name '*.m.gz' ')' | while read line; do echo cleanbad/$$line;done)
+testaz: $(shell $(FIND) -a '(' -name '*.az' ')' | while read line; do echo test/$$line;done)
+cleanbadaz: $(shell $(FIND) -a '(' -name '*.az' ')' | while read line; do echo cleanbad/$$line;done)
 	
 test/%.m:
 	@$(call gettarget,$@) \
-	if ! $(OCTAVE) <$$TS; then rm "$$TS"; echo "Removed $$TS!"; fi
+	$(OCTAVE) <"$$TS"
+
+cleanbad/%.m:
+	@$(call gettarget,$@) \
+	if ! $(OCTAVE) <"$$TS"; then rm "$$TS"; echo "Removed $$TS"; fi
 
 test/%.m.gz:
 	@$(call gettarget,$@) \
-	echo Testing $$TS; \
-	$(GUNZIP) -c $$TS |$(OCTAVE) || rm $$TS
+	$(GUNZIP) -c "$$TS" | $(OCTAVE)
+
+cleanbad/%.m.gz:
+	@$(call gettarget,$@) \
+	if ! $(GUNZIP) -c "$$TS" | $(OCTAVE); then rm "$$TS"; echo "Removed $$TS"; fi
+	
+test/%.az:
+	@$(call gettarget,$@) \
+	$(OCTAVE) hinfo.m "$$TS"
+
+cleanbad/%.az:
+	@$(call gettarget,$@) \
+	if ! $(OCTAVE) hinfo.m $$TS; then rm "$$TS"; echo "Removed $$TS"; fi
 
 analyze/%.m:
 	@$(call gettarget,$@) \
@@ -117,10 +132,10 @@ analyze/%.m.gz:
 	$(MAKE) analyze/$$T2.m
 	@echo Done
 
-gzip/%.m:
+gzip-%.m:
 	gzip $@
 
-gunzip/%.m.gz:
+gunzip-%.m.gz:
 	gunzip $@
 
 gzip: $(shell $(FIND) -and -name '*.m' | sed -e s/\.m\$$/\.m\.gz/) $(shell $(FIND) -and -name '*.m.log' | sed -e s/\.m\.log\$$/\.m\.log\.gz/) $(shell $(FIND) -a -name '*.az.log' | sed -e s/\.az\.log\$$/\.az\.log\.gz/)

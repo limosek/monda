@@ -65,7 +65,8 @@ endef
 define gettarget
  TS=$(shell echo $1 | cut -d '/' -f 2-); \
  T=$(basename $(shell echo $1 | cut -d '/' -f 2-)); \
- T2=$(basename $(basename $(shell echo $1 | cut -d '/' -f 2-)));
+ T2=$(basename $(basename $(shell echo $1 | cut -d '/' -f 2-))); \
+ echo $@;
 endef
 
 # Parameter: host start_date interval start_time
