@@ -17,7 +17,7 @@ ifneq ($(V),)
  GZIP=gzip -f
  GUNZIP=gunzip -df
 else
- GH=@./gethistory.php
+ GH=./gethistory.php
  OCTAVE=octave -q --no-window-system --norc
  GZIP=gzip -f
  GUNZIP=gunzip -df
@@ -79,8 +79,13 @@ define analyze/host/interval
 	@$(call analyze/octave/graphs,$(O)/$(1)-$(2)-$(3).az)
  $(1)-$(2)-$(3): $(O)/$(1)-$(2)-$(3).az
  $(O)/$(1)-$(2)-$(3).m:
-	@echo "Getting history to $(O)/$(1)-$(2)-$(3).m"
-	$(call get/history,$(4),$(3),$(1),$(O)/$(1)-$(2)-$(3).m.tmp,$(O)/$(1)-$(2)-$(3).m.log) && mv $(O)/$(1)-$(2)-$(3).m.tmp $(O)/$(1)-$(2)-$(3).m;
+	@if [ -f $(O)/$(1)-$(2)-$(3).m.gz ]; then \
+	 echo "Gunziping $(O)/$(1)-$(2)-$(3).m.gz"; \
+	 gunzip $(O)/$(1)-$(2)-$(3).m.gz; \
+	else \
+	 echo "Getting history to $(O)/$(1)-$(2)-$(3).m"; \
+	 $(call get/history,$(4),$(3),$(1),$(O)/$(1)-$(2)-$(3).m.tmp,$(O)/$(1)-$(2)-$(3).m.log) && mv $(O)/$(1)-$(2)-$(3).m.tmp $(O)/$(1)-$(2)-$(3).m; \
+	fi
  $(O)/$(1)-$(2)-$(3).az: $(O)/$(1)-$(2)-$(3).m
 	@echo "Analyzing $(O)/$(1)-$(2)-$(3).m";
 	@$(call analyze/octave,$(O)/$(1)-$(2)-$(3).m,$(O)/$(1)-$(2)-$(3).az);

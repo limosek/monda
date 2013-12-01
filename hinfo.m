@@ -1,22 +1,27 @@
 #!/usr/bin/octave -qf
 
+global opt;
 source("monda.lib.m");
 
-arg_list=argv();
-src=arg_list{1};
+
+parseopts();
+arg_list=getrestopts();
 
 global hdata;
 
-if (index(src, ".m") > 0)
+for i=1:length(arg_list)
+ hdata=[];
+ src=arg_list{i};
+ if (index(src, ".m") > 0)
     loadsrc(src);
-else
+ else
     loaddata(src);
-end
+ end
+ hostsinfo(hdata);
 
-hostsinfo(hdata);
-
-for [host, hkey] = hdata
-  if (ishost(host) && nargin>1)
+ for [host, hkey] = hdata
+  if (ishost(host))
     hostinfo(host,hkey);
   end
+ end
 end

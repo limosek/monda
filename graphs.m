@@ -1,4 +1,4 @@
-#!/usr/bin/octave -q
+#!/usr/bin/octave --norc
 
 global opt;
 source("monda.lib.m");
@@ -9,6 +9,7 @@ function ret=newfigure()
   else
     ret=figure();
   end
+  set(ret,'papertype', 'a4');
 endfunction
 
 function printplot(h,id)
@@ -20,6 +21,7 @@ function printplot(h,id)
       mkdir(dir);
       fle=sprintf("%s/%s.%s",dir,id,getopt("imgformat"));
       print(fle,["-r",getopt("imgdpi")],["-S",getopt("imgsizex"),"x",getopt("imgsizey")]);
+      dbg(sprintf("Saving %s\n",fle));
     end
 endfunction
 
@@ -33,6 +35,7 @@ function h=itemplot(hostname,item)
         title(sprintf("%s:%s",hostname,item.key));
         xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
         legend(sprintf("Raw (%i values)",columns(item.x)),sprintf("Normalized (%i values)",columns(item.xn)));
+        ylabel(sprintf("min=%f,max=%f,cv=%f",min(item.y),max(item.y),coeffvar(item.y)));
         printplot(h,sprintf("item-%i",item.id));
       end;
 endfunction;
@@ -56,35 +59,44 @@ function correlplot(hostname)
       global hdata;
       
       maxplots=getopt("maxplots");
+      cmin=getopt("cmin");
       cmvec=hdata.(hostname).cmvec;
+      sortvec=hdata.(hostname).sortvec;
       plots=0;
-      for i=1:rows(cmvec)
-        for j=1:columns(cmvec)
-          if (cmvec(i,j)>0.6 && plots<maxplots)
-            item1hkey=hdata.itemhindex{i};
-            item1ikey=hdata.itemkindex{i};
-            item2hkey=hdata.itemhindex{j};
-            item2ikey=hdata.itemkindex{j};
+      for i=1:rows(sortvec)
+          if (plots>=maxplots)
+            return;
+          end
+          [rc]=sortvec(i,:);
+          row=rc(1);
+          col=rc(2);
+          c=cmvec(row,col);
+          if (c>cmin && row!=col)
+            item1hkey=hdata.itemhindex{row};
+            item1ikey=hdata.itemkindex{row};
+            item2hkey=hdata.itemhindex{col};
+            item2ikey=hdata.itemkindex{col};
             item1=hdata.(item1hkey).(item1ikey);
             item2=hdata.(item2hkey).(item2ikey);
+            if (!isitem(item1) || !isitem(item2))
+                continue;
+            end
             newfigure();
-            c=corr(item1.yn,item2.yn);
-            set(gcf,"name",sprintf("Correlation of %s and %s (%f,%f)",hdata.itemindex{i},hdata.itemindex{j},cmvec(i,j),c));
+            set(gcf,"name",sprintf("Correlation of %s and %s (%f)",hdata.itemindex{row},hdata.itemindex{col},c));
             subplot(2,1,1);
             h1=plot(item1.xn-hdata.minx2,item1.yn,"g");
-            title(sprintf("%s",hdata.itemindex{i}));
+            title(sprintf("%s",hdata.itemindex{row}));
             xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
-	    legend(hdata.itemindex{i});
+	    legend(hdata.itemindex{row});
 	    printplot(h1,sprintf("cm-%i_%i",item1.id,item2.id));
             subplot(2,1,2);
             h2=plot(item2.xn-hdata.minx2,item2.yn,"b");
-            title(sprintf("%s",hdata.itemindex{j}));
+            title(sprintf("%s",hdata.itemindex{col}));
             xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
-	    legend(hdata.itemindex{j});
+	    legend(hdata.itemindex{col});
 	    printplot(h2,sprintf("cm-%i_%i",item2.id,item1.id));
             plots++;
           end
-        end
       end
 endfunction
 
@@ -150,5 +162,6 @@ if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot"))
 end
 
 if (!isopt("imgformat"))
+  fprintf(stdout,"Press any key\n");
   pause();
 end;

@@ -1,13 +1,13 @@
 
 global globalopts;
 globalopts = {"h","help","v","delay:","hosts:","items:", "excludeitems:", \
-        "minentropy:","imgformat:","gtoolkit:","interactive",\
+        "cv:","imgformat:","gtoolkit:","interactive", "preprocess", \
         "citerations1:","citerations2:","cmin:","cmaxtime1:","cmaxtime2:"
         };
 opt.delay=60;
 #opt.hosts=
 #opt.items=
-opt.minentropy=0.01;
+opt.cv=0.01;
 #opt.imgformat="png";
 opt.gtoolkit="gnuplot";
 opt.imgdpi="600";
@@ -21,6 +21,10 @@ opt.cmaxtime1="1000";
 opt.cmaxtime2="1000";
 #opt.excludeitems={"key","key2"};
 opt.v=0;
+opt.preprocess=3;
+# bit1 - removebad
+# bit2 - indexes
+# bit3 - cm move 
 
 global opt;
 
@@ -77,7 +81,7 @@ function o=parseopts(opts)
     else
         tmpopt.interactive=1;
     end
-    if (tmpopt.interactive)
+    if (!tmpopt.interactive)
         tmpopt.maxplots=1000;
     end
     tmpopt.rest={args{!strcmp("_-_",args)}};

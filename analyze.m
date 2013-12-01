@@ -25,7 +25,7 @@ end
 start2 = time();
 dst = arg_list{2};
 
-preprocess(opt.delay);
+preprocess();
 start3 = time();
 
 normalize();

@@ -241,13 +241,12 @@ function hostinfo(host,hkey)
   for [item, key] = host
 	  if (isitem(item))
             if (isfield(item,"xn"))
-                fprintf(stdout,"Item %s:%s minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i),seconds=%i\n",hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x));
+                warn(sprintf("  Item %s:%s minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i),seconds=%i,cv=%f\n",hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x),coeffvar(item.y)));
             else
-                fprintf(stdout,"Item %s:%s minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i,seconds=%i\n",hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),max(item.x)-min(item.x));
+                warn(sprintf("  Item %s:%s minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i,seconds=%i,cv=%f\n",hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),max(item.x)-min(item.x),coeffvar(item.y)));
             end
 	  end;
   end;
-  fprintf(stdout,"\n");
 end
 
 function hostsinfo(h)
@@ -263,10 +262,9 @@ function hostsinfo(h)
        end;
       end;
 	  if (ishost(host))
-	    fprintf(stdout,"Host %s: items=%i,minx=%s(%i),maxx=%s(%i),minx2=%s,maxx2=%s,\n",hkey,items,xdate(h.minx),h.minx,xdate(h.maxx),h.maxx,xdate(h.minx2),xdate(h.maxx2));
+	    fprintf(stdout,"Host %s: items=%i,minx=%s(%i),maxx=%s(%i),minx2=%s,maxx2=%s\n",hkey,items,xdate(h.minx),h.minx,xdate(h.maxx),h.maxx,xdate(h.minx2),xdate(h.maxx2));
 	  end;
   end;
-  fprintf(stdout,"\n\n");
 end
 
 function cminfo(cm)
@@ -275,11 +273,15 @@ function cminfo(cm)
   end;
 end
 
+function e=coeffvar(y)
+    e=std(y)/mean(y);
+end
+
 # Remove bad items (small change, ...)
 function remove_bad()
   global hdata;
-    minentropy=getopt("minentropy");
-    dbg(sprintf("Remove bad (minentropy<%f): ",minentropy));
+    gcv=getopt("cv");
+    dbg(sprintf("Remove bad (cv<%f): ",gcv));
       for [host, hkey] = hdata
        if (ishost(host))
 	for [item, key] = host
@@ -287,9 +289,9 @@ function remove_bad()
             r=range(item.y);
             mx=max(item.y);
             mn=min(item.y);
-            e=entropy(item.y);
-            dbg2(sprintf("(%s:%s range=%f,min=%f,max=%f,entropy=%f),",hkey,item.key,r,mn,mx,e));
-	    if (e<minentropy)
+            cv=coeffvar(item.y);
+            dbg2(sprintf("(%s:%s range=%f,min=%f,max=%f,cv=%f),",hkey,item.key,r,mn,mx,cv));
+	    if (cv<gcv)
 	      dbg(sprintf("!%s:%s,",hkey,item.key));
 	      hdata.(hkey).(key)=[];
             endif
@@ -304,9 +306,16 @@ function preprocess()
     global hdata;
     global cm;
 
-    remove_bad();
-    indexes();
-    if (isstruct("cm"))
+    pp=getopt("preprocess");
+    if (bitget(pp,1))
+        dbg("Preprocess remove_bad\n");
+        remove_bad();
+    end
+    if (bitget(pp,2))
+        dbg("Preprocess indexes\n");
+        indexes();
+    end
+    if (bitget(pp,3) && isstruct("cm"))
         hdata.cm=cm;
         clear(cm);
     end
