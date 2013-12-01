@@ -195,7 +195,7 @@ function cmtovector()
        tmpvec(maxri,maxci)=maxv;
        sortvec(k++,:)=[maxri,maxci,maxv];
        if (maxri!=maxci)
-          dbg2(sprintf(stdout,"%i: %s(%i)<>%s(%i): %f\n",k,hdata.itemindex{maxri},maxri,hdata.itemindex{maxci},maxci,maxv));
+          dbg2(sprintf("%i: %s(%i)<>%s(%i): %f\n",k,hdata.itemindex{maxri},maxri,hdata.itemindex{maxci},maxci,maxv));
        end
        tmp(maxri,maxci)=0;
       end
