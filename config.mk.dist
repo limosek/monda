@@ -43,3 +43,18 @@ ZABBIX_DB_PASSWORD = somedbpasword
 #INTERVALS = 24hour
 #TIME_PRECISION=300
 
+# Analyzation options
+# Minimum coefficient of variance (items under this threshold will not be analyzed)
+#CV=0.1
+
+# Delay
+# Normalize all items to interval delay seconds (default 60)
+#DELAY=60
+# Maximum time for correlation pass1
+#CMAXTIME1=1000
+# Maximum time for correlation pass2
+#CMAXTIME2=1000
+# Maximum iterations pass1
+#CITERATIONS1=200
+# Maximum iterations pass2
+#CITERATIONS2=200

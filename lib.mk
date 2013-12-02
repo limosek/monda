@@ -10,10 +10,30 @@ else
  ZSQLC = PGPASSWORD='$(ZABBIX_DB_PASSWORD)' psql -U '$(ZABBIX_DB_USER)' -h '$(ZABBIX_DB_SERVER)' -p '$(ZABBIX_DB_PORT)' -d '$(ZABBIX_DB)' -c
 endif
 
+ifneq ($(CV),)
+ ANOPTS += --cv=$(CV)
+endif
+ifneq ($(DELAY),)
+ ANOPTS += --delay=$(DELAY)
+endif
+ifneq ($(CITERATIONS1),)
+ ANOPTS += --citerations1=$(CITERATIONS1)
+endif
+ifneq ($(CITERATIONS2),)
+ ANOPTS += --citerations2=$(CITERATIONS2)
+endif
+ifneq ($(CMAXTIME1),)
+ ANOPTS += --cmaxtime1=$(CMAXTIME1)
+endif
+ifneq ($(CMAXTIME2),)
+ ANOPTS += --cmaxtime2=$(CMAXTIME2)
+endif
+
 # Verbose
 ifneq ($(V),)
  GH=./gethistory.php -e
- OCTAVE=octave --no-window-system --norc
+ OCTAVE=octave -q --no-window-system --norc
+ ANOPTS += -v -v
  GZIP=gzip -f
  GUNZIP=gunzip -df
 else
@@ -23,14 +43,18 @@ else
  GUNZIP=gunzip -df
 endif
 
+ifeq ($(V),2)
+ ANOPTS += -v -v -v
+endif
+
 ifeq ($(V),)
  define analyze/octave
-  $(OCTAVE) analyze.m "$(1)" "$(2)" $(TIME_PRECISION) 1>"$(2).log" 2> >(tee -a "$(2).log" >&2)
+  $(OCTAVE) analyze.m $(ANOPTS) "$(1)" "$(2)" $(TIME_PRECISION) 1>"$(2).log" 2> >(tee -a "$(2).log" >&2)
  endef
 else
  define analyze/octave
-  @echo "Analyzing $(1)>$(2)";
-  $(OCTAVE) analyze.m "$(1)" "$(2)" $(TIME_PRECISION) 2>&1 | tee "$(2).log"
+  echo "Analyzing $(1)>$(2)"; \
+  $(OCTAVE) analyze.m $(ANOPTS) "$(1)" "$(2)" $(TIME_PRECISION) 2>&1 | tee "$(2).log"
  endef
 endif
 

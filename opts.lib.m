@@ -1,6 +1,7 @@
 
 global globalopts;
-globalopts = {"h","help","v","delay:","hosts:","items:", "excludeitems:", \
+globalopts = {"h", "help", "v", "profiling", \
+        "delay:","hosts:","items:", "excludeitems:", \
         "cv:","imgformat:","gtoolkit:","interactive", "preprocess", \
         "citerations1:","citerations2:","cmin:","cmaxtime1:","cmaxtime2:"
         };
@@ -25,6 +26,7 @@ opt.preprocess=3;
 # bit1 - removebad
 # bit2 - indexes
 # bit3 - cm move 
+#opt.profiling=0
 
 global opt;
 
@@ -47,7 +49,7 @@ function o=parseopts(opts)
            o=strsplit(opts{j},":");
            a=strsplit(args{i},"=");
            aopt=o(1);   # Actual opt parsing without :
-           aarg=a(1);   # Actual argument without =
+           aarg=a(1);  # Actual argument without =
            if (strcmp(strcat("--",aopt),aarg) || strcmp(strcat("-",aopt),aarg))
                 if (length(o)>1)
                     if (length(a)>1)
@@ -69,8 +71,8 @@ function o=parseopts(opts)
                         tmpopt.(aopt)=1;
                     else
                         tmpopt.(aopt)++;
-                        args{i}="_-_";
                     end
+                    args{i}="_-_";
                 end
            end
         end
@@ -83,6 +85,9 @@ function o=parseopts(opts)
     end
     if (!tmpopt.interactive)
         tmpopt.maxplots=1000;
+    end
+    if (isfield(tmpopt,"profiling"))
+        profile("on");
     end
     tmpopt.rest={args{!strcmp("_-_",args)}};
     if (isfield(tmpopt,"h")||isfield(tmpopt,"help"))

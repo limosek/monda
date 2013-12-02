@@ -37,7 +37,18 @@ end
 
 function retval=xdate(x)
   retval=strftime("%Y-%m-%d %H:%M:%S",localtime(x));
-endfunction;
+end
+
+function mexit(code)  
+  if (isopt("interactive"))
+    fprintf(stdout,"Press any key\n");
+    pause();
+  end;
+  if (isopt("profiling"))
+    profshow(profile("info"),20);
+  end
+  exit(code);
+end
 
 function r=ishost(h)
   global hdata;
@@ -267,9 +278,15 @@ function hostsinfo(h)
   end;
 end
 
-function cminfo(cm)
-  for [host, hkey] = cm
-    fprintf(stdout,"CM %s: %i/%i\n",hkey,columns(host),rows(host));
+function cminfo()
+  global hdata;
+  for [host, hkey] = hdata
+    if (ishost(host))
+        sortvec=host.sortvec;
+        for i=1:rows(sortvec)
+            dbg(sprintf("  Corr %f: %s<>%s\n",sortvec(i,3),hdata.itemindex{sortvec(i,1)},hdata.itemindex{sortvec(i,2)}));
+        end
+    end
   end;
 end
 
@@ -302,11 +319,29 @@ function remove_bad()
       dbg("\n");
 endfunction
 
-function preprocess()
+function preprocess(varargin)
     global hdata;
     global cm;
 
-    pp=getopt("preprocess");
+    if (length(varargin)>0)
+        pp=varargin{1};
+    else
+        pp=getopt("preprocess");
+    end
+
+    if (!isfield(hdata,"version"))
+        for [host, hkey] = hdata
+            if (isstruct(host))
+                hdata.(hkey).ishost=1;
+                for [item, key] = host
+                    if (isfield(item,"key"))
+                        hdata.(hkey).(key).isitem=1;
+                    end
+                end
+            end
+        end
+    end
+
     if (bitget(pp,1))
         dbg("Preprocess remove_bad\n");
         remove_bad();
@@ -325,7 +360,7 @@ function r=indexes()
     global hdata;
     itemid=1;
     hostid=1;
-    
+   
     if (isfield(hdata,"itemindex"))
         r=length(hdata.itemindex);
     else
@@ -337,6 +372,7 @@ function r=indexes()
         hdata.hostindex{hostid++}=hkey;
       end
       hdata.(hkey).hostname=hkey;
+      hdata.(hkey).minindex=itemid;
       for [item, key] = host
        if (isitem(item))
          if (r==0)
@@ -347,6 +383,7 @@ function r=indexes()
          end
        end
       end
+      hdata.(hkey).maxindex=itemid;
      end
     end
     r=itemid;

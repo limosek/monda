@@ -126,6 +126,11 @@ analyze/%.m:
 	@$(call gettarget,$@) \
 	$(call analyze/octave,$$TS,$$T.az)
 
+reanalyze/%.m:
+	@$(call gettarget,$@) \
+	touch $$TS; \
+	$(MAKE) analyze/$$TS
+
 analyze/%.m.gz:
 	@$(call gettarget,$@) \
 	$(MAKE) gunzip/$$TS; \

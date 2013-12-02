@@ -1,4 +1,4 @@
-#!/usr/bin/octave -q
+#!/usr/bin/octave --norc
 
 global opt;
 source("monda.lib.m");
@@ -27,7 +27,6 @@ dst = arg_list{2};
 
 preprocess();
 start3 = time();
-
 normalize();
 start4 = time();
 smatrix();
@@ -41,7 +40,7 @@ start8 = time();
 
 fprintf(stdout, "Analyze took %i seconds (%i load,%i remove, %i normalize, %i smatrix, %i cmatrix, %i cmtovector, %i save).\n", time() - start1, start2 - start1, start3 - start2, start4 - start3, start5 - start4, start6 - start5, start7 - start6, start8 - start7);
 
-exit;
+mexit(0);
 
 
 

@@ -25,3 +25,6 @@ for i=1:length(arg_list)
   end
  end
 end
+
+cminfo(hdata.cm);
+mexit(0);

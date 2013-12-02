@@ -161,7 +161,4 @@ if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot"))
     end
 end
 
-if (!isopt("imgformat"))
-  fprintf(stdout,"Press any key\n");
-  pause();
-end;
+mexit(0);

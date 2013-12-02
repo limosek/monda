@@ -118,8 +118,12 @@ function cmatrix()
       end
       timestart=time();
       maxtime=getopt("cmaxtime1");
+      y1=[];
+      y2=[];
       for [host, hkey] = hdata
        if (ishost(host))
+        minindex=host.minindex;
+        maxindex=host.maxindex;
 	col1=1;
 	for [item1, key1] = host
 	if (isitem(item1))
@@ -131,8 +135,8 @@ function cmatrix()
                 warn(sprintf("Overtime!Ignoring %s "));
                 continue;
              end
-            c=corr(item1.yn(1:100),item2.yn(1:100));
-	    tmpcm(item1.index,item2.index)=c;
+             y1(:,minindex+col1-1)=item1.yn;
+             y2(:,minindex+col2-1)=item2.yn;
 	    col2++;
 	   end;
 	  end;
@@ -141,8 +145,11 @@ function cmatrix()
 	end;
        end;
       end;
+      c=corr(y1,y2);
+      tmpcm(minindex:maxindex-1,minindex:maxindex-1)=c;
       hdata.cm=tmpcm;
       dbg("\n");
+      
 endfunction;
 
 function cmtovector()
@@ -198,6 +205,7 @@ function cmtovector()
           dbg2(sprintf("%i: %s(%i)<>%s(%i): %f\n",k,hdata.itemindex{maxri},maxri,hdata.itemindex{maxci},maxci,maxv));
        end
        tmp(maxri,maxci)=0;
+       tmp(maxci,maxri)=0;
       end
       if (iterations1>=i1 || iterations2>=i2)
         warn(sprintf("More results available, all iterations(%i of %i, %i of %i) looped!\n",iterations1,i1,iterations2,i2));
