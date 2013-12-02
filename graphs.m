@@ -1,6 +1,7 @@
 #!/usr/bin/octave --norc
 
 global opt;
+opt.pause=1;
 source("monda.lib.m");
 
 function ret=newfigure()

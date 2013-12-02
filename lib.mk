@@ -49,12 +49,12 @@ endif
 
 ifeq ($(V),)
  define analyze/octave
-  $(OCTAVE) analyze.m $(ANOPTS) "$(1)" "$(2)" $(TIME_PRECISION) 1>"$(2).log" 2> >(tee -a "$(2).log" >&2)
+  $(OCTAVE) analyze.m $(ANOPTS) "$(1)" "$(2)" 1>"$(2).log" 2> >(tee -a "$(2).log" >&2)
  endef
 else
  define analyze/octave
   echo "Analyzing $(1)>$(2)"; \
-  $(OCTAVE) analyze.m $(ANOPTS) "$(1)" "$(2)" $(TIME_PRECISION) 2>&1 | tee "$(2).log"
+  $(OCTAVE) analyze.m $(ANOPTS) "$(1)" "$(2)" 2>&1 | tee "$(2).log"
  endef
 endif
 

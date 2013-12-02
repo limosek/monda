@@ -40,7 +40,7 @@ function retval=xdate(x)
 end
 
 function mexit(code)  
-  if (isopt("interactive"))
+  if (isopt("pause") && isopt("interactive"))
     fprintf(stdout,"Press any key\n");
     pause();
   end;
@@ -331,7 +331,7 @@ function preprocess(varargin)
 
     if (!isfield(hdata,"version"))
         for [host, hkey] = hdata
-            if (isstruct(host))
+            if (isstruct(host) && !strcmp(hkey,"triggers"))
                 hdata.(hkey).ishost=1;
                 for [item, key] = host
                     if (isfield(item,"key"))
@@ -384,6 +384,7 @@ function r=indexes()
        end
       end
       hdata.(hkey).maxindex=itemid;
+      #dbg2(sprintf("%s(min=%i,max=%i),",hkey,hdata.(hkey).minindex,hdata.(hkey).maxindex));
      end
     end
     r=itemid;

@@ -1,6 +1,6 @@
 
 global globalopts;
-globalopts = {"h", "help", "v", "profiling", \
+globalopts = {"h", "help", "v", "profiling", "pause", \
         "delay:","hosts:","items:", "excludeitems:", \
         "cv:","imgformat:","gtoolkit:","interactive", "preprocess", \
         "citerations1:","citerations2:","cmin:","cmaxtime1:","cmaxtime2:"
@@ -27,6 +27,7 @@ opt.preprocess=3;
 # bit2 - indexes
 # bit3 - cm move 
 #opt.profiling=0
+#opt.pause=1;
 
 global opt;
 

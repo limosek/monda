@@ -28,6 +28,6 @@ for h in $HOSTGROUPS; do
   od=$(echo $h| cut -d '/' -f 2)
   pr=$(echo $h| cut -d '/' -f 3)
   mkdir -p "$od" || exit 3
-  make -k -j$JOBS TIME_START="$(date -d '00:00 yesterday' +@%s)" HOSTGROUP="$hg" OUTDIR="$od" TIME_PRECISION=$pr
+  make -k -j$JOBS TIME_START="$(date -d '00:00 yesterday' +@%s)" HOSTGROUP="$hg" OUTDIR="$od" DELAY=$pr
   make gzip -j4 OUTDIR="$od"
 done >cron.log 2>&1

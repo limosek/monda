@@ -146,7 +146,11 @@ function cmatrix()
        end;
       end;
       c=corr(y1,y2);
-      tmpcm(minindex:maxindex-1,minindex:maxindex-1)=c;
+      if (rows(c)==(maxindex-minindex))
+        tmpcm(minindex:maxindex-1,minindex:maxindex-1)=c;
+      else
+        tmpcm=eye(rows(c));
+      end
       hdata.cm=tmpcm;
       dbg("\n");
       
