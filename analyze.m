@@ -12,7 +12,7 @@ start1 = time();
 
 arg_list = getrestopts();
 if (length(arg_list)<2)
-    fprintf(stderr, "Error in arguments!\n analyze.m src dst [normalize_interval]\n");
+    fprintf(stderr, "Error in arguments!\n analyze.m src dst\n");
     exit;
 end
 
