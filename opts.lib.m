@@ -1,9 +1,12 @@
 
 global globalopts;
-globalopts = {"h", "help", "v", "profiling", "pause", \
-        "delay:","hosts:","items:", "excludeitems:", \
+globalopts = { \
+        "h", "help", "v", "debug", "profiling", "pause", \
+        "asciilevels*", \
+        "delay:","hosts*","items*", "excludeitems*", "baditems", \
         "cv:","imgformat:","gtoolkit:","interactive", "preprocess", \
-        "citerations1:","citerations2:","cmin:","cmaxtime1:","cmaxtime2:"
+        "citerations1:","citerations2:","cmin:","cmaxtime1:","cmaxtime2:", \
+        "somperhost", "sompertime" \
         };
 opt.delay=60;
 #opt.hosts=
@@ -22,12 +25,15 @@ opt.cmaxtime1="1000";
 opt.cmaxtime2="1000";
 #opt.excludeitems={"key","key2"};
 opt.v=0;
-opt.preprocess=3;
+opt.preprocess=7;
 # bit1 - removebad
 # bit2 - indexes
-# bit3 - cm move 
+# bit3 - cm move
+# bit4 - repair old version 
 #opt.profiling=0
 #opt.pause=1;
+opt.sompertime=1;
+opt.asciilevels={"<","\\","0","/",">"};
 
 global opt;
 
@@ -48,17 +54,32 @@ function o=parseopts(opts)
         option = args{i};
         for j=1:length(opts)
            o=strsplit(opts{j},":");
+           om=strsplit(opts{j},"*");
+           if (length(om)>1)
+                o=om;
+                multi=1;
+           else
+                multi=0;
+           end
            a=strsplit(args{i},"=");
            aopt=o(1);   # Actual opt parsing without :
            aarg=a(1);  # Actual argument without =
            if (strcmp(strcat("--",aopt),aarg) || strcmp(strcat("-",aopt),aarg))
                 if (length(o)>1)
                     if (length(a)>1)
-                        tmpopt.(aopt)=strcat(a(2){:});
+                        if (multi && isfield(tmpopt,aopt))
+                            eval(sprintf("tmpopt.%s=%s;",aopt{:},strcat(a(2){:})));
+                        else
+                            tmpopt.(aopt)=strcat(a(2){:});
+                        end
                         args{i}="_-_";
                     else
                       if (length(args)>i)
-                        tmpopt.(aopt)=args{i+1};
+                        if (multi && isfield(tmpopt,aopt))
+                            eval(sprintf("tmpopt.%s=[tmpopt.%s,%s];",aopt{:},aopt{:},args{i+1}));
+                        else
+                            tmpopt.(aopt)=args{i+1};
+                        end
                         args{i}="_-_";
                         args{i+1}="_-_";
                         i++;
@@ -79,12 +100,10 @@ function o=parseopts(opts)
         end
         i++;
     endwhile
-    if (isfield(tmpopt,"imgformat") && !isfield(tmpopt,"interactive"))
-        tmpopt.interactive=0;
-    else
+    if (!isfield(tmpopt,"imgformat") && !isfield(tmpopt,"interactive"))
         tmpopt.interactive=1;
     end
-    if (!tmpopt.interactive)
+    if (!isfield(tmpopt,"interactive"))
         tmpopt.maxplots=1000;
     end
     if (isfield(tmpopt,"profiling"))
@@ -120,7 +139,7 @@ end
 function r=getopt(o)
     global opt
     if (isfield(opt,o))
-        if (!isempty(opt.(o)) && isdigit(opt.(o)(1)))
+        if (!isempty(opt.(o)) && !iscell(opt.(o)) && isdigit(opt.(o)(1)))
             r=str2double(opt.(o));
         else
             r=opt.(o);

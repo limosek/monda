@@ -50,6 +50,8 @@ ZABBIX_DB_PASSWORD = somedbpasword
 # Delay
 # Normalize all items to interval delay seconds (default 60)
 #DELAY=60
+# Minimum correlation factor
+#CMIN=0.4
 # Maximum time for correlation pass1
 #CMAXTIME1=1000
 # Maximum time for correlation pass2

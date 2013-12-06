@@ -16,6 +16,9 @@ endif
 ifneq ($(DELAY),)
  ANOPTS += --delay=$(DELAY)
 endif
+ifneq ($(CMIN),)
+ ANOPTS += --cmin=$(CMIN)
+endif
 ifneq ($(CITERATIONS1),)
  ANOPTS += --citerations1=$(CITERATIONS1)
 endif
@@ -80,8 +83,6 @@ else
 O=$(OUTDIR)
 endif
 
-FIND=find $(O) -name '*' 
-
 define testtool
 	@if ! which $(1) >/dev/null; then echo $(2); exit 2; fi
 endef
@@ -91,6 +92,9 @@ define gettarget
  T=$(basename $(shell echo $1 | cut -d '/' -f 2-)); \
  T2=$(basename $(basename $(shell echo $1 | cut -d '/' -f 2-))); \
  echo $@;
+endef
+define getmktarget
+ $(basename $(shell echo $1 | cut -d '/' -f 2-))
 endef
 
 # Parameter: host start_date interval start_time
@@ -158,15 +162,19 @@ ifneq ($(TIME_TO),)
  endif
 endif
 
-ifneq ($(START_DATES_NICE),)
+ifeq ($(F),)
+ FIND=find $(O) -name '*' 
+ ifneq ($(START_DATES_NICE),)
  FIND += -and '(' $(foreach dte,$(START_DATES_NICE),-name '*-$(dte)-*' -o) -name 'nonpossible_file' ')'
-endif
+ endif
 
-ifneq ($(HOSTS),)
+ ifneq ($(HOSTS),)
   FIND += -and '(' $(foreach hst,$(HOSTS),-name '$(hst)-*' -o) -name 'nonpossible_host' ')'
-endif
+ endif
 
-ifneq ($(INTERVALS),)
+ ifneq ($(INTERVALS),)
   FIND += -and '(' $(foreach int,$(INTERVALS),-name '*-$(int)\.*' -o) -name 'nonpossible_interval' ')'
+ endif
+else
+ FIND=find $(O) -name '*'
 endif
-

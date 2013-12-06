@@ -1,4 +1,4 @@
-#!/usr/bin/octave --norc
+#!/usr/bin/octave
 
 global opt;
 opt.pause=1;
@@ -38,6 +38,8 @@ function h=itemplot(hostname,item)
         legend(sprintf("Raw (%i values)",columns(item.x)),sprintf("Normalized (%i values)",columns(item.xn)));
         ylabel(sprintf("min=%f,max=%f,cv=%f",min(item.y),max(item.y),coeffvar(item.y)));
         printplot(h,sprintf("item-%i",item.id));
+      else
+        warn(sprintf("Ignoring %s:%s (delta==0)\n",hostname,item.key));
       end;
 endfunction;
 
@@ -46,11 +48,12 @@ function hostplot(hostname)
       global hdata;
 
       plots=0;
-      maxplots=getopt("maxplots");
+      maxplots=getopt("maxplots")
       for [item, key] = hdata.(hostname)
        if (isitem(item) && plots<maxplots)
+         dbg(sprintf("Ploting %s:%s\n",hostname,item.key));
 	 itemplot(hostname,item);
-         plots++;
+         plots++
        end;
       end;
 endfunction;
@@ -62,6 +65,7 @@ function correlplot(hostname)
       maxplots=getopt("maxplots");
       cmin=getopt("cmin");
       cmvec=hdata.(hostname).cmvec;
+      cm=hdata.cm;
       sortvec=hdata.(hostname).sortvec;
       plots=0;
       for i=1:rows(sortvec)
@@ -71,7 +75,7 @@ function correlplot(hostname)
           [rc]=sortvec(i,:);
           row=rc(1);
           col=rc(2);
-          c=cmvec(row,col);
+          c=cm(row,col);
           if (c>cmin && row!=col)
             item1hkey=hdata.itemhindex{row};
             item1ikey=hdata.itemkindex{row};
@@ -106,15 +110,24 @@ function cmplot(hostname)
 	
 	cmhost=hdata.cm;
 	newfigure();
-        [nzx,nzy]=find(cmhost!=0);
-	x=[min(nzx):max(nzx)];
-	y=x;
+        mini=(hdata.(hostname).minindex);
+        maxi=(hdata.(hostname).maxindex);
+        x=[mini:maxi];
+        y=x;
 	h=surface(x,y,cmhost(x,y));
 	title(sprintf("Correlation of items on host %s",hostname));
 	xlabel('Item');
 	ylabel('Item');
-	printplot(h,sprintf("cm-%s",hostname));
 	colorbar();
+	printplot(h,sprintf("cm-%s",hostname));
+        for i=mini:maxi
+            item=finditem(hdata.itemindex{i});
+            if (!isfield(item,"isbad"))
+                warn(sprintf("Item %i => %s (cv=%f)\n",i,hdata.itemindex{i},coeffvar(item.y)));
+            else
+                warn(sprintf("Item %i => %s (deleted)\n",i,hdata.itemindex{i}));
+            end
+        end
 endfunction;
 
 global hdata;

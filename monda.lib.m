@@ -1,14 +1,24 @@
-
-warning("off");
-output_precision(10);
-more off;
-
 global opt;
 
+warning('off');
 addpath("./somtoolbox/");
 addpath("./jsonlab/");
 source("opts.lib.m");
 source("an.lib.m");
+
+parseopts();
+
+if (isopt("debug"))
+    debug_on_interrupt(1);
+    debug_on_warning(1);
+    debug_on_error(1);
+end
+
+if (getopt("v")>2)
+    warning('on');
+else
+    warning('off');
+end
 
 aversion=10; # Analyze version
 global aversion;
@@ -39,6 +49,10 @@ function retval=xdate(x)
   retval=strftime("%Y-%m-%d %H:%M:%S",localtime(x));
 end
 
+function retval=xdate2(x)
+  retval=strftime("%Y_%m_%d_%H_%M_%S",localtime(x));
+end
+
 function mexit(code)  
   if (isopt("pause") && isopt("interactive"))
     fprintf(stdout,"Press any key\n");
@@ -63,6 +77,17 @@ function r=ishost(h)
 end
 
 function r=isitem(i)
+  if (isopt("excludeitems"))
+    if (max(strcmp(i.key,getopt("excludeitems")))==0)
+        r=0;
+        return
+    end
+  end
+  r=(isfield(i,"isitem") && isfield(i,"x") && (!isfield(i,"isbad")||isopt("baditems")));
+end
+
+# Test if item is good or bad
+function r=isbitem(i)
   if (isopt("excludeitems"))
     if (max(strcmp(i.key,getopt("excludeitems")))==0)
         r=0;
@@ -148,14 +173,9 @@ function loadsrc(fle)
   dbg("\n");
 end
 
-function jsonsave(fle)
-    global hdata;
-    global cm;
-
-    tmp=hdata;
-    tmp.cm=cm;
+function jsonsave(fle,data)
     fprintf(stdout,"Saving json file %s ",fle)
-    savejson("",tmp,'ExcludeNames',{'xn','yn','x','y'},'FileName',fle);
+    savejson("",data,'ExcludeNames',{'xn','yn','x','y'},'FileName',fle);
     fprintf(stdout,"\n");
 end
 
@@ -211,7 +231,7 @@ function i=finditem(varargin)
       end
     end
   end
-  fprintf(stderr,"Item %s not found!\n",key);
+  warn(sprintf("Item %s not found!\n",key));
 end
 
 function i=findhitem(hi)
@@ -219,21 +239,22 @@ function i=findhitem(hi)
 
   s=strsplit(hi,":");
   h=s(1);
-  hi=s(2);
+  itm=s(2);
   for [host, hkey] = hdata
     if (!ishost(host) || !strcmp(hkey,h))
         continue;
     end
     for [item,k] = host
         if (isitem(item))
-            if (strcmp(item.key,hi))
+            if (strcmp(item.key,itm))
                 i=item;
                 return;
             end
         end
      end
   end
-  fprintf(stderr,"Item %s not found!\n",hi);
+  i=[];
+  #warn(sprintf("Item %s not found!\n",hi));
 end
 
 function idx=findcmindex(host,item)
@@ -252,9 +273,9 @@ function hostinfo(host,hkey)
   for [item, key] = host
 	  if (isitem(item))
             if (isfield(item,"xn"))
-                warn(sprintf("  Item %s:%s minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i),seconds=%i,cv=%f\n",hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x),coeffvar(item.y)));
+                warn(sprintf("  Item %i(%s:%s) minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i),seconds=%i,cv=%f\n",item.index,hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x),coeffvar(item.y)));
             else
-                warn(sprintf("  Item %s:%s minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i,seconds=%i,cv=%f\n",hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),max(item.x)-min(item.x),coeffvar(item.y)));
+                warn(sprintf("  Item %i(%s:%s) minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i,seconds=%i,cv=%f\n",item.index,hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),max(item.x)-min(item.x),coeffvar(item.y)));
             end
 	  end;
   end;
@@ -266,15 +287,15 @@ function hostsinfo(h)
       items=0;
       if (ishost(host))
        for [item, key] = host
-        if (isfield(item,'x'))
+        if (isitem(item))
           items++;
           allitems++;
         end
        end;
       end;
-	  if (ishost(host))
-	    fprintf(stdout,"Host %s: items=%i,minx=%s(%i),maxx=%s(%i),minx2=%s,maxx2=%s\n",hkey,items,xdate(h.minx),h.minx,xdate(h.maxx),h.maxx,xdate(h.minx2),xdate(h.maxx2));
-	  end;
+      if (ishost(host))
+	 fprintf(stdout,"Host %s: items=%i,minindex=%i,maxindex=%i,minx=%s(%i),maxx=%s(%i),minx2=%s,maxx2=%s\n",hkey,items,host.minindex,host.maxindex,xdate(h.minx),h.minx,xdate(h.maxx),h.maxx,xdate(h.minx2),xdate(h.maxx2));
+      end;
   end;
 end
 
@@ -284,10 +305,40 @@ function cminfo()
     if (ishost(host))
         sortvec=host.sortvec;
         for i=1:rows(sortvec)
-            dbg(sprintf("  Corr %f: %s<>%s\n",sortvec(i,3),hdata.itemindex{sortvec(i,1)},hdata.itemindex{sortvec(i,2)}));
+            item1id=sortvec(i,1);
+            item2id=sortvec(i,2);
+            c=sortvec(i,3);
+            dbg(sprintf("  Corr %f: %s(%i)<>%s(%i)\n",c,hdata.itemindex{item1id},item1id,hdata.itemindex{item2id},item2id));
         end
     end
-  end;
+  end
+    cmin=getopt("cmin");
+    cm=hdata.cm;
+    r=rows(cm);
+    if (r>80)
+        return
+    end
+    al=getopt("asciilevels");
+    lal=length(al);
+    if (mod(lal,2))
+        center=floor(lal/2);
+    else
+        center=floor(lal/2)-0.5;
+    end
+    for i=-1:0.1:1
+        dbg2(sprintf("Level %f=%s\n",i,al{round(i*center+center+1)}));
+    end
+    for i=1:r
+        for j=1:r
+            if (!isnan(full(cm(j,i)))) 
+                idx=round(full(cm(j,i))*center)+1;
+                dbg(sprintf("%s",al{idx+center}));
+            else
+                dbg(" ");
+            end
+        end
+        dbg("\n");
+    end
 end
 
 function e=coeffvar(y)
@@ -298,7 +349,7 @@ end
 function remove_bad()
   global hdata;
     gcv=getopt("cv");
-    dbg(sprintf("Remove bad (cv<%f): ",gcv));
+    dbg(sprintf("Remove bad (cv<%f):\n",gcv));
       for [host, hkey] = hdata
        if (ishost(host))
 	for [item, key] = host
@@ -307,10 +358,10 @@ function remove_bad()
             mx=max(item.y);
             mn=min(item.y);
             cv=coeffvar(item.y);
-            dbg2(sprintf("(%s:%s range=%f,min=%f,max=%f,cv=%f),",hkey,item.key,r,mn,mx,cv));
-	    if (cv<gcv)
-	      dbg(sprintf("!%s:%s,",hkey,item.key));
-	      hdata.(hkey).(key)=[];
+            #dbg2(sprintf("(%s:%s range=%f,min=%f,max=%f,cv=%f)\n",hkey,item.key,r,mn,mx,cv));
+	    if (isnan(cv) || cv<gcv)
+	      dbg(sprintf("!%s:%s\n",hkey,item.key));
+	      hdata.(hkey).(key).isbad=1;
             endif
 	  end
 	end
@@ -329,9 +380,9 @@ function preprocess(varargin)
         pp=getopt("preprocess");
     end
 
-    if (!isfield(hdata,"version"))
+    if (!isfield(hdata,"version") || bitget(pp,4))
         for [host, hkey] = hdata
-            if (isstruct(host) && !strcmp(hkey,"triggers"))
+            if (isstruct(host) && !isfield(host,"istrigger") && !strcmp(hkey,"triggers"))
                 hdata.(hkey).ishost=1;
                 for [item, key] = host
                     if (isfield(item,"key"))
@@ -342,17 +393,17 @@ function preprocess(varargin)
         end
     end
 
-    if (bitget(pp,1))
-        dbg("Preprocess remove_bad\n");
-        remove_bad();
-    end
     if (bitget(pp,2))
         dbg("Preprocess indexes\n");
         indexes();
     end
-    if (bitget(pp,3) && isstruct("cm"))
+    if (bitget(pp,1))
+        dbg("Preprocess remove_bad\n");
+        remove_bad();
+    end
+    if (bitget(pp,3) && isstruct(cm))
         hdata.cm=cm;
-        clear(cm);
+        clear("cm");
     end
 end
 
@@ -361,30 +412,27 @@ function r=indexes()
     itemid=1;
     hostid=1;
    
-    if (isfield(hdata,"itemindex"))
-        r=length(hdata.itemindex);
-    else
-        r=0;
-    end
+    #if (isfield(hdata,"itemindex"))
+    #    r=length(hdata.itemindex);
+    #    return;
+    #end
     for [host, hkey] = hdata
      if (ishost(host))
-      if (r==0)
-        hdata.hostindex{hostid++}=hkey;
-      end
+      hdata.hostindex{hostid++}=hkey;
       hdata.(hkey).hostname=hkey;
       hdata.(hkey).minindex=itemid;
       for [item, key] = host
        if (isitem(item))
-         if (r==0)
-            hdata.(hkey).(key).index=itemid;
-            hdata.itemhindex{itemid}=hkey;
-            hdata.itemkindex{itemid}=key;
-            hdata.itemindex{itemid++}=[hkey,":",item.key];
-         end
+         hdata.(hkey).(key).index=itemid;
+         hdata.itemhindex{itemid}=hkey;
+         hdata.itemkindex{itemid}=key;
+         hdata.itemindex{itemid++}=[hkey,":",item.key];
+         dbg2(sprintf("%s(%i)\n",[hkey,":",item.key],itemid-1));
        end
       end
+      itemid--;
       hdata.(hkey).maxindex=itemid;
-      #dbg2(sprintf("%s(min=%i,max=%i),",hkey,hdata.(hkey).minindex,hdata.(hkey).maxindex));
+      dbg2(sprintf("%s(min=%i,max=%i),",hkey,hdata.(hkey).minindex,hdata.(hkey).maxindex));
      end
     end
     r=itemid;

@@ -6,8 +6,6 @@ source("monda.lib.m");
 global cm;
 global hdata;
 
-parseopts();
-
 start1 = time();
 
 arg_list = getrestopts();

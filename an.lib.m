@@ -28,6 +28,7 @@ function normalize()
     startx=(round(hdata.minx2/delay)+1)*delay;
     endx=(round(hdata.maxx2/delay)-1)*delay;
 
+    xn=1;
     dbg("Normalize: ");
     for [host, hkey] = hdata
      if (ishost(host))
@@ -43,8 +44,13 @@ function normalize()
 	xn=[startx:delay:endx];
 	hdata.(hkey).(key).xn=xn;
 	cols3=columns(xn);
+        first=item.y(1);
+        last=item.y(columns(item.y));
+        item.y=[first,item.y,last];
+        item.x=[startx,item.x,endx];
 	dbg2(sprintf("%s(%i,%i)>%i ",item.key,cols,cols2,cols3));
-        hdata.(hkey).(key).yn=interp1(item.x,item.y,xn);
+        yn=interp1(item.x,item.y,xn);
+        hdata.(hkey).(key).yn=yn;
 	if (hasevents(item))
 	  for ei = 1:rows(item.events)
 	    e=item.events(ei,:);
@@ -60,6 +66,12 @@ function normalize()
    end;
   end;
   hdata.isnormalized=1;
+  if (xn==1)
+    err("No usable items! Exiting!\n");
+    exit;
+  else
+    hdata.ysize=columns(xn);
+  end
   dbg("\n");
 end
 
@@ -118,42 +130,35 @@ function cmatrix()
       end
       timestart=time();
       maxtime=getopt("cmaxtime1");
-      y1=[];
-      y2=[];
       for [host, hkey] = hdata
        if (ishost(host))
+        y=rand(hdata.ysize,host.maxindex-host.minindex);
         minindex=host.minindex;
         maxindex=host.maxindex;
-	col1=1;
-	for [item1, key1] = host
-	if (isitem(item1))
-	  col2=1;
-          dbg2(sprintf("%s(%i/%i secs),",item1.key,time()-timestart,maxtime));
- 	  for [item2, key2] = host
-	   if (isitem(item2))
-             if ((time()-timestart)>maxtime)
-                warn(sprintf("Overtime!Ignoring %s "));
-                continue;
-             end
-             y1(:,minindex+col1-1)=item1.yn;
-             y2(:,minindex+col2-1)=item2.yn;
-	    col2++;
-	   end;
-	  end;
-	  col1++;
-	 end;
-	end;
-       end;
-      end;
-      c=corr(y1,y2);
-      if (rows(c)==(maxindex-minindex))
-        tmpcm(minindex:maxindex-1,minindex:maxindex-1)=c;
-      else
-        tmpcm=eye(rows(c));
+        for i=minindex:maxindex
+            item=finditem(hdata.itemindex{i});
+            if (isitem(item))
+                y(:,i)=item.yn;
+                dbg2(sprintf("CM: %s(%i)\n",hdata.itemindex{i},i));
+            else
+                dbg2(sprintf("CM!: %s(%i)\n",hdata.itemindex{i},i));
+            end
+        end
+       end
       end
+      c=corr(y);
+      if (length(find(isnan(c))>0))
+        [rn,cn]=find(isnan(c));
+        for i=1:rn
+            for j=1:cn
+                dbg("Nan! %s<>%s",hdata.itemindex{rn(i)},hdata.itemindex{cn(j)});
+            end
+        end
+        keyboard;
+      end
+      [row,col]=size(c);
+      tmpcm(minindex:minindex+row-1,minindex:minindex+row-1)=c;
       hdata.cm=tmpcm;
-      dbg("\n");
-      
 endfunction;
 
 function cmtovector()
@@ -166,8 +171,10 @@ function cmtovector()
   dbg(sprintf("Correlation2 (limit=%f): ",limit));
   for [host, hkey] = hdata
     if (ishost(host))
+      si=host.minindex;
+      ei=host.maxindex-1;
+      tmp=cm(si:ei,si:ei);
       k=1;
-      tmp=cm;
       tmpvec=[];
       sortvec=[];
       maxri=1;
@@ -175,7 +182,7 @@ function cmtovector()
       iterations1=0;
       iterations2=0;
       if (!isopt("citerations1"))
-        i1=columns(tmp)*10;
+        i1=(ei-si)*10;
       else
         i1=getopt("citerations1");
       end
@@ -191,12 +198,13 @@ function cmtovector()
        maxci=maxci(1);
        if (maxv==1)
           if (!mod(iterations1,100))
-            dbg2(sprintf("%i/%i(corr=1) ",iterations1/i1));
+            dbg2(sprintf("%i/%i(corr=1) ",iterations1,i1));
           end
           if (maxri!=maxci)
             dbg2(sprintf("%s and %s are same data??\n",hdata.itemindex{maxri},hdata.itemindex{maxci}))
           end
           tmp(maxri,maxci)=0;
+          tmp(maxci,maxri)=0;
        else
           if (!mod(iterations2,100))
             dbg(sprintf("%i/%i(corr=%f) ",iterations2,i2,maxv));
@@ -215,8 +223,16 @@ function cmtovector()
         warn(sprintf("More results available, all iterations(%i of %i, %i of %i) looped!\n",iterations1,i1,iterations2,i2));
       end
       dbg2(sprintf("\nmaxv=%f,minv=%f\n",abs(max(max(tmp))),abs(min(min(tmp)))));
-      hdata.(hkey).cmvec=tmpvec;
+      hdata.(hkey).cm=tmpvec;
       hdata.(hkey).sortvec=sortvec;
+      k=1;
+      tmp=[];
+      for i=1:columns(tmpvec)
+        for j=1:columns(tmpvec)
+            tmp(k++)=tmpvec(i,j);
+        end
+      end
+      hdata.(hkey).cmvec=tmp;
     end
   end
   dbg("\n");

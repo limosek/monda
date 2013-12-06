@@ -97,7 +97,9 @@ testm: $(shell $(FIND) -a '(' -name '*.m' -o -name '*.m.gz' ')' | while read lin
 cleanbadm: $(shell $(FIND) -a '(' -name '*.m' -o -name '*.m.gz' ')' | while read line; do echo cleanbad/$$line;done)
 testaz: $(shell $(FIND) -a '(' -name '*.az' ')' | while read line; do echo test/$$line;done)
 cleanbadaz: $(shell $(FIND) -a '(' -name '*.az' ')' | while read line; do echo cleanbad/$$line;done)
-	
+reanalyzem: $(shell $(FIND) -a '(' -name '*.m' -o -name '*.m.gz' ')' | while read line; do echo reanalyze/$$line;done)
+analyzem: $(shell $(FIND) -a '(' -name '*.m' -o -name '*.m.gz' ')' | while read line; do echo analyze/$$line;done)
+
 test/%.m:
 	@$(call gettarget,$@) \
 	$(OCTAVE) <"$$TS"
@@ -123,9 +125,14 @@ cleanbad/%.az:
 	if ! $(OCTAVE) hinfo.m $$TS; then rm "$$TS"; echo "Removed $$TS"; fi
 
 analyze/%.m:
-	@$(call gettarget,$@) \
+	$(call gettarget,$@) \
 	$(call analyze/octave,$$TS,$$T.az)
 
+reanalyze/%.m.gz:
+	@$(call gettarget,$@) \
+	touch $$TS; \
+	$(MAKE) analyze/$$TS
+	
 reanalyze/%.m:
 	@$(call gettarget,$@) \
 	touch $$TS; \

@@ -3,7 +3,6 @@
 global opt;
 source("monda.lib.m");
 
-
 parseopts();
 arg_list=getrestopts();
 
