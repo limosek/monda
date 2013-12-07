@@ -6,6 +6,8 @@ addpath("./jsonlab/");
 source("opts.lib.m");
 source("an.lib.m");
 
+cache.start=1;
+
 parseopts();
 
 if (isopt("debug"))
@@ -14,9 +16,7 @@ if (isopt("debug"))
     debug_on_error(1);
 end
 
-if (getopt("v")>2)
-    warning('on');
-else
+if (getopt("v")<2)
     warning('off');
 end
 
@@ -64,34 +64,75 @@ function mexit(code)
   exit(code);
 end
 
+function r=scmp(s1,s2)
+     [s, e, te, m, t, nm] =regexp(s1,s2);
+     r=0;
+     for i=1:length(s)
+        if (s{i}==1)
+            r=1;
+            return
+        end
+     end
+end
+
 function r=ishost(h)
   global hdata;
 
-  if (isopt("hosts") && isfield(h,"hostname"))
-    if (max(strcmp(h.hostname,getopt("hosts")))==0)
-        r=0;
-        return
+  r=0;
+  if (!isfield(h,"ishost"))
+    return
+  end
+  if (isfield(h,"hostname"))
+    if (isopt("excludehosts"))
+        if (scmp(h.hostname,getopt("excludehosts")))
+            return
+        end
+    end
+    if (isopt("hosts"))
+        if (!scmp(h.hostname,getopt("hosts")))
+            return
+        end
     end
   end
-  r=isfield(h,"ishost");
+  r=1;
 end
 
 function r=isitem(i)
-  if (isopt("excludeitems"))
-    if (max(strcmp(i.key,getopt("excludeitems")))==0)
-        r=0;
-        return
+  r=0;
+  if (!isfield(i,"isitem"))
+    return
+  end
+  if (isfield(i,"key"))
+    if (isopt("excludeitems"))
+        if (scmp(i.key,getopt("excludeitems")))
+            return
+        end
+    end
+    if (isopt("items"))
+        if (!scmp(i.key,getopt("items")))
+            return
+        end
     end
   end
-  r=(isfield(i,"isitem") && isfield(i,"x") && (!isfield(i,"isbad")||isopt("baditems")));
+  r=(isfield(i,"x") && (!isfield(i,"isbad")||isopt("baditems")));
 end
 
 # Test if item is good or bad
 function r=isbitem(i)
-  if (isopt("excludeitems"))
-    if (max(strcmp(i.key,getopt("excludeitems")))==0)
-        r=0;
-        return
+  r=0;
+  if (!isfield(i,"isitem"))
+    return
+  end
+  if (isfield(i,"key"))
+    if (isopt("excludeitems"))
+        if (scmp(i.key,getopt("excludeitems")))
+            return
+        end
+    end
+    if (isopt("items"))
+        if (!scmp(i.key,getopt("items")))
+            return
+        end
     end
   end
   r=(isfield(i,"isitem") && isfield(i,"x"));
@@ -234,26 +275,46 @@ function i=finditem(varargin)
   warn(sprintf("Item %s not found!\n",key));
 end
 
+function tocache(item,value)
+    global cache;
+    cache.(item)=value;
+end
+
+function value=fromcache(item)
+    global cache;
+    if (isfield(cache,item))
+        value=cache.(item);
+    else
+        value=[];
+    end
+end
+
 function i=findhitem(hi)
   global hdata;
+  global cache;
 
+  #if (i=fromcache(hi))
+  #  return
+  #end
   s=strsplit(hi,":");
   h=s(1);
   itm=s(2);
   for [host, hkey] = hdata
-    if (!ishost(host) || !strcmp(hkey,h))
+    if (!strcmp(hkey,h) || !ishost(host))
         continue;
     end
     for [item,k] = host
         if (isitem(item))
             if (strcmp(item.key,itm))
                 i=item;
+                #tocache(hi,i);
                 return;
             end
         end
      end
   end
   i=[];
+  #tocache(hi,i);
   #warn(sprintf("Item %s not found!\n",hi));
 end
 
@@ -273,9 +334,9 @@ function hostinfo(host,hkey)
   for [item, key] = host
 	  if (isitem(item))
             if (isfield(item,"xn"))
-                warn(sprintf("  Item %i(%s:%s) minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i),seconds=%i,cv=%f\n",item.index,hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x),coeffvar(item.y)));
+                warn(sprintf("  Item %i(%s:%s) minx=%i,maxx=%i,miny=%i,maxy=%i,size=(%i=>%i),seconds=%i,cv=%f\n",item.index,hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),columns(item.xn),max(item.x)-min(item.x),coefvar(item.y)));
             else
-                warn(sprintf("  Item %i(%s:%s) minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i,seconds=%i,cv=%f\n",item.index,hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),max(item.x)-min(item.x),coeffvar(item.y)));
+                warn(sprintf("  Item %i(%s:%s) minx=%i,maxx=%i,miny=%i,maxy=%i,size=%i,seconds=%i,cv=%f\n",item.index,hkey,item.key,min(item.x),max(item.x),min(item.y),max(item.y),columns(item.x),max(item.x)-min(item.x),coefvar(item.y)));
             end
 	  end;
   end;
@@ -294,7 +355,7 @@ function hostsinfo(h)
        end;
       end;
       if (ishost(host))
-	 fprintf(stdout,"Host %s: items=%i,minindex=%i,maxindex=%i,minx=%s(%i),maxx=%s(%i),minx2=%s,maxx2=%s\n",hkey,items,host.minindex,host.maxindex,xdate(h.minx),h.minx,xdate(h.maxx),h.maxx,xdate(h.minx2),xdate(h.maxx2));
+	 err(sprintf("Host %s: items=%i,minindex=%i,maxindex=%i,minx=%s(%i),maxx=%s(%i),minx2=%s,maxx2=%s\n",hkey,items,host.minindex,host.maxindex,xdate(h.minx),h.minx,xdate(h.maxx),h.maxx,xdate(h.minx2),xdate(h.maxx2)));
       end;
   end;
 end
@@ -341,7 +402,7 @@ function cminfo()
     end
 end
 
-function e=coeffvar(y)
+function e=coefvar(y)
     e=std(y)/mean(y);
 end
 
@@ -357,7 +418,7 @@ function remove_bad()
             r=range(item.y);
             mx=max(item.y);
             mn=min(item.y);
-            cv=coeffvar(item.y);
+            cv=coefvar(item.y);
             #dbg2(sprintf("(%s:%s range=%f,min=%f,max=%f,cv=%f)\n",hkey,item.key,r,mn,mx,cv));
 	    if (isnan(cv) || cv<gcv)
 	      dbg(sprintf("!%s:%s\n",hkey,item.key));
@@ -407,15 +468,35 @@ function preprocess(varargin)
     end
 end
 
+# Reindex correlation matrix and correlation vectors 
+# old indexes itemindex
+# new idnexes in hdata
+function ocm=reindexcm(cm,itemindex)
+    global hdata;
+
+    for i=1:length(itemindex)
+       ditem1=findhitem(itemindex{i});
+       sitem1=itemindex{i};
+       for j=1:length(itemindex)
+            sitem2=itemindex{j};
+            if (!(ditem2=fromcache(j)))
+                ditem2=findhitem(itemindex{j});
+                tocache(j,ditem2);
+            end
+            #dbg(sprintf("%i,%i\n",i,j));
+            if (isitem(ditem1) && isitem(ditem2))
+                #dbg(sprintf("%i>%i \n",ditem1.index,ditem2.index));
+                ocm(ditem1.index,ditem2.index)=cm(i,j);
+            end
+        end
+    end
+end
+
 function r=indexes()
     global hdata;
     itemid=1;
     hostid=1;
    
-    #if (isfield(hdata,"itemindex"))
-    #    r=length(hdata.itemindex);
-    #    return;
-    #end
     for [host, hkey] = hdata
      if (ishost(host))
       hdata.hostindex{hostid++}=hkey;
@@ -430,11 +511,11 @@ function r=indexes()
          dbg2(sprintf("%s(%i)\n",[hkey,":",item.key],itemid-1));
        end
       end
-      itemid--;
-      hdata.(hkey).maxindex=itemid;
+      hdata.(hkey).maxindex=itemid-1;
       dbg2(sprintf("%s(min=%i,max=%i),",hkey,hdata.(hkey).minindex,hdata.(hkey).maxindex));
      end
     end
+    dbg(sprintf("Max index: %i\n",itemid-1));
     r=itemid;
 endfunction
 

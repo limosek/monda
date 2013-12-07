@@ -1,10 +1,11 @@
 
 global globalopts;
 globalopts = { \
-        "h", "help", "v", "debug", "profiling", "pause", \
+        "h", "help", "v", "debug", "profiling", "pause", "o:", \
         "asciilevels*", \
-        "delay:","hosts*","items*", "excludeitems*", "baditems", \
-        "cv:","imgformat:","gtoolkit:","interactive", "preprocess", \
+        "delay:", "hosts*", "items*", \
+        "excludehosts:", "excludeitems*", "baditems", \
+        "cv:","imgformat:","gtoolkit:","interactive", "preprocess:", \
         "citerations1:","citerations2:","cmin:","cmaxtime1:","cmaxtime2:", \
         "somperhost", "sompertime" \
         };
@@ -34,8 +35,29 @@ opt.preprocess=7;
 #opt.pause=1;
 opt.sompertime=1;
 opt.asciilevels={"<","\\","0","/",">"};
+#opt.o="file"
 
 global opt;
+
+function o=itemescape(i)
+    o=strrep(i,'[','\[');
+    o=strrep(o,']','\]');
+end
+
+function out=multiopt(opt,o,value)
+    o=o{:};
+    if (length(value)>0 && value(1)=="{")
+        eval(sprintf("value=%s;",value));
+    else
+        value={value};
+    end
+    if (isfield(opt,o))
+        opt.(o)=[opt.(o),value];
+    else
+        opt.(o)=value;
+    end
+    out=opt;
+end
 
 function o=parseopts(opts)
     global globalopts;
@@ -49,9 +71,19 @@ function o=parseopts(opts)
     else
         opts=globalopts;
     end
+    if (isfield(opt,"parsed"))
+        o=opt;
+        return;
+    end
     tmpopt=opt;
     while (i<=length(args))
+        #fprintf(stdout,"Parsing args (%i/%i)\r",i,length(args));
+        if (!strcmp(args{i}(1),"-"))
+            i++;
+            continue;
+        end
         option = args{i};
+        
         for j=1:length(opts)
            o=strsplit(opts{j},":");
            om=strsplit(opts{j},"*");
@@ -67,16 +99,16 @@ function o=parseopts(opts)
            if (strcmp(strcat("--",aopt),aarg) || strcmp(strcat("-",aopt),aarg))
                 if (length(o)>1)
                     if (length(a)>1)
-                        if (multi && isfield(tmpopt,aopt))
-                            eval(sprintf("tmpopt.%s=%s;",aopt{:},strcat(a(2){:})));
+                        if (multi)
+                            tmpopt=multiopt(tmpopt,aopt,a(2));
                         else
                             tmpopt.(aopt)=strcat(a(2){:});
                         end
                         args{i}="_-_";
                     else
                       if (length(args)>i)
-                        if (multi && isfield(tmpopt,aopt))
-                            eval(sprintf("tmpopt.%s=[tmpopt.%s,%s];",aopt{:},aopt{:},args{i+1}));
+                        if (multi)
+                            tmpopt=multiopt(tmpopt,aopt,args{i+1});
                         else
                             tmpopt.(aopt)=args{i+1};
                         end
@@ -128,6 +160,13 @@ function o=parseopts(opts)
         exit;
     end
     opt=tmpopt;
+    if (isopt("excludeitems"))
+        opt.excludeitems=itemescape(getopt("excludeitems"));
+    end
+    if (isopt("items"))
+        opt.items=itemescape(getopt("items"));
+    end
+    opt.parsed=1;
     o=opt;
 end
 

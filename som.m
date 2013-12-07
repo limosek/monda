@@ -3,6 +3,8 @@
 global opt;
 source("monda.lib.m");
 
+opt.pause=1;
+
 global cm;
 global hdata;
 
@@ -20,7 +22,6 @@ end
 
 start1=time();
 
-parseopts();
 arg_list=getrestopts();
 if (length(arg_list)<1)
   fprintf(stderr,"Error in arguments!\n som.m src.az [src2.az] ...\n");
@@ -72,39 +73,25 @@ indexes.hosts={};
 indexes.lasttme=1;
 indexes.tmes={};
 
-cols=0;
 for i=1:length(arg_list)
   loaddata(arg_list{i},1);
   for [host,hkey] = hdata
       if (ishost(host))
-        dkey=sprintf("d%s",xdate2(hdata.time_from));
-        if (cols==0)
-           cols=columns(host.cmvec);
-        else
-           if (cols!=columns(host.cmvec))
-                warn(sprintf("Error in size (file %s, %i<>%i)\n",arg_list{i},cols,columns(host.cmvec)));
-           else
-                ti=gettindex(xdate2(hdata.time_from));
-                hi=gethindex(hkey);
-                Dt(ti,:)=host.cmvec;
-                Dh(hi,:)=host.cmvec;
-           end
-        end
-        for [item,ikey] = host
-           if (isitem(item))
-                ii=getiindex(item.key);
-           end
-        end
+        dkey=sprintf("%s_%s",hkey,xdate2(hdata.time_from));
+        hdata.(dkey)=host;
+        hdata=rmfield(hdata,hkey);
       end
   end
 end
 
-indexes
-exit
+hostsinfo();
+exit;
 
-D=som_map_struct(Dt,'comp_names',indexes.tmes);
+D=som_data_struct(Dh,'comp_names',indexes.hosts);
+M=som_make(D);
+som_show(M);
 
-exit
+mexit(0);
 
 #i1=finditem('joanes:net.if.in[eth0]');
 #i2=finditem('joanes:net.if.out[eth0]');

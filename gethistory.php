@@ -78,11 +78,11 @@ if (isset($opts["G"])) {
 }
 
 if (isset($opts["i"])) {
-    $ritem = $opts["i"];
+    $ritem = addslashes($opts["i"]);
 }
 
 if (isset($opts["I"])) {
-    $nritem = $opts["I"];
+    $nritem = addslashes($opts["I"]);
 }
 
 if (isset($opts["D"])) {
@@ -158,7 +158,6 @@ try {
     $minclock2 = time();
     $maxclock2 = 0;
     $datafound = false;
-    #print_r($events);exit;
     foreach ($items as $item) {
         if (preg_match("*$ritem*", $item->key_) && (!preg_match("*$nritem*", $item->key_)) && ($item->value_type == 0 || $item->value_type == 3)) {
             $itemid = $item->itemid;

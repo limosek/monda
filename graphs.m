@@ -36,7 +36,7 @@ function h=itemplot(hostname,item)
         title(sprintf("%s:%s",hostname,item.key));
         xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
         legend(sprintf("Raw (%i values)",columns(item.x)),sprintf("Normalized (%i values)",columns(item.xn)));
-        ylabel(sprintf("min=%f,max=%f,cv=%f",min(item.y),max(item.y),coeffvar(item.y)));
+        ylabel(sprintf("min=%f,max=%f,cv=%f",min(item.y),max(item.y),coefvar(item.y)));
         printplot(h,sprintf("item-%i",item.id));
       else
         warn(sprintf("Ignoring %s:%s (delta==0)\n",hostname,item.key));
@@ -110,8 +110,14 @@ function cmplot(hostname)
 	
 	cmhost=hdata.cm;
 	newfigure();
-        mini=(hdata.(hostname).minindex);
-        maxi=(hdata.(hostname).maxindex);
+
+        if (strcmp(hostname,"all"))
+            mini=1
+            maxi=rows(cmhost);
+        else
+            mini=(hdata.(hostname).minindex);
+            maxi=(hdata.(hostname).maxindex);
+        end
         x=[mini:maxi];
         y=x;
 	h=surface(x,y,cmhost(x,y));
@@ -123,12 +129,12 @@ function cmplot(hostname)
         for i=mini:maxi
             item=finditem(hdata.itemindex{i});
             if (!isfield(item,"isbad"))
-                warn(sprintf("Item %i => %s (cv=%f)\n",i,hdata.itemindex{i},coeffvar(item.y)));
+                warn(sprintf("Item %i => %s (cv=%f)\n",i,hdata.itemindex{i},coefvar(item.y)));
             else
                 warn(sprintf("Item %i => %s (deleted)\n",i,hdata.itemindex{i}));
             end
         end
-endfunction;
+end
 
 global hdata;
 global fig;
@@ -173,6 +179,7 @@ if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot"))
             cmplot(hkey);
         end
     end
+    cmplot("all");
 end
 
 mexit(0);

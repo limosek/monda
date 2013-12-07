@@ -1,6 +1,8 @@
 
 SHELL=/bin/bash
 
+space:= 
+
 # Zabbix sql commandline wrapper
 ifeq ($(ZABBIX_DB_TYPE),MYSQL)
  ZSQL = mysql '-u$(ZABBIX_DB_USER)' '-p$(ZABBIX_DB_PASSWORD)' '-h$(ZABBIX_DB_SERVER)' '-P$(ZABBIX_DB_PORT)' -A '-D$(ZABBIX_DB)'
@@ -30,6 +32,15 @@ ifneq ($(CMAXTIME1),)
 endif
 ifneq ($(CMAXTIME2),)
  ANOPTS += --cmaxtime2=$(CMAXTIME2)
+endif
+
+ifneq ($(INCLUDED_ITEMS),)
+ IITEMS:=-i '$(subst $(space),|,$(INCLUDED_ITEMS))nonpossibleitem'
+ ANOPTS += $(foreach i,$(INCLUDED_ITEMS),--items $(i))
+endif
+ifneq ($(EXCLUDED_ITEMS),)
+ EITEMS:=-I '$(subst $(space),|,$(EXCLUDED_ITEMS))nonpossibleitem'
+ ANOPTS += $(foreach i,$(EXCLUDED_ITEMS),--excludeitems $(i))
 endif
 
 # Verbose
@@ -66,7 +77,7 @@ define analyze/octave/graphs
 endef
 
 define get/history
-      $(GH) -f '$(1)' -T '$(2)' -i '$(PERSERVER)' -H '$(3)' 1>"$(4)" 2> >(tee "$(5)" >&2)
+      $(GH) -f '$(1)' -T '$(2)' $(IITEMS) $(EITEMS) -H '$(3)' 1>"$(4)" 2> >(tee "$(5)" >&2)
 endef
 
 ifeq ($(ZABBIX_HISTORY),backup)
@@ -99,6 +110,8 @@ endef
 
 # Parameter: host start_date interval start_time
 define analyze/host/interval
+ MS += $(O)/$(1)-$(2)-$(3).m
+ AZS += $(O)/$(1)-$(2)-$(3).az
  info-$(1)-$(2)-$(3):
 	@echo -n get-$(1)-$(2)-$(3) analyze-$(1)-$(2)-$(3)
  get-$(1)-$(2)-$(3): $(O)/$(1)-$(2)-$(3).m
@@ -136,7 +149,7 @@ endef
 ifneq ($(wildcard config.inc.php),)
  ifeq ($(HOSTS),)
   ifneq ($(HOSTGROUP),)
-   HOSTS:=$(shell ./gethostsingroup.php $(HOSTGROUP))
+   HOSTS:=$(filter-out $(EXCLUDED_HOSTS),$(shell ./gethostsingroup.php $(HOSTGROUP)))
    ifeq ($(HOSTS),)
      $(error HOSTGROUP $(HOSTGROUP) probably does not exists? Groups are case sensitive!)
    endif

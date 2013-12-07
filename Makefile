@@ -54,6 +54,9 @@ info1:
 	@echo Intervals: $(INTERVALS)
 	@echo Out directory: $(O)
 	@echo Find filter: $(FIND)
+	@echo octave: $(OCTAVE) $(ANOPTS)
+	@echo AZ: $(AZS)
+	@echo M: $(MS)
 	@echo Targets:
 
 info2:	$(foreach host,$(HOSTS),info-$(host))
@@ -143,6 +146,9 @@ analyze/%.m.gz:
 	$(MAKE) gunzip/$$TS; \
 	$(MAKE) analyze/$$T2.m
 	@echo Done
+	
+join:
+	$(OCTAVE) join.m $(ANOPTS) -o "$(O)/join-$(OF).az" $(AZS)
 
 gzip-%.m:
 	gzip $@

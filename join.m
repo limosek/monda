@@ -4,11 +4,8 @@ source("monda.lib.m");
 
 function ndata=joindata(ndata,fle)
   global hdata;
-  global cm;
   
-  ncm=cm;
   loaddata(fle);
-  ndata.samehosts=0;
   for [host, hkey] = hdata
      if (ishost(host))
        if (!isfield(ndata,'minx'))
@@ -17,6 +14,7 @@ function ndata=joindata(ndata,fle)
          ndata.minx2=hdata.minx2;
          ndata.maxx2=hdata.maxx2;
        end
+       ndata.(hkey).ishost=1;
        for [item, ikey] = host
          if (!isitem(item))
            continue;
@@ -24,7 +22,7 @@ function ndata=joindata(ndata,fle)
          if (!isfield(ndata,hkey) || !isfield(ndata.(hkey),ikey))
            ndata.(hkey).(ikey)=item;
          endif
-         #[ndata.(hkey).(ikey).x;ndata.(hkey).(ikey).y]
+         ndata.(hkey).(ikey).isitem=1;
          xy=cat(2,[item.x;item.y],[ndata.(hkey).(ikey).x;ndata.(hkey).(ikey).y]);
          xy=transpose(sortrows(transpose(xy)));
          ndata.(hkey).(ikey).x=xy(1,:);
@@ -40,46 +38,50 @@ function ndata=joindata(ndata,fle)
          ndata.time_from=ndata.minx;
          ndata.time_to=ndata.maxx;
        end;
-       ncm.(hkey)=cm.(hkey);
+       ndata.cm=hdata.cm;
      end;
   end;
-  cm=ncm;
+  itemindex=hdata.itemindex;
   hdata=ndata;
+  indexes();
+  hdata.cm=reindexcm(hdata.cm,itemindex);
 endfunction;
 
 global hdata;
-global cm;
 
-arg_list=argv();
-dst=arg_list{1};
+arg_list=getrestopts();
 ndata=[];
 
 start1=time();
 
-for i = 2:nargin
-  ndata=joindata(ndata,arg_list{i});
+pp=opt.preprocess;
+opt.preprocess=2;
+if (getopt("o"))
+  dst=getopt("o");
+  for i = 1:length(arg_list)
+    ndata=joindata(ndata,arg_list{i});
+  end
+else
+  dst=arg_list{1};
+  for i = 1:length(arg_list)
+    ndata=joindata(ndata,arg_list{i});
+  end
 end
+opt.preprocess=pp;
 
-hostsinfo(ndata);
-cminfo(cm);
-
-remove_bad(0.001);
+preprocess();
 start3=time();
-
-normalize(60);
-hoststoany("all");
+normalize();
 start4=time();
 smatrix();
 start5=time();
-cmatrix();
+cmatrixall();
 start6=time();
-cmtovector(0.4);
+cmtovector();
 start7=time();
-
 savedata(dst);
 start8=time();
 
-fprintf(stderr,"Analyze took %i seconds\n",start8-start1);
+warn(sprintf("Analyze took %i seconds\n",start8-start1));
 
-
-exit;
+mexit(0);

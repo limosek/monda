@@ -118,6 +118,29 @@ function smatrix()
       fprintf(stdout,"\n");
 end
 
+function c=cmhost(minindex,maxindex)
+    global hdata;
+        y=rand(hdata.ysize,maxindex-minindex);
+        for i=minindex:maxindex
+            item=finditem(hdata.itemindex{i});
+            if (isitem(item))
+                y(:,i-minindex+1)=item.yn;
+                dbg2(sprintf("CM: %s(%i)\n",hdata.itemindex{i},i));
+            else
+                dbg2(sprintf("CM!: %s(%i)\n",hdata.itemindex{i},i));
+            end
+        end
+        c=corr(y);
+        if (length(find(isnan(c))>0))
+            [rn,cn]=find(isnan(c));
+            for i=1:rn
+                for j=1:cn
+                    warn(sprintf("Correlation error %s(idx=%i,cv=%f)<>%s(idx=%i,cv=%f)!\n",hdata.itemindex{rn(i)},rn(i),coefvar(y(i,:)),hdata.itemindex{cn(j)},cn(j),coefvar(y(j,:))));
+                end
+            end
+        end
+end
+
 function cmatrix()
       global hdata;
 
@@ -132,34 +155,25 @@ function cmatrix()
       maxtime=getopt("cmaxtime1");
       for [host, hkey] = hdata
        if (ishost(host))
-        y=rand(hdata.ysize,host.maxindex-host.minindex);
-        minindex=host.minindex;
-        maxindex=host.maxindex;
-        for i=minindex:maxindex
-            item=finditem(hdata.itemindex{i});
-            if (isitem(item))
-                y(:,i)=item.yn;
-                dbg2(sprintf("CM: %s(%i)\n",hdata.itemindex{i},i));
-            else
-                dbg2(sprintf("CM!: %s(%i)\n",hdata.itemindex{i},i));
-            end
-        end
+        c=cmhost(host.minindex,host.maxindex);
+        [row,col]=size(c);
+        tmpcm(host.minindex:host.minindex+row-1,host.minindex:host.minindex+row-1)=c;
        end
       end
-      c=corr(y);
-      if (length(find(isnan(c))>0))
-        [rn,cn]=find(isnan(c));
-        for i=1:rn
-            for j=1:cn
-                dbg("Nan! %s<>%s",hdata.itemindex{rn(i)},hdata.itemindex{cn(j)});
-            end
-        end
-        keyboard;
-      end
-      [row,col]=size(c);
-      tmpcm(minindex:minindex+row-1,minindex:minindex+row-1)=c;
       hdata.cm=tmpcm;
-endfunction;
+end;
+
+function cmatrixall()
+    global hdata;
+
+    numitems=length(hdata.itemindex);
+    if (isfield(hdata,"cm"))
+        tmpcm=hdata.cm;
+    else
+        tmpcm=sparse(zeros(numitems,numitems));
+    end
+    hdata.cm=cmhost(1,length(hdata.itemindex));
+end
 
 function cmtovector()
   global hdata;

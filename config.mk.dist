@@ -30,14 +30,18 @@ ZABBIX_DB_PASSWORD = somedbpasword
 
 # Example to get only some items from all hosts in group Servers
 #HOSTGROUP = 'Servers'
-#PERSERVER = 'net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|proc.num\[,,run\]|vfs.fs.size\[/,free\]|vfs.fs.size\[\/,used\]'
+#EXCLUDED_HOSTS = 
+# We can include only some items (uncommented to include all)
+#INCLUDED_ITEMS += net.if.in net.if.out system.cpu.load proc.num 
+# Or exclude some of them
+#EXCLUDED_ITEMS += vfs.fs.size vm.memory.size system.hostname system.boottime kernel.maxfiles
+
 # Get 7 days back, each day will be one file YYYY-mm-dd-00-00-24hour
 #TIME_START = 00:00 -7 days
 #INTERVALS = 24hour
 
 # Example to get all data from Cisco group. We need less precision because SNMP data have bigger delay
 #HOSTGROUP = 'Servers'
-#PERSERVER = 'net.if.in\[eth0,bytes\]|net.if.out\[eth0,bytes\]|system.cpu.load|proc.num\[,,run\]|vfs.fs.size\[/,free\]|vfs.fs.size\[\/,used\]'
 # Get 7 days back, each day will be one file YYYY-mm-dd-00-00-24hour
 #TIME_START = 00:00 -7 days
 #INTERVALS = 24hour
