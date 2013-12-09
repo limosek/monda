@@ -1,7 +1,8 @@
 
 SHELL=/bin/bash
 
-space:= 
+space :=
+space +=
 
 # Zabbix sql commandline wrapper
 ifeq ($(ZABBIX_DB_TYPE),MYSQL)
@@ -43,23 +44,29 @@ ifneq ($(EXCLUDED_ITEMS),)
  ANOPTS += $(foreach i,$(EXCLUDED_ITEMS),--excludeitems $(i))
 endif
 
+GZIP=gzip -f
+GUNZIP=gunzip -df
+OCTAVE=octave -q --no-window-system --norc
+
+ifneq ($(FETCHONESTEP),)
+ GHOPTS += -O
+endif
+
+ifneq ($(FETCHEVENTS),)
+ GHOPTS += -E
+endif
+
 # Verbose
 ifneq ($(V),)
- GH=./gethistory.php -e
- OCTAVE=octave -q --no-window-system --norc
+ GHOPTS += -e
  ANOPTS += -v -v
- GZIP=gzip -f
- GUNZIP=gunzip -df
-else
- GH=./gethistory.php
- OCTAVE=octave -q --no-window-system --norc
- GZIP=gzip -f
- GUNZIP=gunzip -df
 endif
 
 ifeq ($(V),2)
- ANOPTS += -v -v -v
+ ANOPTS += -v
 endif
+
+GH=./gethistory.php $(GHOPTS)
 
 ifeq ($(V),)
  define analyze/octave

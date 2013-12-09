@@ -118,32 +118,52 @@ function smatrix()
       fprintf(stdout,"\n");
 end
 
-function c=cmhost(minindex,maxindex)
+function c=cmhost(minindex,maxindex,time_start,time_to)
     global hdata;
-        y=rand(hdata.ysize,maxindex-minindex);
-        for i=minindex:maxindex
+
+    if (exist("time_start","var") && exist("time_to","var") && (time_start!=-1))
+        i=1;
+        do
             item=finditem(hdata.itemindex{i});
-            if (isitem(item))
-                y(:,i-minindex+1)=item.yn;
-                dbg2(sprintf("CM: %s(%i)\n",hdata.itemindex{i},i));
-            else
-                dbg2(sprintf("CM!: %s(%i)\n",hdata.itemindex{i},i));
+            i++;
+        until (isitem(item))
+        sx=lookup(item.xn,time_start);
+        ex=loolup(item.yn,time_to);
+        ysize=columns(item.xn(sx:ex));
+    else
+        ysize=hdata.ysize;
+    end
+    y=rand(ysize,maxindex-minindex);
+    for i=minindex:maxindex
+        item=finditem(hdata.itemindex{i});
+        if (isitem(item))
+            y(:,i-minindex+1)=item.yn;
+            dbg2(sprintf("CM: %s(%i)\n",hdata.itemindex{i},i));
+        else
+            dbg2(sprintf("CM!: %s(%i)\n",hdata.itemindex{i},i));
+        end
+    end
+    c=corr(y);
+    if (length(find(isnan(c))>0))
+        [rn,cn]=find(isnan(c));
+        for i=1:rn
+            for j=1:cn
+                warn(sprintf("Correlation error %s(idx=%i,cv=%f)<>%s(idx=%i,cv=%f)!\n",hdata.itemindex{rn(i)},rn(i),coefvar(y(i,:)),hdata.itemindex{cn(j)},cn(j),coefvar(y(j,:))));
             end
         end
-        c=corr(y);
-        if (length(find(isnan(c))>0))
-            [rn,cn]=find(isnan(c));
-            for i=1:rn
-                for j=1:cn
-                    warn(sprintf("Correlation error %s(idx=%i,cv=%f)<>%s(idx=%i,cv=%f)!\n",hdata.itemindex{rn(i)},rn(i),coefvar(y(i,:)),hdata.itemindex{cn(j)},cn(j),coefvar(y(j,:))));
-                end
-            end
-        end
+    end
 end
 
-function cmatrix()
+function cmkey=cmatrix(time_start,time_to)
       global hdata;
 
+      if (!exist("time_start","var") || !exist("time_to","var"))
+        time_start=-1;
+        time_to=-1;
+        cmkey="cm";
+      else
+        cmkey=["cm_",xdate2(time_start)];
+      end
       numitems=length(hdata.itemindex);
       dbg("Correlation1: ");
       if (isfield(hdata,"cm"))
@@ -155,17 +175,21 @@ function cmatrix()
       maxtime=getopt("cmaxtime1");
       for [host, hkey] = hdata
        if (ishost(host))
-        c=cmhost(host.minindex,host.maxindex);
+        c=cmhost(host.minindex,host.maxindex,time_start,time_to);
         [row,col]=size(c);
         tmpcm(host.minindex:host.minindex+row-1,host.minindex:host.minindex+row-1)=c;
        end
       end
-      hdata.cm=tmpcm;
+      hdata.(cmkey)=tmpcm;
 end;
 
-function cmatrixall()
+function cmatrixall(time_start,time_to)
     global hdata;
 
+    if (!exist("time_start","var") || !exist("time_to","var"))
+        time_start=-1;
+        time_to=-1;
+    end
     numitems=length(hdata.itemindex);
     if (isfield(hdata,"cm"))
         tmpcm=hdata.cm;

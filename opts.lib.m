@@ -4,10 +4,10 @@ globalopts = { \
         "h", "help", "v", "debug", "profiling", "pause", "o:", \
         "asciilevels*", \
         "delay:", "hosts*", "items*", \
-        "excludehosts:", "excludeitems*", "baditems", \
+        "excludehosts:", "excludeitems*", "baditems", "shareditems", \
         "cv:","imgformat:","gtoolkit:","interactive", "preprocess:", \
         "citerations1:","citerations2:","cmin:","cmaxtime1:","cmaxtime2:", \
-        "somperhost", "sompertime" \
+        "somtimerange:", "somplot" \
         };
 opt.delay=60;
 #opt.hosts=
@@ -26,7 +26,7 @@ opt.cmaxtime1="1000";
 opt.cmaxtime2="1000";
 #opt.excludeitems={"key","key2"};
 opt.v=0;
-opt.preprocess=7;
+opt.preprocess=15;
 # bit1 - removebad
 # bit2 - indexes
 # bit3 - cm move
@@ -36,6 +36,7 @@ opt.preprocess=7;
 opt.sompertime=1;
 opt.asciilevels={"<","\\","0","/",">"};
 #opt.o="file"
+#opt.somtimerange=3600*8;
 
 global opt;
 

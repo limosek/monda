@@ -1,7 +1,7 @@
 #!/usr/bin/php
 <?php
 error_reporting(E_ERROR | E_PARSE);
-define(GH_VERSION, "1");
+define(GH_VERSION, "3");
 
 // load ZabbixApi
 require 'PhpZabbixApi_Library/ZabbixApiAbstract.class.php';
@@ -17,10 +17,14 @@ $histapi = true;
 $backuptable = false;
 $nodata = false;
 $stderr = false;
+$allatonce = 0;
+$withtriggers = 0;
+$withevents = 0;
 $to_time = time();
+$limithistory=1000000;
 
 $opts = getopt(
-        "F:f:T:t:H:G:i:I:SBDe"
+        "F:f:T:t:H:G:i:I:SBDeOTE"
 );
 
 if (!$opts) {
@@ -34,6 +38,9 @@ if (!$opts) {
    -G group             Specify host group to get				example Servers
    -i itemregexp        Specify regexp of item keys to accept, 			example 'net|mem'
    -I itemregexp	Specify regexp of item keys to ignore
+   -O                   Fetch all history at once (needs lot of memory)
+   -L limit             Limit number of history to get at once
+   -E                   Fetch all events glued to triggers 
    -S 			Use SQL instead of API for getting history
    -B			Use backup tables instead of history tables (implies -S)
    -D			Only show what would be done
@@ -77,6 +84,19 @@ if (isset($opts["G"])) {
     $rgroup = $opts["G"];
 }
 
+if (isset($opts["O"])) {
+    $allatonce=true;
+}
+
+if (isset($opts["L"])) {
+    $limithistory=$opts["L"];
+}
+
+if (isset($opts["E"])) {
+    $withevents=1;
+    $withtriggers=1;
+}
+
 if (isset($opts["i"])) {
     $ritem = addslashes($opts["i"]);
 }
@@ -111,12 +131,15 @@ try {
         $sq["host"] = $rhost;
     if ($rgroup)
         $sq["group"] = $rgroup;
+    $now=microtime(1);
     if ($stderr)
-        fprintf(STDERR, "### Searching items...\n");
+        fprintf(STDERR, "### Searching items...");
     $items = $api->itemGet($sq);
     if (count($items) == 0) {
         errorexit("No items found!\n", 9);
     }
+    if ($stderr)
+        fprintf(STDERR, "Got %u items if %f seconds\n",count($items),microtime(1)-$now);
     $itemids = Array();
     $history = array();
     if ($stderr)
@@ -134,142 +157,57 @@ try {
     $sq["selectHosts"] = true;
     $sq["selectRelatedObject"] = true;
     $sq["sortfield"] = "clock";
-    $events = $api->eventGet($sq);
-    $triggerids = Array();
-    foreach ($events as $event) {
-        $triggerids[$event->objectid] = $event->objectid;
-    }
-    $triggers = ($api->triggerGet(
+    if ($withevents) {
+        if ($stderr) fprintf(STDERR,"#### Getting events...");
+        $events = $api->eventGet($sq);
+        $triggerids = Array();
+        foreach ($events as $event) {
+            $triggerids[$event->objectid] = $event->objectid;
+        }
+        if ($withtriggers) {
+            if ($stderr) fprintf(STDERR,",triggers...");
+            $triggers = ($api->triggerGet(
                     Array(
                         "triggerids" => $triggerids,
                         "expandExpression" => true,
                         "output" => "extend"
                     )
             ));
-
+        } else {
+            $triggers=Array();
+        }
+        if ($stderr) fprintf(STDERR,"(%u triggers, %u events)\n",count($triggers),count($events));
+    } else {
+        $events=Array();
+    }
     fprintf(STDOUT, "global hdata; hdata.version=%s; hdata.time_from=%u;hdata.time_to=%u;hdata.date_from='%s';hdata.date_to='%s';\n", GH_VERSION, $hist, $to_time, $ftime, $now);
     $itemcount = 0;
-    $valuescount = 0;
-    $arrid = 1;
-    $maxitems = 0;
-    $delay = false;
-    $minclock = time();
-    $maxclock = 0;
-    $minclock2 = time();
-    $maxclock2 = 0;
-    $datafound = false;
     foreach ($items as $item) {
         if (preg_match("*$ritem*", $item->key_) && (!preg_match("*$nritem*", $item->key_)) && ($item->value_type == 0 || $item->value_type == 3)) {
             $itemid = $item->itemid;
-            $host = $api->hostGet(
-                    Array(
-                        "itemids" => Array($itemid),
-                        "output" => "extend"
-                    )
-            );
-            $hostname = $host[0]->name;
-            $host = strtr($host[0]->name, "-.", "__");
-            if (trim($host) == "")
-                continue;
-            fprintf(STDOUT, "\n\n### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n", $host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history, (int) ($item->history * 24 * 3600 / $item->delay), $item->trends, (int) $item->trends * 24);
-            if ($stderr)
-                fprintf(STDERR, "\n\n### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n", $host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history, (int) ($item->history * 24 * 3600 / $item->delay), $item->trends, (int) $item->trends * 24);
-            $h = sprintf("hdata.%s.i%s", $host, $itemid);
             $itemcount++;
             $itemids[] = $item->itemid;
-            $hgetarr = array(
-                "history" => $item->value_type,
-                "itemids" => array($itemid),
-                "sortfield" => "clock",
-                "output" => "extend",
-                "sortorder" => "ASC",
-                //"limit" => 1000
-                "time_from" => $hist,
-                "time_to" => $to_time,
-            );
-            if (!$nodata) {
-                if ($histapi) {
-                    $history = $api->historyGet($hgetarr);
-                } else {
-                    $history = historyGet($hgetarr);
+            if (!$allatonce)
+                if (!$nodata) {
+                    item2octave($item);
                 }
-            } else {
-                $history = array();
-            }
-            if (count($history) > 10) {
-                $datafound = true;
-                fprintf(STDOUT, "hdata.%s.ishost=1;${h}.isitem=1;${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n", $host, $item->itemid, addslashes($item->key_), $h, $item->delay, $item->history);
-                $revents = findeventsbyitem($hostname, $item->key_);
-                if (is_array($revents)) {
-                    fprintf(STDOUT, "${h}.events=[");
-                    foreach ($revents as $e) {
-                        fprintf(STDOUT, "%s,%s,%s,%s;", $e["clock"], $e["value"], $e["priority"], $e["triggerid"]);
-                    }
-                    fprintf(STDOUT, "];\n");
-                }
-                fprintf(STDOUT, "### Got %s values for item %s\n", count($history), $item->key_);
-                if ($stderr)
-                    fprintf(STDERR, "### Got %s values for item %s\n", count($history), $item->key_);
-                $valuescount+=count($history);
-                fprintf(STDOUT, "${h}.x=[");
-                $c = 1;
-                $last = count($history);
-                if ($histapi) {
-                    uasort($history, 'clocksort');
-                }
-                foreach ($history as $i => $k) {
-                    if ($c == 2) {
-                        $minclock2 = min($k->clock, $minclock2);
-                    }
-                    if ($c == $last - 1) {
-                        $maxclock2 = max($k->clock, $maxclock2);
-                        $minstep = $k->clock - $lastclock;
-                        $maxstep = $minstep;
-                    }
-                    if ($c > 1) {
-                        $maxstep = max($maxstep, $k->clock - $lastclock);
-                        $minstep = min($minstep, $k->clock - $lastclock);
-                        $avgstep+=$k->clock - $lastclock;
-                    }
-                    $minclock = min($k->clock, $minclock);
-                    $maxclock = max($k->clock, $maxclock);
-                    fprintf(STDOUT, "%s,", $k->clock);
-                    $c++;
-                    $lastclock = $k->clock;
-                }
-                $avgstep = round($avgstep / $c);
-                fprintf(STDOUT, "];\n");
-                fprintf(STDOUT, "${h}.y=[");
-                foreach ($history as $i => $k) {
-                    fprintf(STDOUT, "%s,", $k->value);
-                }
-                fprintf(STDOUT, "];\n");
-            } else {
-                fprintf(STDOUT, "### Got %s values for item %s, ignored!\n", count($history), $item->key_);
-                if ($stderr)
-                    fprintf(STDERR, "### Got %s values for item %s, ignored!\n", count($history), $item->key_);
-            }
         } else {
             if ($stderr)
                 fprintf(STDERR, "### Ignoring item %s (type %u),regexp=%u,nregex=%u\n", $item->key_, $item->value_type, preg_match("*$ritem*", $item->key_), !preg_match("*$nritem*", $item->key_));
         }
     }
-    foreach ($triggers as $t) {
-        fprintf(STDOUT, "hdata.t%s.expression='%s';", $t->triggerid, addslashes($t->expression));
-        fprintf(STDOUT, "hdata.t%s.description='%s';", $t->triggerid, addslashes($t->description));
-        fprintf(STDOUT, "hdata.t%s.priority='%s';", $t->triggerid, $t->priority);
-        fprintf(STDOUT, "hdata.t%s.istrigger=1;\n", $t->triggerid);
+    if ($allatonce && !$nodata) {
+        item2octave($items);
+    }
+    if ($withtriggers) {
+        foreach ($triggers as $t) {
+            fprintf(STDOUT, "hdata.t%s.expression='%s';", $t->triggerid, addslashes($t->expression));
+            fprintf(STDOUT, "hdata.t%s.description='%s';", $t->triggerid, addslashes($t->description));
+            fprintf(STDOUT, "hdata.t%s.priority='%s';", $t->triggerid, $t->priority);
+            fprintf(STDOUT, "hdata.t%s.istrigger=1;\n", $t->triggerid);
+        }
     }
     $duration = microtime(1) - $start;
-    if ($datafound) {
-        if ($maxstep > 4 * $avgstep)
-            fprintf(STDERR, "### Probably hole in data (avgstep=%s, maxstep=%s)!.\n", $avgstep);
-        fprintf(STDOUT, "hdata.minx=%s;hdata.minx2=%s;hdata.maxx=%s;hdata.maxx2=%s;hdata.gettime=%s;hdata.minstep=%s;hdata.maxstep=%s;hdata.avgstep=%s;\n", $minclock, $minclock2, $maxclock, $maxclock2, $duration, $minstep, $maxstep, $avgstep);
-        if ($stderr)
-            fprintf(STDERR, "### Took %s seconds to get %i items and %i values.\n", $duration, $itemcount, $valuescount);
-    } else {
-        errorexit("No data in history found!\n", 15);
-    }
 } catch (Exception $e) {
     echo $e->getMessage();
 }

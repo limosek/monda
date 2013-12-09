@@ -11,6 +11,15 @@ ZABBIX_DB = zabbix
 ZABBIX_DB_USER = zabbix
 ZABBIX_DB_PASSWORD = somedbpasword
 
+# Get all history for searched items in one step
+# This is quicker but needs lot of memory!
+# Uncomment to get history item by item 
+FETCHONESTEP = 1
+
+# Fetch events and triggers
+# Uncomment to not fetch triggers and events too
+FETCHEVENTS = 1
+
 # Defaults:
 # Servers has to be set manualy, either static or get all hosts from zabbix group
 # HOSTS=host1 host2 host3 

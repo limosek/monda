@@ -275,6 +275,44 @@ function i=finditem(varargin)
   warn(sprintf("Item %s not found!\n",key));
 end
 
+function r=gethostsforitem(key)
+    global hdata;
+    r={};
+    idx=1;
+    for [host,hkey] = hdata
+        if (ishost(host))
+            found=0;
+            for [item,ikey] = host
+                if (isitem(item))
+                    if (strcmp(item.key,key))
+                        found=1;
+                        r{idx}=hkey;
+                    end
+                end
+            end
+            if (found)
+                idx++;
+            end
+        end
+    end
+end
+
+function disableitems(keys,ids)
+    global hdata;
+    for [host,hkey] = hdata
+        if (ishost(host))
+            for [item,ikey] = host
+                if (isitem(item))
+                    if (max(strcmp(item.key,keys))>0)
+                        hdata.(hkey).(ikey).isbad=1;
+                    end
+                end
+            end
+        end
+    end
+    hdata.itemdindex=keys;
+end
+
 function tocache(item,value)
     global cache;
     cache.(item)=value;
@@ -356,6 +394,7 @@ function hostsinfo(h)
       end;
       if (ishost(host))
 	 err(sprintf("Host %s: items=%i,minindex=%i,maxindex=%i,minx=%s(%i),maxx=%s(%i),minx2=%s,maxx2=%s\n",hkey,items,host.minindex,host.maxindex,xdate(h.minx),h.minx,xdate(h.maxx),h.maxx,xdate(h.minx2),xdate(h.maxx2)));
+         hostinfo(host,hkey);
       end;
   end;
 end
@@ -364,6 +403,7 @@ function cminfo()
   global hdata;
   for [host, hkey] = hdata
     if (ishost(host))
+        warn(sprintf("Host %s: cm=(%u,%u), sortvec=(%u), cmvec=(%u,%u)\n",hkey,rows(host.cm),columns(host.cm),rows(host.sortvec),rows(host.cmvec),columns(host.cmvec)));
         sortvec=host.sortvec;
         for i=1:rows(sortvec)
             item1id=sortvec(i,1);
@@ -428,8 +468,41 @@ function remove_bad()
 	end
        end
       end
-      dbg("\n");
-endfunction
+      
+      if (isopt("shareditems"))
+        dbg(sprintf("Remove nonshared...\n"));
+        rmidx=1;
+        shidx=1;
+        if (!isfield(hdata,"itemdindex"))
+            hdata.itemdindex={};
+        end
+        for i=1:length(hdata.itemindex)
+            item=hdata.itemindex{i};
+            ikey=hdata.itemkindex{i};
+            hkey=hdata.itemhindex{i};
+            s=strsplit(item,":");
+            ikey=s(2){:};
+            if (max(strcmp(item,hdata.itemdindex))>0)
+                dbg2(sprintf("!%s (not shared, available only on %u hosts)\n",ikey,length(h)));
+                rmkeys{rmidx}=ikey;
+                rmids(rmidx++)=i;
+                continue;
+            end
+            h=gethostsforitem(ikey);
+            if (length(h)!=length(hdata.hostindex))
+                    dbg2(sprintf("!%s (not shared, available only on %u hosts)\n",ikey,length(h)));
+                    rmkeys{rmidx}=ikey;
+                    rmids(rmidx++)=i;
+                    continue;
+            else
+                    hdata.sharedindex{shidx++}=ikey;
+            end
+        end
+        if (rmidx>1)
+            disableitems(rmkeys,rmids);
+        end
+      end
+end
 
 function preprocess(varargin)
     global hdata;
@@ -454,6 +527,10 @@ function preprocess(varargin)
         end
     end
 
+    if (bitget(pp,4))
+        dbg("Preprocess minmax ");
+        minmax();
+    end
     if (bitget(pp,2))
         dbg("Preprocess indexes\n");
         indexes();
@@ -473,7 +550,7 @@ end
 # new idnexes in hdata
 function ocm=reindexcm(cm,itemindex)
     global hdata;
-
+    
     for i=1:length(itemindex)
        ditem1=findhitem(itemindex{i});
        sitem1=itemindex{i};
@@ -490,6 +567,37 @@ function ocm=reindexcm(cm,itemindex)
             end
         end
     end
+end
+
+function minmax()
+    global hdata;
+
+    minx=time();
+    maxx=0;
+    minx2=minx;
+    maxx2=minx;
+
+    for [host, hkey] = hdata
+     if (ishost(host))
+      for [item, key] = host
+       if (isitem(item))
+            if (columns(item.x)<10)
+                hdata.(hkey).(key).isbad=1;
+                continue;
+            end
+            minx=min([item.x,minx]);
+            maxx=max([item.x,maxx]);
+            minx2=max([item.x(2),minx2,minx]);
+            maxx2=min([item.x(columns(item.x)-1),maxx2,maxx]);
+       end
+      end
+      hdata.minx=minx;
+      hdata.maxx=maxx;
+      hdata.minx2=minx2;
+      hdata.maxx2=maxx2;
+     end
+    end
+    dbg2(sprintf("(minx=%i,minx2=%i,maxx=%i,maxx2=%i)\n",minx,minx2,maxx,maxx2));
 end
 
 function r=indexes()
@@ -517,21 +625,6 @@ function r=indexes()
     end
     dbg(sprintf("Max index: %i\n",itemid-1));
     r=itemid;
-endfunction
+end
 
-function hoststoany(varargin)
-  global hdata;
-  for [host, hkey] = hdata
-    if (ishost(host) && !strcmp(hkey,"any"))
-      if (find(strcmp(varargin,hkey)>0) || find(strcmp(varargin,"all")>0))
-	for [item, key] = host
-	  if (isitem(item))
-	    hdata.any.(key)=item;
-	    hdata.any.(key).key=[hkey,":",item.key];
-	  end
-	end
-     end;
-    end
-  end;
-endfunction
 

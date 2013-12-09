@@ -1,4 +1,4 @@
-#!/usr/bin/octave --norc
+#!/usr/bin/octave -qf
 
 global opt;
 source("monda.lib.m");
@@ -28,66 +28,30 @@ if (length(arg_list)<1)
   exit;
 end
 
-function i=getiindex(item)
-   global indexes;
-   
-    scmp=strcmp(item,indexes.items);
-    if (max(scmp)==1)
-        i=(find(scmp==1));
-    else
-        indexes.items{indexes.lastitem}=item;
-        i=indexes.lastitem++;
+src=arg_list{1};
+loaddata(src,1);
+
+hostsinfo(hdata);
+
+lasthost=1;
+lasttime=1;
+if (isopt("somtimerange"))
+    for i=hdata.minx:getopt("somtimerange"):hdata.maxx
+        sx=i;
+        ex=i+getopt("somtimerange");
+        cmkey=cmatrix(sx,ex);
+        times{lasttime++}=cmkey;
+    end
+else
+    for [host,hkey]=hdata
+        if (ishost(host))
+            Dh(:,lasthost)=host.cmvec;
+            hosts{lasthost++}=hkey;
+        end
     end
 end
 
-function i=gethindex(host)
-   global indexes;
-   
-    scmp=strcmp(host,indexes.hosts);
-    if (max(scmp)==1)
-        i=(find(scmp==1));
-    else
-        indexes.hosts{indexes.lasthost}=host;
-        i=indexes.lasthost++;
-    end
-end
-
-function i=gettindex(tme)
-   global indexes;
-   
-    scmp=strcmp(tme,indexes.tmes);
-    if (max(scmp)==1)
-        i=(find(scmp==1));
-    else
-        indexes.tmes{indexes.lasttme}=tme;
-        i=indexes.lasttme++;
-    end
-end
-
-global indexes;
-
-indexes.lastitem=1;
-indexes.items={};
-indexes.lasthost=1;
-indexes.hosts={};
-indexes.lasttme=1;
-indexes.tmes={};
-
-for i=1:length(arg_list)
-  loaddata(arg_list{i},1);
-  for [host,hkey] = hdata
-      if (ishost(host))
-        dkey=sprintf("%s_%s",hkey,xdate2(hdata.time_from));
-        hdata.(dkey)=host;
-        hdata=rmfield(hdata,hkey);
-      end
-  end
-end
-
-hostsinfo();
-exit;
-
-D=som_data_struct(Dh,'comp_names',indexes.hosts);
+D=som_data_struct(Dh,'comp_names',hosts)
 M=som_make(D);
 som_show(M);
 

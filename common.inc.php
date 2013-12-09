@@ -16,14 +16,14 @@ if (file_exists('config.inc.php')) {
 function timetoseconds($t, $r = false) {
     if (is_numeric($t)) {
         return($t);
-    } elseif (preg_match("/(\d\d\d\d)\_(\d\d)\_(\d\d)\_(\d\d)(\d\d)/",$t,$r)) {
-       $y=$r[1];
-       $m=$r[2];
-       $d=$r[3];
-       $h=$r[4];
-       $M=$r[5];
-       $dte=New DateTime("$y-$m-$d $h:$M");
-       return(date_format($dte, "U"));
+    } elseif (preg_match("/(\d\d\d\d)\_(\d\d)\_(\d\d)\_(\d\d)(\d\d)/", $t, $r)) {
+        $y = $r[1];
+        $m = $r[2];
+        $d = $r[3];
+        $h = $r[4];
+        $M = $r[5];
+        $dte = New DateTime("$y-$m-$d $h:$M");
+        return(date_format($dte, "U"));
     } else {
         $dte = New DateTime($t);
         return(date_format($dte, "U"));
@@ -69,7 +69,11 @@ function historyGetMysql($query) {
 }
 
 function clocksort($a, $b) {
-    return( ($a->clock < $b->clock) ? -1 : 1);
+    if ($a->itemid == $b->itemid) {
+        return( ($a->clock < $b->clock) ? -1 : 1);
+    } else {
+        return( ($a->itemid < $b->itemid) ? -1 : 1);
+    }
 }
 
 function hostsort($a, $b) {
@@ -93,6 +97,114 @@ function findeventsbyitem($host, $item) {
         }
     }
     return($ev);
+}
+
+function item2octave($itemids) {
+    global $histapi, $nodata, $itemctx, $hosts, $histapi, $stderr, $api, $hist, $to_time;
+    ;
+
+    if (!is_array($itemids))
+        $itemids = Array($itemids);
+
+    $hostsfound = true;
+    foreach ($itemids as $item) {
+        if (array_key_exists($item->itemid, $hosts)) {
+            $itemids["host"] = $hosts[$item->itemid];
+        } else {
+            $hostsfound = false;
+        }
+        $itemsarr[] = $item->itemid;
+    }
+    if (!$hostsfound) {
+        if ($stderr)
+            fprintf(STDERR,"#### Getting hosts info...");
+        $hosts = $api->hostGet(
+                Array(
+                    "itemids" => $itemsarr,
+                    "templated_hosts" => false,
+                    "output" => "extend"
+                )
+        );
+        if ($stderr)
+            fprintf(STDERR,"Done(%u hosts)\n",count($hosts));
+        foreach ($hosts as $h) {
+            foreach ($h->items as $i) {
+                $hostname = $h->name;
+                $host = strtr($hostname, "-.", "__");
+                $itemctx[$i->itemid] = $host;
+            }
+        }
+    }
+    foreach ($itemids as $item) {
+        $host = $itemctx[$item->itemid];
+        $h = sprintf("hdata.%s.i%s", $host, $item->itemid);
+        fprintf(STDOUT, "### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n", $host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history, (int) ($item->history * 24 * 3600 / $item->delay), $item->trends, (int) $item->trends * 24);
+        if ($stderr)
+            fprintf(STDERR, "### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n", $host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history, (int) ($item->history * 24 * 3600 / $item->delay), $item->trends, (int) $item->trends * 24);
+        fprintf(STDOUT, "hdata.%s.ishost=1;${h}.isitem=1;${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n", $host, $item->itemid, addslashes($item->key_), $h, $item->delay, $item->history);
+        $hosts[$host] = 1;
+    }
+    itemdata2octave($itemids, $itemsarr);
+}
+
+function itemdata2octave($itemids, $itemsarr) {
+    global $stderr, $nodata, $histapi, $itemctx,
+            $withevents, $api, $limithistory,
+            $hist,$to_time;
+
+    $hgetarr = array(
+        "history" => Array(0, 3),
+        "itemids" => $itemsarr,
+        "sortfield" => "clock",
+        "output" => "extend",
+        "sortorder" => "ASC",
+        "limit" => $limithistory,
+        "time_from" => $hist,
+        "time_to" => $to_time,
+    );
+    if ($stderr)
+        fprintf(STDERR, "### Getting for items %s...", join(",", $itemsarr));
+    $now=microtime(1);
+    if (!$nodata) {
+        if ($histapi) {
+            $history = $api->historyGet($hgetarr);
+        } else {
+            $history = historyGet($hgetarr);
+        }
+    } else {
+        $history = array();
+    }
+    if ($histapi)
+        uasort($history, 'clocksort');
+    if (count($history) == 0) {
+        if ($stderr) fprintf(STDERR, "No history data for them!\n");
+        return;
+    } else {
+        if ($stderr)
+            fprintf(STDERR, "Got %u values after %f seconds!\n",count($history),microtime(1)-$now);
+    }
+    foreach ($history as $k) {
+        $itemid = $k->itemid;
+        $varr[$itemid][]=$k->value;
+        $carr[$itemid][]=$k->clock;
+    }
+    foreach ($itemids as $item) {
+        $itemid=$item->itemid;
+        $host = $itemctx[$itemid];
+        $h = sprintf("hdata.%s.i%s", $host, $itemid);
+        fprintf(STDOUT, "{$h}.x=[%s];\n",join(",",$carr[$itemid]));
+        fprintf(STDOUT, "{$h}.y=[%s];\n",join(",",$varr[$itemid]));
+        if ($withevents) {
+            $revents = findeventsbyitem($hostname, $item->key_);
+            if (is_array($revents)) {
+                fprintf(STDOUT, "${h}.events=[");
+                foreach ($revents as $e) {
+                    fprintf(STDOUT, "%s,%s,%s,%s;", $e["clock"], $e["value"], $e["priority"], $e["triggerid"]);
+                }
+                fprintf(STDOUT, "];\n");
+            }
+        }
+    }
 }
 
 function trendsGetMysql($query) {

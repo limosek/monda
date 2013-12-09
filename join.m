@@ -44,7 +44,9 @@ function ndata=joindata(ndata,fle)
   itemindex=hdata.itemindex;
   hdata=ndata;
   indexes();
-  hdata.cm=reindexcm(hdata.cm,itemindex);
+  remove_bad();
+  indexes();
+  #hdata.cm=reindexcm(hdata.cm,itemindex);
 endfunction;
 
 global hdata;

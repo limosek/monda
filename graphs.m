@@ -1,4 +1,4 @@
-#!/usr/bin/octave
+#!/usr/bin/octave -qf
 
 global opt;
 opt.pause=1;
@@ -110,9 +110,8 @@ function cmplot(hostname)
 	
 	cmhost=hdata.cm;
 	newfigure();
-
         if (strcmp(hostname,"all"))
-            mini=1
+            mini=1;
             maxi=rows(cmhost);
         else
             mini=(hdata.(hostname).minindex);
@@ -128,12 +127,39 @@ function cmplot(hostname)
 	printplot(h,sprintf("cm-%s",hostname));
         for i=mini:maxi
             item=finditem(hdata.itemindex{i});
-            if (!isfield(item,"isbad"))
+            if (isitem(item) && !isfield(item,"isbad"))
                 warn(sprintf("Item %i => %s (cv=%f)\n",i,hdata.itemindex{i},coefvar(item.y)));
             else
                 warn(sprintf("Item %i => %s (deleted)\n",i,hdata.itemindex{i}));
             end
         end
+end
+
+function somplot()
+    global hdata;
+
+    lasthost=1;
+    lasttime=1;
+    if (isopt("somtimerange"))
+        for i=hdata.minx:getopt("somtimerange"):hdata.maxx
+            sx=i;
+            ex=i+getopt("somtimerange");
+            cmkey=cmatrix(sx,ex);
+            times{lasttime++}=cmkey;
+        end
+    else
+        for [host,hkey]=hdata
+            if (ishost(host))
+                Dh(:,lasthost)=host.cmvec;
+                hosts{lasthost++}=hkey;
+            end
+        end
+    end
+    newfigure();
+    D=som_data_struct(Dh,'comp_names',hosts);
+    M=som_make(D);
+    h=som_show(M);
+    printplot(h,sprintf("som"));
 end
 
 global hdata;
@@ -173,7 +199,12 @@ if (isopt("corrplot"))
     end
 end
 
-if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot"))
+if (isopt("somplot"))
+    somplot();
+end
+
+
+if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot") && !isopt("somplot"))
     for [host,hkey] = hdata
         if (ishost(host))
             cmplot(hkey);

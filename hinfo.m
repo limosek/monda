@@ -17,13 +17,7 @@ for i=1:length(arg_list)
     loaddata(src);
  end
  hostsinfo(hdata);
-
- for [host, hkey] = hdata
-  if (ishost(host))
-    hostinfo(host,hkey);
-  end
- end
+ cminfo(hdata.cm);
 end
 
-cminfo(hdata.cm);
 mexit(0);

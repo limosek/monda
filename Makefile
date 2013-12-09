@@ -147,8 +147,11 @@ analyze/%.m.gz:
 	$(MAKE) analyze/$$T2.m
 	@echo Done
 	
-join:
+join:	$(foreach h,$(HOSTS),analyze-$(h))
 	$(OCTAVE) join.m $(ANOPTS) -o "$(O)/join-$(OF).az" $(AZS)
+
+joinshared:	$(foreach h,$(HOSTS),analyze-$(h))
+	$(OCTAVE) join.m --shareditems $(ANOPTS) -o "$(O)/join-$(OF).az" $(AZS)
 
 gzip-%.m:
 	gzip $@
