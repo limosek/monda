@@ -57,6 +57,8 @@ info1:
 	@echo octave: $(OCTAVE) $(ANOPTS)
 	@echo AZ: $(AZS)
 	@echo M: $(MS)
+	@echo JOINS: $(JOINS)
+	@echo SJOINS: $(SJOINS)
 	@echo Targets:
 
 info2:	$(foreach host,$(HOSTS),info-$(host))
@@ -147,11 +149,8 @@ analyze/%.m.gz:
 	$(MAKE) analyze/$$T2.m
 	@echo Done
 	
-join:	$(foreach h,$(HOSTS),analyze-$(h))
-	$(OCTAVE) join.m $(ANOPTS) -o "$(O)/join-$(OF).az" $(AZS)
-
-joinshared:	$(foreach h,$(HOSTS),analyze-$(h))
-	$(OCTAVE) join.m --shareditems $(ANOPTS) -o "$(O)/join-$(OF).az" $(AZS)
+join: $(foreach i,$(INTERVALS),$(foreach st,$(START_DATES_NICE),join-$(st)-$(i)))
+sjoin: $(foreach i,$(INTERVALS),$(foreach st,$(START_DATES_NICE),sjoin-$(st)-$(i)))
 
 gzip-%.m:
 	gzip $@
@@ -180,5 +179,8 @@ reorderdb:
 query:
 	$(ZSQLC) '$(Q)'
 
-# Create all targets
+# Create all targets for hosts
 $(foreach host,$(HOSTS),$(eval $(call analyze/host,$(host))))
+
+# Create all targets for joins
+$(foreach i,$(INTERVALS),$(foreach sd,$(START_DATES_NICE),$(eval $(call join/interval,$(sd),$(i)))))

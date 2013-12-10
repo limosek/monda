@@ -11,10 +11,10 @@ ZABBIX_DB = zabbix
 ZABBIX_DB_USER = zabbix
 ZABBIX_DB_PASSWORD = somedbpasword
 
-# Get all history for searched items in one step
+# Get all history for searched items in one step if number of items is less than this number
 # This is quicker but needs lot of memory!
 # Uncomment to get history item by item 
-FETCHONESTEP = 1
+MAXITEMSATONCE = 200
 
 # Fetch events and triggers
 # Uncomment to not fetch triggers and events too

@@ -17,14 +17,14 @@ $histapi = true;
 $backuptable = false;
 $nodata = false;
 $stderr = false;
-$allatonce = 0;
+$allatonce = 1;
 $withtriggers = 0;
 $withevents = 0;
 $to_time = time();
 $limithistory=1000000;
 
 $opts = getopt(
-        "F:f:T:t:H:G:i:I:SBDeOTE"
+        "F:f:T:t:H:G:i:I:SBDeO:TE"
 );
 
 if (!$opts) {
@@ -38,7 +38,7 @@ if (!$opts) {
    -G group             Specify host group to get				example Servers
    -i itemregexp        Specify regexp of item keys to accept, 			example 'net|mem'
    -I itemregexp	Specify regexp of item keys to ignore
-   -O                   Fetch all history at once (needs lot of memory)
+   -O numitems          Fetch all history at once if number of items to fetch is less than numitems (needs lot of memory). Default item by item
    -L limit             Limit number of history to get at once
    -E                   Fetch all events glued to triggers 
    -S 			Use SQL instead of API for getting history
@@ -85,7 +85,7 @@ if (isset($opts["G"])) {
 }
 
 if (isset($opts["O"])) {
-    $allatonce=true;
+    $allatonce=$opts["O"];
 }
 
 if (isset($opts["L"])) {
@@ -182,21 +182,32 @@ try {
     }
     fprintf(STDOUT, "global hdata; hdata.version=%s; hdata.time_from=%u;hdata.time_to=%u;hdata.date_from='%s';hdata.date_to='%s';\n", GH_VERSION, $hist, $to_time, $ftime, $now);
     $itemcount = 0;
-    foreach ($items as $item) {
+    $origitems=count($items);
+    foreach ($items as $k=>$item) {
         if (preg_match("*$ritem*", $item->key_) && (!preg_match("*$nritem*", $item->key_)) && ($item->value_type == 0 || $item->value_type == 3)) {
             $itemid = $item->itemid;
             $itemcount++;
             $itemids[] = $item->itemid;
-            if (!$allatonce)
-                if (!$nodata) {
-                    item2octave($item);
-                }
         } else {
+            unset($items[$k]);
             if ($stderr)
                 fprintf(STDERR, "### Ignoring item %s (type %u),regexp=%u,nregex=%u\n", $item->key_, $item->value_type, preg_match("*$ritem*", $item->key_), !preg_match("*$nritem*", $item->key_));
         }
     }
-    if ($allatonce && !$nodata) {
+    if (count($items)>$allatonce) {
+        if ($stderr)
+                fprintf(STDERR, "### Fetching item by item (orig %u, fetching %u)\n",$origitems,count($items));
+        $allatonce=false;
+    } else {
+        if ($stderr)
+                fprintf(STDERR, "### Fetching all at once (orig %u, fetching %u)\n",$origitems,count($items));
+        $allatonce=true;
+    }
+    if (!$allatonce) {
+        foreach ($items as $item) {
+            item2octave($item);
+        }
+    } else {
         item2octave($items);
     }
     if ($withtriggers) {

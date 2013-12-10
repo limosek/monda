@@ -48,8 +48,8 @@ GZIP=gzip -f
 GUNZIP=gunzip -df
 OCTAVE=octave -q --no-window-system --norc
 
-ifneq ($(FETCHONESTEP),)
- GHOPTS += -O
+ifneq ($(MAXITEMSATONCE),)
+ GHOPTS += -O $(MAXITEMSATONCE)
 endif
 
 ifneq ($(FETCHEVENTS),)
@@ -151,6 +151,16 @@ define analyze/host
  $(foreach start_date,$(START_DATES_NICE),$(foreach interval,$(INTERVALS),$(eval $(call analyze/host/interval,$(1),$(start_date),$(interval),$(start_date)))))
  clean-$(1):
 	rm -rf $(O)/$(1)*
+endef
+
+define join/interval
+ JOINS += join-$(1)
+ SJOINS += sjoin-$(1)
+ join-$(1)-$(2): $(foreach h,$(HOSTS),analyze-$(h))
+	$(OCTAVE) join.m $(ANOPTS) -o "$(O)/join-$(HOSTGROUP)-$(1).az" $(foreach h,$(HOSTS),$(O)/$(h)-$(1)-$(2).az)
+
+ sjoin-$(1)-$(2): $(foreach h,$(HOSTS),analyze-$(h))
+	$(OCTAVE) join.m --shareditems $(ANOPTS) -o "$(O)/sjoin-$(HOSTGROUP)-$(1).az" $(foreach h,$(HOSTS),$(O)/$(h)-$(1)-$(2).az)
 endef
 
 ifneq ($(wildcard config.inc.php),)
