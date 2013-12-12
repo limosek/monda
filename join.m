@@ -65,13 +65,13 @@ if (getopt("o"))
   end
 else
   dst=arg_list{1};
-  for i = 1:length(arg_list)
+  for i = 1:length(arg_list)-1
     ndata=joindata(ndata,arg_list{i});
   end
+  opt.preprocess=pp;
+  ndata=joindata(ndata,arg_list{length(arg_list)});
 end
-opt.preprocess=pp;
 
-preprocess();
 start3=time();
 normalize();
 start4=time();

@@ -215,9 +215,9 @@ function loadsrc(fle)
 end
 
 function jsonsave(fle,data)
-    fprintf(stdout,"Saving json file %s ",fle)
+    dbg(sprintf("Saving json file %s ",fle));
     savejson("",data,'ExcludeNames',{'xn','yn','x','y'},'FileName',fle);
-    fprintf(stdout,"\n");
+    dbg("\n");
 end
 
 function ret = datetoseconds(dte)
@@ -409,37 +409,30 @@ function cminfo()
             item1id=sortvec(i,1);
             item2id=sortvec(i,2);
             c=sortvec(i,3);
-            dbg(sprintf("  Corr %f: %s(%i)<>%s(%i)\n",c,hdata.itemindex{item1id},item1id,hdata.itemindex{item2id},item2id));
+            if (min([item1id,item2id])<host.minindex)
+                item1id=item1id+host.minindex-1;
+                item2id=item2id+host.minindex-1;
+            end
+            if (item1id!=item2id)
+                dbg(sprintf("  Corr %f: %s(%i)<>%s(%i)\n",c,hdata.itemindex{item1id},item1id,hdata.itemindex{item2id},item2id));
+            end
         end
     end
   end
-    cmin=getopt("cmin");
-    cm=hdata.cm;
-    r=rows(cm);
-    if (r>80)
-        return
-    end
-    al=getopt("asciilevels");
-    lal=length(al);
-    if (mod(lal,2))
-        center=floor(lal/2);
-    else
-        center=floor(lal/2)-0.5;
-    end
-    for i=-1:0.1:1
-        dbg2(sprintf("Level %f=%s\n",i,al{round(i*center+center+1)}));
-    end
-    for i=1:r
-        for j=1:r
-            if (!isnan(full(cm(j,i)))) 
-                idx=round(full(cm(j,i))*center)+1;
-                dbg(sprintf("%s",al{idx+center}));
-            else
-                dbg(" ");
+  if (isfield(hdata,"sortvec"))
+    sortvec=hdata.sortvec;
+    warn(sprintf("Host all: cm=(%u,%u), sortvec=(%u), cmvec=(%u,%u)\n",rows(hdata.cm),columns(hdata.cm),rows(hdata.sortvec),rows(hdata.cmvec),columns(hdata.cmvec)));
+    for i=1:rows(sortvec)
+        item1id=sortvec(i,1);
+        item2id=sortvec(i,2);
+        c=sortvec(i,3);
+        if (item1id!=item2id)
+            if (!strcmp(hdata.itemhindex{item1id},hdata.itemhindex{item2id}))
+                dbg(sprintf("  XCorr %f: %s(%i)<>%s(%i)\n",c,hdata.itemindex{item1id},item1id,hdata.itemindex{item2id},item2id));
             end
         end
-        dbg("\n");
-    end
+     end
+  end
 end
 
 function e=coefvar(y)

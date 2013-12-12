@@ -199,23 +199,14 @@ function cmatrixall(time_start,time_to)
     hdata.cm=cmhost(1,length(hdata.itemindex));
 end
 
-function cmtovector()
-  global hdata;
+function cmv=sortvechost(tmp,si,ei)
+    global hdata;
 
-  cm=hdata.cm;
-  limit=getopt("cmin");
-  
-  i2=getopt("cmitrations");
-  dbg(sprintf("Correlation2 (limit=%f): ",limit));
-  for [host, hkey] = hdata
-    if (ishost(host))
-      si=host.minindex;
-      ei=host.maxindex-1;
-      tmp=cm(si:ei,si:ei);
       k=1;
       tmpvec=[];
       sortvec=[];
       maxri=1;
+      tmp=tmp(si:ei,si:ei);
       maxci=1; # Index of maximum value in column
       iterations1=0;
       iterations2=0;
@@ -230,11 +221,12 @@ function cmtovector()
       timestart=time();
       while (abs(max(max(tmp)))>limit && iterations1<i1 && iterations2<i2 && (time()-timestart)<limitsec)
        iterations1++;
-       maxv=max(max(abs(abs(tmp()))));
+       maxv=max(max(tmp()));
+       maxva=max(max(abs(abs(tmp()))));
        [maxri,maxci]=find(abs(tmp)==maxv);
        maxri=maxri(1);
        maxci=maxci(1);
-       if (maxv==1)
+       if (maxva==1)
           if (!mod(iterations1,100))
             dbg2(sprintf("%i/%i(corr=1) ",iterations1,i1));
           end
@@ -250,7 +242,7 @@ function cmtovector()
           iterations2++;
        end
        tmpvec(maxri,maxci)=maxv;
-       sortvec(k++,:)=[maxri,maxci,maxv];
+       sortvec(k++,:)=[maxri+si-1,maxci+si-1,maxv];
        if (maxri!=maxci)
           dbg2(sprintf("%i: %s(%i)<>%s(%i): %f\n",k,hdata.itemindex{maxri},maxri,hdata.itemindex{maxci},maxci,maxv));
        end
@@ -260,9 +252,9 @@ function cmtovector()
       if (iterations1>=i1 || iterations2>=i2)
         warn(sprintf("More results available, all iterations(%i of %i, %i of %i) looped!\n",iterations1,i1,iterations2,i2));
       end
-      dbg2(sprintf("\nmaxv=%f,minv=%f\n",abs(max(max(tmp))),abs(min(min(tmp)))));
-      hdata.(hkey).cm=tmpvec;
-      hdata.(hkey).sortvec=sortvec;
+      dbg2(sprintf("\nmaxv=%f,minv=%f\n",max(max(abs(abs(tmp())))),min(min(abs(abs(tmp()))))));
+      cmv.cm=tmpvec;
+      cmv.sortvec=sortvec;
       k=1;
       tmp=[];
       for i=1:columns(tmpvec)
@@ -270,8 +262,27 @@ function cmtovector()
             tmp(k++)=tmpvec(i,j);
         end
       end
-      hdata.(hkey).cmvec=tmp;
+      cmv.cmvec=tmp;
+end
+
+function cmtovector()
+  global hdata;
+
+  cm=hdata.cm;
+  limit=getopt("cmin");
+  
+  i2=getopt("cmitrations");
+  dbg(sprintf("Correlation2 (limit=%f): ",limit));
+  for [host, hkey] = hdata
+    if (ishost(host))
+      cmv=sortvechost(hdata.cm,host.minindex,host.maxindex);
+      hdata.(hkey).cm=cmv.cm;
+      hdata.(hkey).cmvec=cmv.cmvec;
+      hdata.(hkey).sortvec=cmv.sortvec;
     end
   end
+  cmv=sortvechost(hdata.cm,1,columns(hdata.cm));
+  hdata.cmvec=cmv.cmvec;
+  hdata.sortvec=cmv.sortvec;
   dbg("\n");
-endfunction
+end

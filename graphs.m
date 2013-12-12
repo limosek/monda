@@ -6,7 +6,7 @@ source("monda.lib.m");
 
 function ret=newfigure()
   if (!strcmp(getopt("imgformat"),"")) 
-    ret=figure("visible","off");
+    ret=figure("visible","off",'Position',[0,0,2000,2000]);
   else
     ret=figure();
   end
@@ -21,8 +21,9 @@ function printplot(h,id)
       dir=sprintf("%s/%s",dir,name);
       mkdir(dir);
       fle=sprintf("%s/%s.%s",dir,id,getopt("imgformat"));
-      print(fle,["-r",getopt("imgdpi")],["-S",getopt("imgsizex"),"x",getopt("imgsizey")]);
+      opts=sprintf("-r%i",300);# -S%ix%i",getopt("imgdpi"),getopt("imgsizex"),getopt("imgsizey"));
       dbg(sprintf("Saving %s\n",fle));
+      print(fle);
     end
 endfunction
 
@@ -135,7 +136,7 @@ function cmplot(hostname)
         end
 end
 
-function somplot()
+function somplot(name)
     global hdata;
 
     lasthost=1;
@@ -158,7 +159,11 @@ function somplot()
     newfigure();
     D=som_data_struct(Dh,'comp_names',hosts);
     M=som_make(D);
+    M.name=name;
     h=som_show(M);
+    som_cplane(M,M.codebook(:,1));  
+#    bmus = som_bmus(M,D);
+#    som_trajectory(bmus);
     printplot(h,sprintf("som"));
 end
 
@@ -169,48 +174,52 @@ global file;
 parseopts({"cmplot","hostplot","corrplot","maxplots"});
 
 arg_list=getrestopts();
-items=[];
-file=arg_list{1};
-loaddata(file);
-
 graphics_toolkit(getopt("gtoolkit"));
 
-if (isopt("cmplot"))
-    for [host,hkey] = hdata
-        if (ishost(host))
-            cmplot(hkey);
+for i=1:length(arg_list)
+
+    clear("hdata");
+    global hdata;
+    file=arg_list{i}
+    loaddata(file);
+
+    if (isopt("cmplot"))
+        for [host,hkey] = hdata
+            if (ishost(host))
+                cmplot(hkey);
+            end
         end
     end
-end
 
-if (isopt("hostplot"))
-    for [host,hkey] = hdata
-        if (ishost(host))
-            hostplot(hkey);
+    if (isopt("hostplot"))
+        for [host,hkey] = hdata
+            if (ishost(host))
+                hostplot(hkey);
+            end
         end
     end
-end
 
-if (isopt("corrplot"))
-    for [host,hkey] = hdata
-        if (ishost(host))
-            correlplot(hkey);
+    if (isopt("corrplot"))
+        for [host,hkey] = hdata
+            if (ishost(host))
+                correlplot(hkey);
+            end
         end
     end
-end
 
-if (isopt("somplot"))
-    somplot();
-end
-
-
-if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot") && !isopt("somplot"))
-    for [host,hkey] = hdata
-        if (ishost(host))
-            cmplot(hkey);
-        end
+    if (isopt("somplot"))
+        somplot(file);
     end
-    cmplot("all");
+
+
+    if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot") && !isopt("somplot"))
+        for [host,hkey] = hdata
+            if (ishost(host))
+                cmplot(hkey);
+            end
+        end
+        cmplot("all");
+    end
 end
 
 mexit(0);

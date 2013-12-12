@@ -153,14 +153,24 @@ define analyze/host
 	rm -rf $(O)/$(1)*
 endef
 
-define join/interval
- JOINS += join-$(1)
- SJOINS += sjoin-$(1)
- join-$(1)-$(2): $(foreach h,$(HOSTS),analyze-$(h))
-	$(OCTAVE) join.m $(ANOPTS) -o "$(O)/join-$(HOSTGROUP)-$(1).az" $(foreach h,$(HOSTS),$(O)/$(h)-$(1)-$(2).az)
+# $(1) - outputname
+# $(2) - files
+# $(3) - time_start
+# $(4) - interval
+define join
+ JOINS += join-$(1)-$(3)-$(4)
+ SJOINS += sjoin-$(1)-$(3)-$(4)
+ join-$(1)-$(3)-$(4): $(O)/join-$(1)-$(3)-$(4).az
+ $(O)/join-$(1)-$(3)-$(4).az: $(2)
+	$(OCTAVE) join.m $(ANOPTS) -o "$(O)/join-$(1)-$(3)-$(4).az" $(2)
 
- sjoin-$(1)-$(2): $(foreach h,$(HOSTS),analyze-$(h))
-	$(OCTAVE) join.m --shareditems $(ANOPTS) -o "$(O)/sjoin-$(HOSTGROUP)-$(1).az" $(foreach h,$(HOSTS),$(O)/$(h)-$(1)-$(2).az)
+ sjoin-$(1)-$(3)-$(4): $(O)/join-$(1)-$(3)-$(4).az
+ $(O)/join-$(1)-$(3)-$(4).az: $(2)
+	$(OCTAVE) join.m --shareditems $(ANOPTS) -o "$(O)/join-$(1)-$(3)-$(4).az" $(2)
+endef
+
+define join/intervals
+ $(foreach i,$(START_DATES_NICE)
 endef
 
 ifneq ($(wildcard config.inc.php),)
