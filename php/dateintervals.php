@@ -2,8 +2,7 @@
 <?php
 //error_reporting(E_ERROR);
 
-require './common.inc.php';
-
+require dirname(__FILE__).'/common.inc.php';
 
 $opts = getopt(
         "F:T:S:t:D:s:"

@@ -1,6 +1,8 @@
 
+# We need to use bash
 SHELL=/bin/bash
 
+# Hack to represent space character. Leave untouched
 space :=
 space +=
 
@@ -44,9 +46,11 @@ ifneq ($(EXCLUDED_ITEMS),)
  ANOPTS += $(foreach i,$(EXCLUDED_ITEMS),--excludeitems $(i))
 endif
 
+HOSTSDATESREGEXP='($(subst $(space),|,$(HOSTS) $(START_DATES_NICE))nonpossiblehost)'
+
 GZIP=gzip -f
 GUNZIP=gunzip -df
-OCTAVE=octave -q --no-window-system --norc
+OCTAVE=octave -q --no-window-system --norc -p$(MDIR)
 
 ifneq ($(MAXITEMSATONCE),)
  GHOPTS += -O $(MAXITEMSATONCE)
@@ -66,7 +70,7 @@ ifeq ($(V),2)
  ANOPTS += -v
 endif
 
-GH=./gethistory.php $(GHOPTS)
+GH=$(PHPDIR)/gethistory.php $(GHOPTS)
 
 ifeq ($(V),)
  define analyze/octave
@@ -155,28 +159,26 @@ endef
 
 # $(1) - outputname
 # $(2) - files
-# $(3) - time_start
-# $(4) - interval
-define join
- JOINS += join-$(1)-$(3)-$(4)
- SJOINS += sjoin-$(1)-$(3)-$(4)
- join-$(1)-$(3)-$(4): $(O)/join-$(1)-$(3)-$(4).az
- $(O)/join-$(1)-$(3)-$(4).az: $(2)
-	$(OCTAVE) join.m $(ANOPTS) -o "$(O)/join-$(1)-$(3)-$(4).az" $(2)
-
- sjoin-$(1)-$(3)-$(4): $(O)/join-$(1)-$(3)-$(4).az
- $(O)/join-$(1)-$(3)-$(4).az: $(2)
-	$(OCTAVE) join.m --shareditems $(ANOPTS) -o "$(O)/join-$(1)-$(3)-$(4).az" $(2)
+define join/files
+ JOINS += join-$(1)
+ SJOINS += sjoin-$(1)
+ join-$(1): $(O)/join-$(1).az
+ $(O)/join-$(1).az: $(2)
+	$(OCTAVE) join.m $(ANOPTS) -o "$(O)/join-$(1).az" $(2)
+ sjoin-$(1): $(O)/sjoin-$(1).az
+ $(O)/sjoin-$(1).az: $(2)
+	$(OCTAVE) join.m --shareditems $(ANOPTS) -o "$(O)/sjoin-$(1).az" $(2)
 endef
 
-define join/intervals
- $(foreach i,$(START_DATES_NICE)
+# $(1) - name
+define join/hostsdates
+ $(eval $(call join/files,$(1),$(AZS)))
 endef
 
-ifneq ($(wildcard config.inc.php),)
+ifneq ($(wildcard $(PHPDIR)/config.inc.php),)
  ifeq ($(HOSTS),)
   ifneq ($(HOSTGROUP),)
-   HOSTS:=$(filter-out $(EXCLUDED_HOSTS),$(shell ./gethostsingroup.php $(HOSTGROUP)))
+   HOSTS:=$(filter-out $(EXCLUDED_HOSTS),$(shell $(PHPDIR)/gethostsingroup.php $(HOSTGROUP)))
    ifeq ($(HOSTS),)
      $(error HOSTGROUP $(HOSTGROUP) probably does not exists? Groups are case sensitive!)
    endif
@@ -197,8 +199,8 @@ endif
 START_DATES=$(TIME_START)
 ifneq ($(TIME_TO),)
  ifneq ($(TIME_STEP),)
-  START_DATES:=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D '@U')
-  START_DATES_NICE:=$(shell ./dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D 'Y_m_d_Hi')
+  START_DATES:=$(shell $(PHPDIR)/dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D '@U')
+  START_DATES_NICE:=$(shell $(PHPDIR)/dateintervals.php -F '$(TIME_START)' -T '$(TIME_TO)' -S '$(TIME_STEP)' -t '3600' -D 'Y_m_d_Hi')
  endif
 endif
 

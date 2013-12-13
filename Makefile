@@ -1,10 +1,18 @@
 
 # Monda Makefile
--include config.mk
+# Define basics
+
+MKDIR=./mk
+PHPDIR=./php
+MDIR=./m
+SHDIR=./sh
+CFGDIR=./cfg
+
+-include $(CFGDIR)/config.mk
 ifneq ($(C),)
-include config-$(C).mk
+include $(CFGDIR)/config-$(C).mk
 endif
-include lib.mk
+include $(MKDIR)/lib.mk
 
 all: _test
 	@$(MAKE) analyze 
@@ -41,7 +49,7 @@ _config.inc.php config:
 	define('ZABBIX_DB','$(ZABBIX_DB)'); \
 	define('ZABBIX_DB_USER','$(ZABBIX_DB_USER)'); \
 	define('ZABBIX_DB_PASSWORD','$(ZABBIX_DB_PASSWORD)'); \
-	" >config.inc.php
+	" >$(PHPDIR)/config.inc.php
 	@mkdir -p out
 
 info: info1 info2 info3
@@ -66,11 +74,14 @@ info2:	$(foreach host,$(HOSTS),info-$(host))
 info3:
 	@echo Done
 
+azs:
+	@echo $(AZS)
+
 find:
 	$(FIND)
 
 clean:	$(foreach host,$(HOSTS),clean-$(host)) tmpclean
-	rm -f config.inc.php *.out
+	rm -f $(CFGDIR)/config.inc.php
 	$(MAKE) config
 	
 distclean: tmpclean
@@ -148,9 +159,6 @@ analyze/%.m.gz:
 	$(MAKE) gunzip/$$TS; \
 	$(MAKE) analyze/$$T2.m
 	@echo Done
-	
-join: $(foreach i,$(INTERVALS),$(foreach st,$(START_DATES_NICE),join-$(st)-$(i)))
-sjoin: $(foreach i,$(INTERVALS),$(foreach st,$(START_DATES_NICE),sjoin-$(st)-$(i)))
 
 gzip-%.m:
 	gzip $@
@@ -166,15 +174,6 @@ gunzip: $(shell $(FIND) -and -name '*.m.gz' | sed -e s/\.m\.gz\$$/\.m\-gz/)
 	
 analyzem: $(shell $(FIND) -and -name '*.m' | sed -e s/\.m\$$/\.az/)
 	@echo $^
-	
-patchdb:
-	$(ZSQL) <sql_triggers_backuptables.sql
-
-reorderdb:
-	$(ZSQLC) 'alter table history_uint_backup order by clock,itemid'
-	$(ZSQLC) 'alter table history_backup order by clock,itemid'
-	$(ZSQLC) 'alter table trends_uint_backup order by clock,itemid'
-	$(ZSQLC) 'alter table trends_backup order by clock,itemid'
 
 query:
 	$(ZSQLC) '$(Q)'
@@ -183,4 +182,9 @@ query:
 $(foreach host,$(HOSTS),$(eval $(call analyze/host,$(host))))
 
 # Create all targets for joins
-$(foreach i,$(INTERVALS),$(foreach sd,$(START_DATES_NICE),$(eval $(call join/interval,$(sd),$(i)))))
+$(foreach i,$(INTERVALS),$(foreach sd,$(START_DATES_NICE),$(eval $(call join/hostsdates,$(HOSTGROUP)_$(sd)_$(i),$(sd),$(i)))))
+
+join: $(JOINS)
+sjoin: $(SJOINS)
+
+

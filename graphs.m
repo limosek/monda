@@ -2,7 +2,8 @@
 
 global opt;
 opt.pause=1;
-source("monda.lib.m");
+addpath("m");
+source(file_in_loadpath("monda.lib.m"));
 
 function ret=newfigure()
   if (!strcmp(getopt("imgformat"),"")) 

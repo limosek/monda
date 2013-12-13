@@ -1,6 +1,7 @@
 #!/usr/bin/octave -qf
 
-source("monda.lib.m");
+addpath("m");
+source(file_in_loadpath("monda.lib.m"));
 
 function ndata=joindata(ndata,fle)
   global hdata;

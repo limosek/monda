@@ -2,10 +2,8 @@
 <?php
 error_reporting(E_ERROR);
 
-// load ZabbixApi
-require 'PhpZabbixApi_Library/ZabbixApiAbstract.class.php';
-require 'PhpZabbixApi_Library/ZabbixApi.class.php';
-require './common.inc.php';
+require dirname(__FILE__).'/common.inc.php';
+
 if (!isset($argv[1])) {
   die($argv[0]." hostgroup\n");
 }

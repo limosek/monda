@@ -3,10 +3,7 @@
 error_reporting(E_ERROR | E_PARSE);
 define(GH_VERSION, "3");
 
-// load ZabbixApi
-require 'PhpZabbixApi_Library/ZabbixApiAbstract.class.php';
-require 'PhpZabbixApi_Library/ZabbixApi.class.php';
-require './common.inc.php';
+require dirname(__FILE__).'/common.inc.php';
 
 $hist = time() - 3600;
 $rhost = '';

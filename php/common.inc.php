@@ -1,5 +1,9 @@
 <?php
 
+// load ZabbixApi
+require dirname(__FILE__).'/PhpZabbixApi_Library/ZabbixApiAbstract.class.php';
+require dirname(__FILE__).'/PhpZabbixApi_Library/ZabbixApi.class.php';
+
 define("SELECT_QUERY", "SELECT * FROM %s WHERE itemid IN (%s) AND clock>=%s AND clock<=%s");
 
 function errorexit($str, $code) {
@@ -7,10 +11,12 @@ function errorexit($str, $code) {
     exit($code);
 }
 
-if (file_exists('config.inc.php')) {
-    require 'config.inc.php';
+$cfgf=dirname(__FILE__).'/config.inc.php';
+
+if (file_exists($cfgf)) {
+    require $cfgf;
 } else {
-    errorexit("Cannot open config.inc.php!\n", 3);
+    errorexit("Cannot open $cfgf!\n", 3);
 }
 
 function timetoseconds($t, $r = false) {

@@ -3,8 +3,8 @@ global opt;
 warning('off');
 addpath("./somtoolbox/");
 addpath("./jsonlab/");
-source("opts.lib.m");
-source("an.lib.m");
+source(file_in_loadpath("opts.lib.m"));
+source(file_in_loadpath("an.lib.m"));
 
 cache.start=1;
 

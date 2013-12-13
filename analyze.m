@@ -1,7 +1,9 @@
 #!/usr/bin/octave --norc
 
 global opt;
-source("monda.lib.m");
+
+addpath("m");
+source(file_in_loadpath("monda.lib.m"));
 
 global cm;
 global hdata;

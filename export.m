@@ -1,7 +1,8 @@
 #!/usr/bin/octave -qf
 
 global opt;
-source("monda.lib.m");
+addpath("m");
+source(file_in_loadpath("monda.lib.m"));
 
 parseopts();
 arg_list=getrestopts();
