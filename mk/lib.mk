@@ -36,6 +36,12 @@ endif
 ifneq ($(CMAXTIME2),)
  ANOPTS += --cmaxtime2=$(CMAXTIME2)
 endif
+ifneq ($(MINTIME),)
+ ANOPTS += --mintime=$(MINTIME)
+endif
+ifneq ($(MAXTIME),)
+ ANOPTS += --mintime=$(MAXTIME)
+endif
 
 ifneq ($(INCLUDED_ITEMS),)
  IITEMS:=-i '$(subst $(space),|,$(INCLUDED_ITEMS))nonpossibleitem'

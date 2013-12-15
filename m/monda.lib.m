@@ -1,8 +1,9 @@
 global opt;
 
 warning('off');
-addpath("./somtoolbox/");
-addpath("./jsonlab/");
+output_precision(10);
+addpath("./m/somtoolbox");
+addpath("./m/jsonlab/");
 source(file_in_loadpath("opts.lib.m"));
 source(file_in_loadpath("an.lib.m"));
 
@@ -185,7 +186,11 @@ function savedata(fle)
   global aversion;
 
   hdata.aversion=aversion;
-  fprintf(stdout,"Saving file %s ",fle)
+  fprintf(stdout,"Saving file %s ",fle);
+  if (exist(fle,"file") && !isopt("f"))
+    err(sprintf("Not overwriting. Use -f!\n",fle));
+    mexit(1);
+  end
   save("-binary", fle);
   fprintf(stdout,"\n");
 end
@@ -380,6 +385,15 @@ function hostinfo(host,hkey)
   end;
 end
 
+function triggersinfo()
+   global hdata;
+   for [host, hkey] = hdata
+      if (istrigger(host))
+	 dbg(sprintf("Trigger '%s': '%s'\n",host.description,host.expression));
+      end;
+  end;
+end
+
 function hostsinfo(h)
   allitems=0;
   for [host, hkey] = h
@@ -397,6 +411,7 @@ function hostsinfo(h)
          hostinfo(host,hkey);
       end;
   end;
+  triggersinfo();
 end
 
 function cminfo()
@@ -413,7 +428,7 @@ function cminfo()
                 item1id=item1id+host.minindex-1;
                 item2id=item2id+host.minindex-1;
             end
-            if (item1id!=item2id)
+            if (item1id!=item2id && item1id<length(hdata.itemindex) && item2id<length(hdata.itemindex))
                 dbg(sprintf("  Corr %f: %s(%i)<>%s(%i)\n",c,hdata.itemindex{item1id},item1id,hdata.itemindex{item2id},item2id));
             end
         end
@@ -426,7 +441,7 @@ function cminfo()
         item1id=sortvec(i,1);
         item2id=sortvec(i,2);
         c=sortvec(i,3);
-        if (item1id!=item2id)
+        if (item1id!=item2id && item1id<length(hdata.itemindex) && item2id<length(hdata.itemindex))
             if (!strcmp(hdata.itemhindex{item1id},hdata.itemhindex{item2id}))
                 dbg(sprintf("  XCorr %f: %s(%i)<>%s(%i)\n",c,hdata.itemindex{item1id},item1id,hdata.itemindex{item2id},item2id));
             end
@@ -521,7 +536,7 @@ function preprocess(varargin)
     end
 
     if (bitget(pp,4))
-        dbg("Preprocess minmax ");
+        dbg("Preprocess minmax\n");
         minmax();
     end
     if (bitget(pp,2))
@@ -562,18 +577,59 @@ function ocm=reindexcm(cm,itemindex)
     end
 end
 
-function minmax()
+# Find minimum and maximums for sets
+# If time is specified in commandline, remove time not in range
+function minmax(varargin)
     global hdata;
 
     minx=time();
     maxx=0;
     minx2=minx;
     maxx2=minx;
-
+    mintime=0;
+    maxtime=0;
+    
+    if (length(varargin)==0 && !isfield(hdata,"minx") && (isopt("mintime")||isopt("maxtime")))
+        minmax(1);   # Run minmax to get minx and maxx first
+    end
+    if (isopt("mintime") && isfield(hdata,"minx"))
+        mintime=strtotime(getopt("mintime"),hdata.minx);
+    end
+    if (isopt("maxtime") && isfield(hdata,"maxx"))
+        maxtime=strtotime(getopt("maxtime"),hdata.minx);
+    end
     for [host, hkey] = hdata
      if (ishost(host))
       for [item, key] = host
        if (isitem(item))
+            if (mintime>0)
+                rmcols1=find(item.x<mintime);
+                item.x(rmcols1)=[];
+                item.y(rmcols1)=[];
+                if (isfield(item,"xn"))
+                    rmcols2=find(item.xn<mintime);
+                    item.xn(rmcols2)=[];
+                    item.yn(rmcols2)=[];
+                else
+                    rmcols2=0;
+                end
+                hdata.(hkey).(key)=item;
+                dbg2(sprintf("Removed %i,%i values from %s due to mintime.\n",columns(rmcols1),columns(rmcols2),item.key));
+            end
+            if (maxtime>0)
+                rmcols1=find(item.x>maxtime);
+                item.x(rmcols1)=[];
+                item.y(rmcols1)=[];
+                if (isfield(item,"xn"))
+                    rmcols2=find(item.xn>maxtime);
+                    item.xn(rmcols2)=[];
+                    item.yn(rmcols2)=[];
+                else
+                    rmcols2=0;
+                end
+                hdata.(hkey).(key)=item;
+                dbg2(sprintf("Removed %i,%i values from %s due to maxtime.\n",columns(rmcols1),columns(rmcols2),item.key));
+            end
             if (columns(item.x)<10)
                 hdata.(hkey).(key).isbad=1;
                 continue;
@@ -598,6 +654,9 @@ function r=indexes()
     itemid=1;
     hostid=1;
    
+    hdata.itemhindex={};
+    hdata.itemkindex={};
+    hdata.itemindex={};
     for [host, hkey] = hdata
      if (ishost(host))
       hdata.hostindex{hostid++}=hkey;

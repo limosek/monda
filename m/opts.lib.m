@@ -1,13 +1,15 @@
 
 global globalopts;
 globalopts = { \
-        "h", "help", "v", "debug", "profiling", "pause", "o:", \
-        "asciilevels*", \
+        "h", "help", "v", "f", "debug", "profiling", "pause", "o:", \
+        "asciilevels*", "mintime:", "maxtime:", \
         "delay:", "hosts*", "items*", \
         "excludehosts:", "excludeitems*", "baditems", "shareditems", \
-        "cv:","imgformat:","gtoolkit:","interactive", "preprocess:", \
-        "citerations1:","citerations2:","cmin:","cmaxtime1:","cmaxtime2:", \
-        "somtimerange:", "somplot" \
+        "cv:","imgformat:", "gtoolkit:", "interactive", "preprocess:", \
+        "citerations1:", "citerations2:", "cmin:", "cmaxtime1:", "cmaxtime2:", \
+        "somhosts", "somitems", "hostplot", "cmplot", "corrplot", \
+        "imgsizex:", "imgsizey:", \
+        "obfuscatelength:", "obfuscatechars*", "deobfuscate", "obfuscatehashes:" \
         };
 opt.delay=60;
 #opt.hosts=
@@ -37,6 +39,11 @@ opt.sompertime=1;
 opt.asciilevels={"<","\\","0","/",">"};
 #opt.o="file"
 #opt.somtimerange=3600*8;
+opt.obfuscatelength=6;
+opt.obfuscatechars={"ali","eli","ato","eti","uli","wut","kul","tul","bul","buk","res","ces","cis"};
+for i=toascii("a"):toascii("z")
+    opt.obfuscatechars{length(opt.obfuscatechars)+1}=sprintf("%c",i);
+end
 
 global opt;
 
@@ -58,6 +65,25 @@ function out=multiopt(opt,o,value)
         opt.(o)=value;
     end
     out=opt;
+end
+
+function r=strtotime(str,tme)
+    r=str;
+    if (ischar(str) && length(str)>1)
+        if (str(1)=="+")
+            r=tme+str2num(str);
+        end
+        if (str(1)=="-")
+            r=tme-str2num(str);
+        end
+        if (index(str,":"))
+            o=strsplit(str,":");
+            ts=localtime(tme);
+            ts.hour=str2num(o(1){:});
+            ts.min=str2num(o(2){:});
+            r=mktime(ts);
+        end
+    end
 end
 
 function o=parseopts(opts)
@@ -181,6 +207,9 @@ function r=getopt(o)
     if (isfield(opt,o))
         if (!isempty(opt.(o)) && !iscell(opt.(o)) && isdigit(opt.(o)(1)))
             r=str2double(opt.(o));
+            if (isnan(r))
+                r=opt.(o);
+            end
         else
             r=opt.(o);
         end

@@ -147,7 +147,7 @@ function item2octave($itemids) {
         fprintf(STDOUT, "### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n", $host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history, (int) ($item->history * 24 * 3600 / $item->delay), $item->trends, (int) $item->trends * 24);
         if ($stderr)
             fprintf(STDERR, "### %s:%s (id: %s, type: %s, freq: %s, hist: %s(max %s), trends: %s(max %s)),histapi=$histapi\n", $host, $item->key_, $item->itemid, $item->value_type, $item->delay, $item->history, (int) ($item->history * 24 * 3600 / $item->delay), $item->trends, (int) $item->trends * 24);
-        fprintf(STDOUT, "hdata.%s.ishost=1;${h}.isitem=1;${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n", $host, $item->itemid, addslashes($item->key_), $h, $item->delay, $item->history);
+        fprintf(STDOUT, "hdata.%s.ishost=1;${h}.isitem=1;${h}.id=%s; ${h}.key=\"%s\"; ${h}.delay=%s; ${h}.hdata=%s;\n", $host, $item->itemid, addslashes($item->key_), $item->delay, $item->history);
         $hosts[$host] = 1;
     }
     itemdata2octave($itemids, $itemsarr);

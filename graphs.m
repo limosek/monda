@@ -12,6 +12,10 @@ function ret=newfigure()
     ret=figure();
   end
   set(ret,'papertype', 'a4');
+  #set(ret,"defaultaxesfontname","Helvetica");
+  #set(ret,"defaultaxesfontsize",12);
+  #set(ret,"defaulttextfontname","Helvetica"); 
+  #set(ret,"defaulttextfontsize",12);
 endfunction
 
 function printplot(h,id)
@@ -24,7 +28,7 @@ function printplot(h,id)
       fle=sprintf("%s/%s.%s",dir,id,getopt("imgformat"));
       opts=sprintf("-r%i",300);# -S%ix%i",getopt("imgdpi"),getopt("imgsizex"),getopt("imgsizey"));
       dbg(sprintf("Saving %s\n",fle));
-      print(fle);
+      print(fle,sprintf("-S%i,%i",getopt("imgsizex"),getopt("imgsizey")));
     end
 endfunction
 
@@ -34,9 +38,13 @@ function h=itemplot(hostname,item)
 
       if (item.delta>0)
         newfigure();
-        h=plot(item.xn-hdata.minx2,item.yn,"g",item.x-hdata.minx,item.y,"b");
+        minx=min(item.x);
+        minxn=min(item.xn);
+        maxx=max(item.x);
+        maxxn=max(item.xn);
+        h=plot(item.xn-minxn,item.yn,"g",item.x-minx,item.y,"b");
         title(sprintf("%s:%s",hostname,item.key));
-        xlabel(sprintf("t[S] (start %s, end %s)",xdate(hdata.minx),xdate(hdata.maxx)));
+        xlabel(sprintf("t[S] (start %s, end %s)",xdate(minx),xdate(maxx)));
         legend(sprintf("Raw (%i values)",columns(item.x)),sprintf("Normalized (%i values)",columns(item.xn)));
         ylabel(sprintf("min=%f,max=%f,cv=%f",min(item.y),max(item.y),coefvar(item.y)));
         printplot(h,sprintf("item-%i",item.id));
@@ -50,12 +58,12 @@ function hostplot(hostname)
       global hdata;
 
       plots=0;
-      maxplots=getopt("maxplots")
+      maxplots=getopt("maxplots");
       for [item, key] = hdata.(hostname)
        if (isitem(item) && plots<maxplots)
          dbg(sprintf("Ploting %s:%s\n",hostname,item.key));
 	 itemplot(hostname,item);
-         plots++
+         plots++;
        end;
       end;
 endfunction;
@@ -137,24 +145,15 @@ function cmplot(hostname)
         end
 end
 
-function somplot(name)
+function somhosts(name)
     global hdata;
 
     lasthost=1;
     lasttime=1;
-    if (isopt("somtimerange"))
-        for i=hdata.minx:getopt("somtimerange"):hdata.maxx
-            sx=i;
-            ex=i+getopt("somtimerange");
-            cmkey=cmatrix(sx,ex);
-            times{lasttime++}=cmkey;
-        end
-    else
-        for [host,hkey]=hdata
-            if (ishost(host))
-                Dh(:,lasthost)=host.cmvec;
-                hosts{lasthost++}=hkey;
-            end
+    for [host,hkey]=hdata
+        if (ishost(host))
+            Dh(:,lasthost)=host.cmvec;
+            hosts{lasthost++}=hkey;
         end
     end
     newfigure();
@@ -162,7 +161,29 @@ function somplot(name)
     M=som_make(D);
     M.name=name;
     h=som_show(M);
-    som_cplane(M,M.codebook(:,1));  
+    #som_cplane(M,M.codebook(:,1));  
+#    bmus = som_bmus(M,D);
+#    som_trajectory(bmus);
+    printplot(h,sprintf("som"));
+end
+
+function somitems(host,name)
+    global hdata
+
+    lastitem=1;
+    items={};
+    for [item,key]=hdata.(host)
+        if (isitem(item) && isfield(item,"yn"))
+            Dh(:,lastitem)=item.yn;
+            items{lastitem++}=item.key;
+        end
+    end
+    newfigure();
+    D=som_data_struct(Dh,'comp_names',items);
+    M=som_make(D);
+    M.name=name;
+    h=som_show(M);
+    #som_cplane(M,M.codebook(:,1));  
 #    bmus = som_bmus(M,D);
 #    som_trajectory(bmus);
     printplot(h,sprintf("som"));
@@ -172,22 +193,25 @@ global hdata;
 global fig;
 global file;
 
-parseopts({"cmplot","hostplot","corrplot","maxplots"});
+parseopts();
 
 arg_list=getrestopts();
 graphics_toolkit(getopt("gtoolkit"));
+
+plotted=0;
 
 for i=1:length(arg_list)
 
     clear("hdata");
     global hdata;
-    file=arg_list{i}
+    file=arg_list{i};
     loaddata(file);
 
     if (isopt("cmplot"))
         for [host,hkey] = hdata
             if (ishost(host))
                 cmplot(hkey);
+                plotted=1;
             end
         end
     end
@@ -196,6 +220,7 @@ for i=1:length(arg_list)
         for [host,hkey] = hdata
             if (ishost(host))
                 hostplot(hkey);
+                plotted=1;
             end
         end
     end
@@ -204,16 +229,26 @@ for i=1:length(arg_list)
         for [host,hkey] = hdata
             if (ishost(host))
                 correlplot(hkey);
+                plotted=1;
             end
         end
     end
 
-    if (isopt("somplot"))
-        somplot(file);
+    if (isopt("somhosts"))
+        somhosts(["Hosts (",xdate(hdata.minx),"-",xdate(hdata.maxx),")"]);
+        plotted=1;
     end
 
+    if (isopt("somitems"))
+        for [host,hkey] = hdata
+            if (ishost(host))
+                somitems(hkey,[hkey,"(",xdate(hdata.minx),"-",xdate(hdata.maxx),")"]);
+                plotted=1;
+            end
+        end
+    end
 
-    if (!isopt("corrplot") && !isopt("hostplot") && !isopt("cmplot") && !isopt("somplot"))
+    if (!plotted)
         for [host,hkey] = hdata
             if (ishost(host))
                 cmplot(hkey);

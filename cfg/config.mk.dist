@@ -45,6 +45,12 @@ FETCHEVENTS = 1
 # Or exclude some of them
 #EXCLUDED_ITEMS += vfs.fs.size vm.memory.size system.hostname system.boottime kernel.maxfiles
 
+# If files are organized per day, we can focus only on some time per day
+# Works only for 24hour intervals(default) and starting time at 00:00!
+# For other intervals, this option can disturb analyzation!
+# MINTIME=03:00
+# MAXTIME=22:30
+
 # Get 7 days back, each day will be one file YYYY-mm-dd-00-00-24hour
 #TIME_START = 00:00 -7 days
 #INTERVALS = 24hour
