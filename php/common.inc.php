@@ -36,42 +36,11 @@ function timetoseconds($t, $r = false) {
     }
 }
 
-function dumpsql($sql) {
+function dumpsql($sql,$result=false,$rows=false) {
     global $stderr;
     if ($stderr) {
         fprintf(STDERR, "#### $sql\n");
     }
-}
-
-function historyGetMysql($query) {
-    global $backuptable;
-
-    $type = $query["history"];
-    $itemids = $query["itemids"];
-    $from = $query["time_from"];
-    $to = $query["time_to"];
-
-    if ($type == 0) {
-        $table = "history";
-    } else {
-        $table = "history_uint";
-    }
-    if ($backuptable) {
-        $table.="_backup";
-    }
-    $sql = sprintf(SELECT_QUERY, $table, join(",", $itemids), $from, $to);
-    dumpsql($sql);
-    $tq = mysql_query($sql);
-    $lines = Array();
-    while ($row = mysql_fetch_assoc($tq)) {
-        $line = new StdClass();
-        $line->itemid = $row["itemid"];
-        $line->clock = $row["clock"];
-        $line->value = $row["value"];
-        $lines[$line->clock . $line->itemid] = $line;
-    }
-    arsort($lines);
-    return($lines);
 }
 
 function clocksort($a, $b) {
@@ -213,42 +182,40 @@ function itemdata2octave($itemids, $itemsarr) {
     }
 }
 
-function trendsGetMysql($query) {
-    global $backuptable;
+function itemdata2csv($itemid,$from,$to) {
+    global $stderr,$histapi,$nodata,$api;
+    
+    $hgetarr = array(
+        "history" => Array(0, 3),
+        "itemids" => Array($itemid),
+        "sortfield" => "clock",
+        "output" => "extend",
+        "sortorder" => "ASC",
+        "limit" => 1000,
+        "time_from" => $from,
+        "time_to" => $to,
+    );
+    if ($stderr)
+        fprintf(STDERR, "### Getting for items %s...", join(",", $itemsarr));
 
-    $type = $query["trends"];
-    $itemids = $query["itemids"];
-    $from = $query["time_from"];
-    $to = $query["time_to"];
-
-    if ($type == 0) {
-        $table = "trends";
+    $now=microtime(1);
+    $history = $api->historyGet($hgetarr);
+    if ($histapi)
+        uasort($history, 'clocksort');
+    if (count($history) == 0) {
+        if ($stderr) fprintf(STDERR, "No history data for them!\n");
+        return;
     } else {
-        $table = "trends_uint";
+        if ($stderr)
+            fprintf(STDERR, "Got %u values after %f seconds!\n",count($history),microtime(1)-$now);
     }
-    if ($backuptable) {
-        $table.="_backup";
+    foreach ($history as $k) {
+        fprintf(STDOUT,"%s;%s\n",$k->clock,$k->value);
     }
-    $sql = sprintf(SELECT_QUERY, $table, join(",", $itemids), $from, $to);
-    dumpsql($sql);
-    $tq = mysql_query($sql);
-    $lines = Array();
-    while ($row = mysql_fetch_assoc($tq)) {
-        $line = new StdClass();
-        $line->itemid = $row["itemid"];
-        $line->clock = $row["clock"];
-        $line->value_min = $row["value_min"];
-        $line->value_avg = $row["value_avg"];
-        $line->value_max = $row["value_max"];
-        $line->num = $row["num"];
-        $lines[$line->clock . $line->itemid] = $line;
-    }
-    arsort($lines);
-    return($lines);
 }
 
-function historyGetPgsql($query) {
-    global $backuptable;
+function historyGetMysql($query) {
+    global $backuptable,$zq;
 
     $type = $query["history"];
     $itemids = $query["itemids"];
@@ -265,9 +232,9 @@ function historyGetPgsql($query) {
     }
     $sql = sprintf(SELECT_QUERY, $table, join(",", $itemids), $from, $to);
     dumpsql($sql);
-    $tq = pg_query($sql);
+    $tq = mysql_query($sql,$zq);
     $lines = Array();
-    while ($row = pg_fetch_assoc($tq)) {
+    while ($row = mysql_fetch_assoc($tq)) {
         $line = new StdClass();
         $line->itemid = $row["itemid"];
         $line->clock = $row["clock"];
@@ -278,8 +245,8 @@ function historyGetPgsql($query) {
     return($lines);
 }
 
-function trendsGetPgsql($query) {
-    global $backuptable;
+function trendsGetMysql($query) {
+    global $backuptable,$zq;
 
     $type = $query["trends"];
     $itemids = $query["itemids"];
@@ -296,7 +263,133 @@ function trendsGetPgsql($query) {
     }
     $sql = sprintf(SELECT_QUERY, $table, join(",", $itemids), $from, $to);
     dumpsql($sql);
-    $tq = pg_query($sql);
+    $tq = mysql_query($sql,$zq);
+    $lines = Array();
+    while ($row = mysql_fetch_assoc($tq)) {
+        $line = new StdClass();
+        $line->itemid = $row["itemid"];
+        $line->clock = $row["clock"];
+        $line->value_min = $row["value_min"];
+        $line->value_avg = $row["value_avg"];
+        $line->value_max = $row["value_max"];
+        $line->num = $row["num"];
+        $lines[$line->clock . $line->itemid] = $line;
+    }
+    arsort($lines);
+    return($lines);
+}
+
+function pgsqlQuery($li,$sql) {
+    dumpsql($sql);
+    $result=pg_query($li,$sql);
+    dumpsql("result=$result,rows=".pg_num_rows($result));
+    return($result);
+}
+
+function iteminfo($id,$numeric=false) {
+    global $api;
+    if ($numeric) {
+        return("$id");
+    } else {
+        $iq = Array(
+            "output" => 'extend',
+            "monitored" => true,
+            "selectHosts" => "extend",
+            "selectTriggers" => "extend",
+            "itemids" => array($id)
+        );
+        $i = $api->itemGet($iq);
+        return(sprintf("%s:%s(%d)", $i[0]->hosts[0]->host, $i[0]->key_, $i[0]->itemid));
+    }
+}
+
+
+function item2host($itemids) {
+    global $api, $stderr, $itemcache;
+
+    if (!is_array($itemids) && array_key_exists($itemid,$itemcache)) {
+        return($itemcache[$itemid]);
+    } else {
+        //echo "item2host($itemid)=";
+        $iq = Array(
+            "monitored" => true,
+            "selectHosts" => "extend",
+            "itemids" => $itemids
+        );
+        $i = $api->itemGet($iq);
+    }
+    //echo $i[0]->hosts[0]->hostid . "\n";
+    $itemcache[$itemid]=$i[0]->hosts[0]->hostid;
+    return($i[0]->hosts[0]->hostid);
+}
+
+function windowinfo($id,$numeric=false) {
+    global $mq;
+    if ($numeric) {
+        return($id);
+    } else {
+        $psql1 = pgsqlQuery($mq, "SELECT id,loi,extract(epoch from tfrom) AS tfrom,extract(epoch from tto) AS tto,description FROM timewindow WHERE id=$id");
+        $w1 = pg_fetch_object($psql1);
+        return(sprintf("%s(%d) <%s-%s>[loi=%d]", $w1->description, $w1->id, date("Y-m-d H:i", $w1->tfrom), date("Y-m-d H:i", $w1->tto), $w1->loi
+                ));
+    }
+}
+
+function mysqlQuery($li,$sql) {
+    dumpsql($sql);
+    return(mysql_query($sql,$li));
+}
+
+function historyGetPgsql($query) {
+    global $backuptable,$zq;
+
+    $type = $query["history"];
+    $itemids = $query["itemids"];
+    $from = $query["time_from"];
+    $to = $query["time_to"];
+
+    if ($type == 0) {
+        $table = "history";
+    } else {
+        $table = "history_uint";
+    }
+    if ($backuptable) {
+        $table.="_backup";
+    }
+    $sql = sprintf(SELECT_QUERY, $table, join(",", $itemids), $from, $to);
+    dumpsql($sql);
+    $tq = pg_query($zq,$sql);
+    $lines = Array();
+    while ($row = pg_fetch_assoc($tq)) {
+        $line = new StdClass();
+        $line->itemid = $row["itemid"];
+        $line->clock = $row["clock"];
+        $line->value = $row["value"];
+        $lines[$line->clock . $line->itemid] = $line;
+    }
+    arsort($lines);
+    return($lines);
+}
+
+function trendsGetPgsql($query) {
+    global $backuptable,$zq;
+
+    $type = $query["trends"];
+    $itemids = $query["itemids"];
+    $from = $query["time_from"];
+    $to = $query["time_to"];
+
+    if ($type == 0) {
+        $table = "trends";
+    } else {
+        $table = "trends_uint";
+    }
+    if ($backuptable) {
+        $table.="_backup";
+    }
+    $sql = sprintf(SELECT_QUERY, $table, join(",", $itemids), $from, $to);
+    dumpsql($sql);
+    $tq = pg_query($zq,$sql);
     $lines = Array();
     while ($row = pg_fetch_assoc($tq)) {
         $line = new StdClass();
@@ -332,19 +425,31 @@ function historyGet($query) {
     }
 }
 
-function init_api() {
-
-    if (!defined(ZABBIX_URL) || !defined(ZABBIX_USER) || !defined(ZABBIX_PW)) {
-        $api = new ZabbixApi(ZABBIX_URL, ZABBIX_USER, ZABBIX_PW);
+function init_api($zabbixapi=true) {
+    global $mq,$zq;
+    
+    if ($zabbixapi) {
+        if (!defined(ZABBIX_URL) || !defined(ZABBIX_USER) || !defined(ZABBIX_PW)) {
+            $api = new ZabbixApi(ZABBIX_URL, ZABBIX_USER, ZABBIX_PW);
+        } else {
+            errorexit("You must define ZABBIX_URL, ZABBIX_USER and ZABBIX_PW macros in config.inc.php!\n", 4);
+        }
     } else {
-        errorexit("You must define ZABBIX_URL, ZABBIX_USER and ZABBIX_PW macros in config.inc.php!\n", 4);
+        $api=false;
     }
 
     if (ZABBIX_DB_TYPE == "MYSQL") {
-        mysql_connect(ZABBIX_DB_SERVER . ":" . ZABBIX_DB_PORT, ZABBIX_DB_USER, ZABBIX_DB_PASSWORD);
-        mysql_select_db(ZABBIX_DB);
+        $zq=mysql_connect(ZABBIX_DB_SERVER . ":" . ZABBIX_DB_PORT, ZABBIX_DB_USER, ZABBIX_DB_PASSWORD);
+        mysql_select_db(ZABBIX_DB,$zq);
     } elseif (ZABBIX_DB_TYPE == "POSTGRESQL") {
-        pg_connect(sprintf("host=%s port=%s dbname=%s user=%s password=%s", ZABBIX_DB_SERVER, ZABBIX_DB_PORT, ZABBIX_DB, ZABBIX_DB_USER, ZABBIX_DB_PASSWORD));
+        $zq=pg_connect(sprintf("host=%s port=%s dbname=%s user=%s password=%s", ZABBIX_DB_SERVER, ZABBIX_DB_PORT, ZABBIX_DB, ZABBIX_DB_USER, ZABBIX_DB_PASSWORD));
+    }
+    
+    if (MONDA_DB_TYPE == "MYSQL") {
+        $mq=mysql_connect(MONDA_DB_SERVER . ":" . MONDA_DB_PORT, MONDA_DB_USER, MONDA_DB_PASSWORD);
+        mysql_select_db(MONDA_DB,$mq);
+    } elseif (ZABBIX_DB_TYPE == "POSTGRESQL") {
+        $mq=pg_connect(sprintf("host=%s port=%s dbname=%s user=%s password=%s", MONDA_DB_SERVER, MONDA_DB_PORT, MONDA_DB, MONDA_DB_USER, MONDA_DB_PASSWORD));
     }
     return($api);
 }

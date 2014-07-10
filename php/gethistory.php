@@ -1,7 +1,7 @@
 #!/usr/bin/php
 <?php
 error_reporting(E_ERROR | E_PARSE);
-define(GH_VERSION, "3");
+define("GH_VERSION", "3");
 
 require dirname(__FILE__).'/common.inc.php';
 
