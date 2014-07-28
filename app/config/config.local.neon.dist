@@ -1,0 +1,15 @@
+parameters:
+
+nette:
+	database:
+		zabbix:
+			dsn: 'psql:host=127.0.0.1;port=5432;dbname=zabbix'
+			user: zabbix
+			password: 
+			options:
+
+		monda:
+			dsn: 'psql:host=127.0.0.1;port=5432;dbname=monda'
+			user: monda
+			password: 
+			options:
