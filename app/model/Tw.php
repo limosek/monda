@@ -31,7 +31,7 @@ class Tw extends Monda {
                     "serverid" => $zid
             )));
         } else {
-            $this->dbg->warn("Skiping window zabbix_id=$zid,start=$start,length=$length,$description (already in db)\n");
+            $this->dbg->dbg("Skiping window zabbix_id=$zid,start=$start,length=$length,$description (already in db)\n");
         }
     }
    
@@ -192,7 +192,7 @@ class Tw extends Monda {
     }
     
     function twToIds($opts) {
-        $widrows=$this->twSearch($opts);
+        $widrows=Tw::twSearch($opts);
         $wids=Array();
         while ($wid=$widrows->fetch()) {
             $wids[]=$wid->id;
@@ -252,6 +252,27 @@ class Tw extends Monda {
             $d4=$this->mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
             $d5=$this->mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
             $d6=$this->mquery("DELETE FROM timewindow WHERE id IN (?)",$wids);
+        }
+        return($this->mcommit());
+    }
+    
+    function twEmpty($opts) {
+        $this->mbegin();
+        $wids=$this->twToIds($opts);
+        $this->dbg->warn(sprintf("Emptying timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n",
+                    $opts->zid,
+                    date("Y-m-d H:i",$opts->start),
+                    date("Y-m-d H:i",$opts->end),
+                    join(",",$opts->length),
+                    count($wids)));
+        if (count($wids)>0) {
+            $d1=$this->mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
+            $d2=$this->mquery("DELETE FROM hoststat WHERE windowid IN (?)",$wids);
+            $d3=$this->mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d4=$this->mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d5=$this->mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d6=$this->mquery("UPDATE timewindow SET updated=?, processed=0,found=0,loi=0 WHERE id IN (?)",
+                    New \DateTime(),$wids);
         }
         return($this->mcommit());
     }

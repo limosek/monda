@@ -11,7 +11,7 @@ use Nette,
 /**
  * ItemStat global class
  */
-class ItemStat extends HostStat {
+class ItemStat extends Monda {
     
     function itemSearch($key = false, $host = false, $hostgroup = false) {
         $iq = Array(
@@ -91,11 +91,22 @@ class ItemStat extends HostStat {
         return($rows);
     }
     
-    function isToIds($opts) {
-        $rows=$this->isSearch($opts)->fetchAll();
+    function isToIds($opts,$pkey=false) {
+        $ids=$this->isSearch($opts);
+        if (!$ids) {
+            return(false);
+        }
+        $rows=$ids->fetchAll();
         $itemids=Array();
         foreach ($rows as $row) {
-            $itemids[]=$row->itemid;
+            if ($pkey) {
+                $itemids[]=Array(
+                    "itemid" => $row->itemid,
+                    "windowid" => $row->windowid,
+                    "hostid" => $row->hostid);
+                } else {
+                    $itemids[]=$row->itemid;
+                }
         }
         return($itemids);
     }
@@ -106,7 +117,7 @@ class ItemStat extends HostStat {
         $this->mbegin();
         $this->dbg->warn("Computing item statistics for window id $w->id (zabbix_id:$w->serverid,$w->description)\n");
         $items=$this->isToIds($this->opts);
-        if (is_array($items)) {
+        if (count($items)>0) {
             $itemidsql=sprintf("AND itemid IN (%s)",join($items));
         } else {
             $itemidsql="";
@@ -121,7 +132,7 @@ class ItemStat extends HostStat {
                     max(value)-min(value) AS delta,
                     count(*) AS cnt
                 FROM history
-                WHERE clock>=? and clock<?
+                WHERE clock>=? and clock<? $itemidsql
                 GROUP BY itemid
 
                 UNION
@@ -139,6 +150,12 @@ class ItemStat extends HostStat {
                 ",
                 $w->fstamp,$w->tstamp,$w->fstamp,$w->tstamp);
         if (count($rows)==0) {
+            $d=$this->mquery("DELETE FROM itemstat WHERE windowid=?",$wid);
+            $this->mquery("UPDATE timewindow
+                SET updated=?, found=0, processed=0, ignored=0, lowcnt=0, lowavg=0, stddev0=0 WHERE id=?",
+                New \DateTime(),
+                $wid);
+            $this->mcommit();
             return(false);
         }
         $hostids=Array();
@@ -149,19 +166,6 @@ class ItemStat extends HostStat {
             $this->sadd("found");
             $rowscnt++;
             $itemids[]=$s->itemid;
-            if (is_array($hosts)) {
-                $hostid=$this->item2host($s->itemid);
-                if ($hostid) {
-                    if (is_array($hosts)) {
-                        if (!array_search($hostid, $hosts)) {
-                            $this->sadd("ignored");
-                            continue;
-                        }
-                    }
-                }
-            } else {
-                $hostid=null;
-            }
             if ($s->stddev == 0) {
                 $this->sadd("ignored");
                 $this->sadd("stddev0");
@@ -184,7 +188,7 @@ class ItemStat extends HostStat {
                     Array(
                         "cnt" => $s->cnt,
                         "itemid" => $s->itemid,
-                        "hostid" => $hostid,
+                        "hostid" => null,
                         "windowid" => $wid,
                         "avg_" => $s->avg,
                         "min_" => $s->min,
@@ -211,19 +215,31 @@ class ItemStat extends HostStat {
         if (!$opts->empty && !$opts->createdonly && !$opts->updated) {
             $this->dbg->warn("All windows will be recomputed! Consider using selector for empty or just created windows.\n");
         }
-        $windows=$this->twSearch($this->opts)->fetchAll();
+        $windows=Tw::twSearch($this->opts)->fetchAll();
         $this->dbg->warn(sprintf("Need to compute %d windows\n",count($windows)));
         foreach ($windows as $w) {
             if ($this->doJob()) {
-                $is=New \App\Model\ItemStat($this->opts);
-                $stats=$is->isCompute($w->id,$this->opts->itemids,$this->opts->hosts);
+                $stats=ItemStat::isCompute($w->id,$this->opts->itemids,$this->opts->hosts);
                 if (!$stats) {
                     $this->mexit(10,"No data in history available!\n");
                 } else {
                     $this->dbg->info(sprintf("Window %d: found=%d, processed=%d, ignored=%d\n",$w->id,$stats["found"],$stats["processed"],$stats["ignored"]));
                 }
                 $this->exitJob();
+                
             }
+        }
+    }
+    
+    public function IsDelete($opts) {
+        $items=$this->IsToIds($opts);
+        $windowids=Tw::TwtoIds($opts);
+        $this->dbg->warn(sprintf("Will delete %d itemstat entries (%d windows).\n",count($items),count($windowids)));
+        if (count($items)>0 && count($windowids)>0) {
+            $this->mbegin();
+            $this->mquery("DELETE FROM itemstat WHERE ?", $items);
+            $this->mquery("UPDATE timewindow SET updated=NULL,loi=0 WHERE id IN (?)",$windowids);
+            $this->mcommit();
         }
     }
     
@@ -236,6 +252,7 @@ class ItemStat extends HostStat {
             WHERE timewindow.serverid=?
             GROUP BY itemid
             ",$opts->zid);
+        return($stats);
     }
     
     public function IsLoi($opts) {

@@ -12,9 +12,9 @@ use Nette,
 /**
  * ItemStat global class
  */
-class HostStat extends Tw {
+class HostStat extends Monda {
     
-    function hsToIds($opts) {
+    function hostsToIds($opts) {
         if (!is_array($opts->hostids)) {
             $opts->hostids=Array();
         }
@@ -71,46 +71,123 @@ class HostStat extends Tw {
         return($h->hostid);
     }
     
-    function hsCompute($hostid,$opts) {
-        $itemids=$this->host2itemids($hostid);
-        if (count($itemids)<1) {
-            return(false);
-        }
-        $opts->empty=false;
-        $wids=$this->twToIds($opts);
+    function hsSearch($opts) {
+        $wids=Tw::twToIds($opts);
         if (count($wids)==0) {
             return(false);
         }
-        $this->dbg->warn(sprintf("Need to compute HostStat for host %s (%d windows).\n",$hostid,count($wids)));
-        $i=0;
-        foreach ($wids as $wid) {
-            $this->mbegin();
-            $i++;
-            $this->dbg->info(sprintf("Computing HostStat for host %s and window %s (%d of %d)\n",$hostid,$wid,$i,count($wids)));
-            //$hs=$this->mquery("SELECT COUNT(*) AS cnt FROM hoststat WHERE windowid=? AND hostid=?",$wid,$hostid)->fetch();
+        if (is_numeric($opts->updated)) {
+            $updatedflag=false;
+            $updated=$opts->updated;
+        } elseif ($opts->updated==false) {
+            $updatedflag=true;
+            $updated=0;
+        } else {
+            $updated=time();
+        }
+        if ($opts->createdonly) { 
+            $createdsql="updated IS NULL";
+        } else {
+            $createdsql="true";
+        }
+        $ids=$this->mquery("SELECT *
+            FROM hoststat
+            WHERE
+             (updated<? OR ?)
+             AND $createdsql
+             AND windowid IN (?)
+             AND hostid IN (?)
+            ",
+                New \DateTime("@" . $updated),
+                $updatedflag,
+                $wids,
+                $opts->hostids);
+        return($ids);
+    }
+    
+    function hsToIds($opts,$pkey=false) {
+        $ids=$this->hsSearch($opts);
+        if (!$ids) {
+            return(false);
+        }
+        $rows=$ids->fetchAll();
+        $hostids=Array();
+        foreach ($rows as $row) {
+            if ($pkey) {
+                $hostids[]=Array(
+                    "hostid" => $row->hostid,
+                    "windowid" => $row->windowid
+                    );
+                } else {
+                    $hostids[]=$row->hostid;
+                }
+        }
+        return($hostids);
+    }
+    
+    function hsUpdate($opts) {
+        $hsids=$this->hsToIds($opts,true);
+        if (!$hsids || count($hsids)<1) {
+            return(false);
+        }
+        $this->mbegin();
+        foreach ($hsids as $hs) {
+            $this->dbg->info(sprintf("Updating hostid for hostid %s and windowid %d\n",$hs["hostid"],$hs["windowid"]));
+            $itemids=$this->host2itemids($hs["hostid"]);
             $ius=$this->mquery("
                 UPDATE itemstat
                 SET hostid=?
                 WHERE itemid IN (?) AND windowid=? AND hostid IS NULL",
-                $hostid,$itemids,$wid);
-            $stat=$this->mquery("
-                SELECT AVG(cv) AS cv,
-                    SUM(loi) AS loi,
-                    COUNT(itemid) AS itemid,
-                    COUNT(cnt) AS cnt
-                FROM itemstat
-                WHERE windowid=? AND hostid IN (?) 
-                GROUP BY hostid
-                ",$wid,$hostid);
-            $row=$stat->fetch();
+                    $hs["hostid"],
+                    $itemids,
+                    $hs["windowid"]);
+        }
+        $this->mcommit();
+    }
+    
+    function hsDelete($opts) {
+        $ids=$this->hsToIds($opts,true);
+        $this->mbegin();
+        foreach ($ids as $id) {
+            $dq=$this->mquery("DELETE FROM hoststat WHERE ",$id);
+        }
+        $this->mcommit();
+    }
+    
+    function hsMultiCompute($opts) {
+        $wids=Tw::twToIds($opts);
+        if (count($wids)==0) {
+            return(false);
+        }
+        $stat=$this->mquery("
+            SELECT itemstat.hostid AS hostid,
+                itemstat.windowid AS windowid,
+                AVG(cv) AS cv,
+                SUM(itemstat.loi) AS loi,
+                COUNT(itemid) AS itemid,
+                COUNT(itemstat.cnt) AS cnt
+            FROM itemstat
+            LEFT JOIN hoststat ON (hoststat.hostid=itemstat.hostid)
+            WHERE itemstat.windowid IN (?) AND itemstat.hostid IN (?)
+              AND hoststat.updated IS NULL
+              AND itemstat.cnt>0
+            GROUP BY itemstat.hostid,itemstat.windowid
+            ",$wids,$opts->hostids);
+        $rows=$stat->fetchAll();
+        $this->dbg->warn(sprintf("Need to compute HostStat for %d rows.\n",count($rows)));
+        $i=0;
+        foreach ($rows as $row) {
+            $this->mbegin();
+            $i++;
+            $this->dbg->info(sprintf("Computing HostStat for host %s and window %s (%d of %d)\n",$row->hostid,$row->windowid,$i,count($rows)));
             $sd=$this->mquery("DELETE FROM hoststat WHERE windowid=? AND hostid=?",
-                    $wid,$hostid
+                    $row->windowid,$row->hostid
                     );
             $su=$this->mquery("
                 INSERT INTO hoststat",
                     Array(
-                        "hostid" => $hostid,
-                        "windowid" => $wid,
+                        "hostid" => $row->hostid,
+                        "windowid" => $row->windowid,
                         "cnt" => $row->cnt,
                         "loi" => $row->loi,
                         "updated" => New \DateTime()
@@ -118,6 +195,10 @@ class HostStat extends Tw {
                 );
             $this->mcommit();
         }
+    }
+    
+    function hsLoi() {
+        
     }
     
 }

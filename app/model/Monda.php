@@ -86,8 +86,6 @@ class Monda extends Nette\Object {
                     New Nette\Caching\Storages\FileStorage('temp/cache/sql'));
         $this->cache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage('temp/cache'));
-
-        $this->init_sql();
     }
     
     function apiCmd($cmd,$req) {
@@ -109,6 +107,9 @@ class Monda extends Nette\Object {
     }
     
     function zquery($query) {
+        if (!$this->zq) {
+             $this->init_sql();
+        }
         $args = func_get_args();
         $psql=new \Nette\Database\SqlPreprocessor($this->zq->connection);
         List($sql)=$psql->process($args);
@@ -118,6 +119,9 @@ class Monda extends Nette\Object {
     }
     
     function zcquery($query) {
+        if (!$this->zq) {
+             $this->init_sql();
+        }
         $args = func_get_args();
         $ckey=serialize($args);
         $ret=$this->sqlcache->load($ckey);
@@ -189,6 +193,9 @@ class Monda extends Nette\Object {
     }
     
     function mquery($query) {
+        if (!$this->mq) {
+             $this->init_sql();
+        }
         $args = func_get_args();
         $psql=new \Nette\Database\SqlPreprocessor($this->mq->connection);
         List($sql)=$psql->process($args);
@@ -198,6 +205,9 @@ class Monda extends Nette\Object {
     }
     
     function mcquery($query) {
+        if (!$this->mq) {
+             $this->init_sql();
+        }
         $args = func_get_args();
         $ckey=serialize($args);
         $ret=$this->sqlcache->load($ckey);
@@ -215,6 +225,9 @@ class Monda extends Nette\Object {
     }
     
     function mbegin() {
+        if (!$this->mq) {
+             $this->init_sql();
+        }
         $this->mq->beginTransaction();
     }
     
@@ -323,16 +336,16 @@ class Monda extends Nette\Object {
                 List($min1,$min5,$min15)=  sys_getloadavg();
             }
         }
-        if (isset($this->opts->maxbackends)) {
+        /*if (isset($this->opts->maxbackends)) {
             $cnt=$this->zbackends();
             $cnt2=$this->mbackends();
             while ($cnt>$this->opts->maxbackends || $cnt2>$this->opts->maxbackends) {
                 $this->dbg->warn(sprintf("Waiting for lower number of psql backends (actual=[zabbix=%d,monda=%d],max=%d)\n",$cnt,$cnt2,$this->opts->maxbackends));
                 $stat=$this->systemStats(10);
-                $cnt=$this->zbackends();
+                $cnt= $this->zbackends();
                 $cnt2=$this->mbackends();
             }
-        }
+        }*/
         if (isset($this->opts->maxcpuwait)) {
             while ($stat["iowait"]>$this->opts->maxcpuwait) {
                 $this->dbg->warn(sprintf("Waiting for lower iowait (actual=%f,max=%f)\n",$stat["iowait"],$this->opts->maxcpuwait));
@@ -360,6 +373,10 @@ class Monda extends Nette\Object {
                     return(false);
                 } else {
                     putenv("MONDA_CHILD=1");
+                    $this->mq=false;
+                    $this->zq=false;
+                    $this->init_sql();
+                    $this->init_api();
                     return(true);
                 }
             }
@@ -375,7 +392,7 @@ class Monda extends Nette\Object {
                     foreach ($this->childpids as $pid) {
                         posix_kill($pid,SIGTERM);
                     }
-                    $this->mexit(2,"One child died! Exiting!\n");
+                    BasePresenter::mexit(2,"One child died! Exiting!\n");
                 }
             }
         }
@@ -384,7 +401,7 @@ class Monda extends Nette\Object {
     function exitJob() {
         if (getenv("MONDA_CHILD")) {
             //$this->dbg->warn("Exit child.\n");
-            $this->mexit();
+            \App\Presenters\DefaultPresenter::mexit();
         }
     }
 

@@ -74,15 +74,15 @@ class TwPresenter extends BasePresenter
                 );
         $ret=$this->parseOpt($ret,
                 "empty",
-                "m","only-empty-windows",
-                "Work only on windows which are empty (skip computed windows)",
+                "m","only_empty_results",
+                "Work only on results which are empty (skip already computed objects)",
                 false,
                 "no"
                 );
         $ret=$this->parseOpt($ret,
                 "loionly",
-                "L","only_windows_with_loi",
-                "Select only windows which have loi>0",
+                "L","only_with_loi",
+                "Select only objects which have loi>0",
                 false,
                 "no"
                 );
@@ -119,6 +119,9 @@ class TwPresenter extends BasePresenter
 
      tw:delete [common opts]
         Remove windows and dependent data from this range
+     
+    tw:empty [common opts]
+        Empty windows data but leave windows created
         
      tw:show
         Show informations about timewindows in db
@@ -171,9 +174,9 @@ class TwPresenter extends BasePresenter
         $this->mexit();
     }
     
-    public function renderClean() {
+    public function renderEmpty() {
         $this->tw=New \App\Model\Tw($this->opts);
-        $this->tw->twClean($this->opts);
+        $this->tw->twEmpty($this->opts);
         $this->mexit();
     }
 }

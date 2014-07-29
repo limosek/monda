@@ -15,8 +15,11 @@ class HsPresenter extends TwPresenter
      Host operations
             
      hs:show [common opts]
+     hs:update [common opts]
+        Update hostids for itemids in monda db
      hs:delete [common opts]
      hs:compute [common opts]
+        Compute stats based on host and itemids
      
     [common opts]
     \n";
@@ -56,7 +59,7 @@ class HsPresenter extends TwPresenter
             $ret->hosts=preg_split("/,/",$ret->hosts);
         }
         $this->hs=New \App\Model\HostStat($ret);
-        $ret=$this->hs->hsToIds($ret);
+        $ret=$this->hs->hostsToIds($ret);
         return($ret);
     }
     
@@ -70,15 +73,30 @@ class HsPresenter extends TwPresenter
     }
 
     public function renderShow() {
-        $is=New \App\Model\HostStat($this->opts);
-        //dump($this->opts);exit;
+        $hs=New \App\Model\HostStat($this->opts);
+        $rows=$hs->hsSearch($this->opts);
+        if ($rows) {
+            $this->exportdata=$rows->fetchAll();
+            BasePresenter::renderShow($this->exportdata);
+        }
+        $this->mexit();
     }
     
     public function renderCompute() {
         $this->hs=New \App\Model\HostStat($this->opts);
-        foreach ($this->hs->opts->hostids as $hostid) {
-            $this->hs->hsCompute($hostid,$this->opts);
-        }
+        $this->hs->hsMultiCompute($this->opts);
+        $this->mexit();
+    }
+    
+    public function renderUpdate() {
+        $this->hs=New \App\Model\HostStat($this->opts);
+        $this->hs->hsUpdate($this->opts);
+        $this->mexit();
+    }
+    
+    public function renderDelete() {
+        $this->hs=New \App\Model\HostStat($this->opts);
+        $this->hs->hsDelete($this->opts);
         $this->mexit();
     }
 }

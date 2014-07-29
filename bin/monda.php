@@ -29,8 +29,16 @@ if (getenv("MONDARC")) {
 if (file_exists($cfgf) && !getenv("MONDA_PASS2")) {
     $cfgargs=strtr(file_get_contents($cfgf),"\n"," ");
     $cmdargs=$_SERVER["argv"];
+    foreach ($cmdargs as $id=>$cmd) {
+        $cmdargs[$id]="'$cmd'";
+    }
     putenv("MONDA_PASS2=true");
-    $cmd=sprintf("%s %s %s --foo %s",array_shift($cmdargs),array_shift($cmdargs),$cfgargs,join(" ",$cmdargs));
+    $cmd=array_shift($cmdargs);
+    $presenter=array_shift($cmdargs);
+    if (!$presenter) {
+        $presenter="default";
+    }
+    $cmd=sprintf("'%s' '%s' %s --foo %s",$cmd,$presenter,$cfgargs,join(" ",$cmdargs));
     //echo "$cmd\n";exit;
     system($cmd,$ret);
     exit($ret);

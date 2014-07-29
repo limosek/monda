@@ -75,8 +75,11 @@ class IsPresenter extends HsPresenter
 
     public function renderShow() {
         $is=New \App\Model\ItemStat($this->opts);
-        $this->exportdata=$is->isSearch($this->opts)->fetchAll();
-        parent::renderShow($this->exportdata);
+        $rows=$is->isSearch($this->opts);
+        if ($rows) {
+            $this->exportdata=$rows->fetchAll();
+            BasePresenter::renderShow($this->exportdata);
+        }
         $this->mexit();
     }
     
@@ -88,8 +91,13 @@ class IsPresenter extends HsPresenter
     
     public function renderCompute() {
         $is=New \App\Model\ItemStat($this->opts);
-        //dump($this->opts);
         $is->IsMultiCompute($this->opts);
+        $this->mexit(0,"Done\n");
+    }
+    
+    public function renderDelete() {
+        $is=New \App\Model\ItemStat($this->opts);
+        $is->IsDelete($this->opts);
         $this->mexit(0,"Done\n");
     }
 }
