@@ -86,24 +86,25 @@ CREATE TABLE hoststat
   windowid integer NOT NULL,
   cnt bigint DEFAULT 0,
   loi integer DEFAULT 0,
-  CONSTRAINT "p_hoststat" PRIMARY KEY (hostid, windowid)
+  updated timestamp with time zone,
+  CONSTRAINT p_hoststat PRIMARY KEY (hostid, windowid)
 )
 WITH (
   OIDS=TRUE
 );
 ALTER TABLE hoststat
   OWNER TO monda;
+
 CREATE UNIQUE INDEX i_windowhost
   ON hoststat
   USING btree
-  (windowid,hostid);
+  (windowid, hostid);
+
+
 CREATE INDEX ih_loi
   ON hoststat
   USING btree
   (loi);
-ALTER TABLE hoststat
-  ADD CONSTRAINT fi_windowid FOREIGN KEY (windowid) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
 
 CREATE TABLE itemcorr
 (

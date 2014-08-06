@@ -148,7 +148,7 @@ class HostStat extends Monda {
     function hsMultiCompute($opts) {
         $wids=Tw::twToIds($opts);
         CliDebug::warn(sprintf("Need to compute HostStat for %d windows.\n",count($wids)));
-        if (count($wids)==0 || count($opts->hostds)==0) {
+        if (count($wids)==0 || count($opts->hostids)==0) {
             return(false);
         }
         $stat=self::mquery("

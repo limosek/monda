@@ -52,9 +52,13 @@ two database configs. One will become from Zabbix setup and will be referrenced 
 **ZabbixDB**. Second will be Monda db and will be referrenced as **MondaDB**. Next, we
 will need host and user for monda process itself. See above.
 
-Next to this, create monda user using Zabbix frontend. This user should have readonly rights for all 
-hosts which you want to process by Monda. Next to this, create host group Monda. All hosts in this group
-will be processed by Monda.
+### Zabbix preparation
+
+Create monda user using Zabbix frontend. This user should have readonly rights for all 
+hosts which you want to process by Monda. User must have API access enabled.
+Next to this, create host group **monda** (name is case sensitive!).
+All hosts in this group will be processed by Monda. Or you can use another group and use **-Hg** 
+parameter.
 
 ### Cloning
 
@@ -74,20 +78,19 @@ $ cat >>~/.profile <<EOF
 EOF
 ```
 
-
 ### Installing DB
 
 First you have to create MondaDB. According to your setup, you have to feed sql/init.sql into your 
 SQL command. You have to be postgresql admin user to run scripts. There are three scripts.
-- init_db.sql to create role and DB
+- init_db.sql to create role and DB It will use default password for role monda!
 - init_schema.sql to create tables and objects inside monda DB
 - drop.sql to drop database, tables and roles (if you want to start from scratch again)
+- db.sh {init|drop} will try to do all
 
 ```
 # cd /home/monda/monda
 # su postgres
-$ psql <sql/init_db.sql
-$ psql monda <sql/init_schema.sql
+$ ./sql/db.sh init
 ```
 
 ### Configuring
@@ -104,7 +107,7 @@ $ cat ~/.mondarc
 # Zabbix API url, user and password
 --zabbix_api_url 'http://zabbix/api_jsonrpc.php'
 --zabbix_api_user monda
---zabbix_api_pw somepassword
+--zabbix_api_pw someapipassword
 # Zabbix api enable (default disabled)
 --za
 
@@ -112,7 +115,7 @@ $ cat ~/.mondarc
 --zabbix_dsn 'pgsql:host=127.0.0.1;port=5432;dbname=zabbix'
 --zabbix_db_user zabbix
 --zabbix_db_pw some_password
-# Zabbix ID (there can be more zabbix server in one monda db)
+# Zabbix ID (there can be more zabbix server in one monda db). If unspecified, "1" is used.
 --zabbix_id 1
 
 # MondaDb DSN
@@ -130,5 +133,38 @@ $ monda [module]
 Advanced help can be obtained by
 ```
 $ monda [module] -xh 2>&1 |less
+```
+
+## Running
+
+First we will create timewindows to inspect. This will test MondaDb connection.
+```
+$ monda tw:create -s yesterday
+```
+
+Next, we will try to compute item statistics for created windows. This will test ZabbixDB
+connection
+```
+$ monda is:compute -s yesterday
+$ monda is:show -s yesterday
+```
+
+You can use cron module, which will do all work automaticaly. **-Sc** parameter 
+will do cron subtargets too (eg. all days from week). Take care! This can be very 
+expensive to do cron with subtargets for long time (like last example).
+```
+$ monda cron:1hour
+$ monda cron:1day -Sc
+$ monda cron:1week -Sc
+$ monda cron:1month -Sc
+$ monda cron:1month -s "1 year ago" -Sc
+
+```
+
+To se results, use
+```
+$ monda tw:show -s yesterday -Om csv
+$ monda is:show -s yesterday -Om csv -Ov expanded
+$ monda ic:show -s yesterday -Om csv -Ov expanded
 ```
 

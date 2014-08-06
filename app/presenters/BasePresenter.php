@@ -306,15 +306,15 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "mdbpw",
                 "Mp","monda_db_pw",
                 "Use this monda Database password",
-                "",
-                ""
+                "M0nda",
+                "M0nda"
                 );
         $ret=self::parseOpt($ret,
                 "zapiurl",
                 "Za","zabbix_api_url",
                 "Use this zabbix API url",
-                "http://localhost/api_jsonrpc2.php",
-                "http://localhost/api_jsonrpc2.php"
+                "http://localhost/zabbix/api_jsonrpc.php",
+                "http://localhost/zabbix/api_jsonrpc.php"
                 );
         $ret=self::parseOpt($ret,
                 "zapiuser",
