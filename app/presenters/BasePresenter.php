@@ -57,6 +57,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         $this->Help();
         self::mexit();
     }    
+    public function __call($name, $args) {
+        parent::__call($name, $args);
+    }
     
     function timetoseconds($t) {
         if ($t[0] == "@") {
@@ -93,7 +96,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         }
         $this->opts=$this->getOpts($this->opts);
         if ($this->opts->help) {
-            $this->opts->noapi=true;
+            $this->opts->zapi=false;
             $this->forward($this->getName().":default");
         }
         parent::startup();
@@ -237,11 +240,11 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 20
                 ); */
         $ret=self::parseOpt($ret,
-                "noapi",
-                "na","no_api",
-                "Do not use Zabbix API. Use only cached values.",
+                "zapi",
+                "za","zabbix_api",
+                "Use Zabbix API to retrieve objects. If this is false, cache is used. If object is not in cache, return empty values.",
                 false,
-                "API enabled"
+                "API disabled"
                 );
         $ret=self::parseOpt($ret,
                 "outputmode",

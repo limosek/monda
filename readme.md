@@ -52,13 +52,83 @@ two database configs. One will become from Zabbix setup and will be referrenced 
 **ZabbixDB**. Second will be Monda db and will be referrenced as **MondaDB**. Next, we
 will need host and user for monda process itself. See above.
 
+Next to this, create monda user using Zabbix frontend. This user should have readonly rights for all 
+hosts which you want to process by Monda. Next to this, create host group Monda. All hosts in this group
+will be processed by Monda.
+
 ### Cloning
 
-There is no release yet. You must use git to clone monda repository. 
+There is no release yet. You must use git to clone monda repository. Git must be installed before.
 
 ```
-# apt-get install git
 # su -l monda
 $ git clone https://code.google.com/p/monda/
+$ cd monda
+$ export PATH=$PATH:$PWD/bin
+```
+Optionaly, you can add PATH for monda account permanently:
+
+```
+$ cat >>~/.profile <<EOF
+  export PATH=\$PATH:~/monda/
+EOF
+```
+
+
+### Installing DB
+
+First you have to create MondaDB. According to your setup, you have to feed sql/init.sql into your 
+SQL command. You have to be postgresql admin user to run scripts. There are three scripts.
+- init_db.sql to create role and DB
+- init_schema.sql to create tables and objects inside monda DB
+- drop.sql to drop database, tables and roles (if you want to start from scratch again)
+
+```
+# cd /home/monda/monda
+# su postgres
+$ psql <sql/init_db.sql
+$ psql monda <sql/init_schema.sql
+```
+
+### Configuring
+
+Monda configuration is based entirely on commandline arguments. 
+
+All commandline arguments can be saved into .mondarc file. This is located at ~/.mondarc. It can contain arguments 
+like passed from commandline. All lines which do not start with '-' are ignored as comment. 
+If you will pass all informations on commandline, you do not need config.
+Example config file with minimalistic configuration: 
+```
+$ cat ~/.mondarc
+
+# Zabbix API url, user and password
+--zabbix_api_url 'http://zabbix/api_jsonrpc.php'
+--zabbix_api_user monda
+--zabbix_api_pw somepassword
+# Zabbix api enable (default disabled)
+--za
+
+# ZabbixDb DSN
+--zabbix_dsn 'pgsql:host=127.0.0.1;port=5432;dbname=zabbix'
+--zabbix_db_user zabbix
+--zabbix_db_pw some_password
+# Zabbix ID (there can be more zabbix server in one monda db)
+--zabbix_id 1
+
+# MondaDb DSN
+--monda_dsn 'pgsql:host=127.0.0.1;port=5432;dbname=monda'
+--monda_db_user monda
+--monda_db_pw some_password
+
+```
+Basic help and list of modules can be obtained by runing:
+```
+$ monda [module]
+
+```
+
+Advanced help can be obtained by
+```
+$ monda [module] -xh 2>&1 |less
 ```
 

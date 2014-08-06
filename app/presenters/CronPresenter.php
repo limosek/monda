@@ -194,7 +194,7 @@ class CronPresenter extends IsPresenter
         $opts->start=$s;
         $opts->end=$e;
         if (!$l) {
-            $l=App\Model\Monda::_1WEEK;
+            $l=\App\Model\Monda::_1WEEK;
         }
 
         $lengths=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY,\App\Model\Monda::_1WEEK);

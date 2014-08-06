@@ -1,0 +1,3 @@
+
+DROP DATABASE monda;
+DROP ROLE monda;

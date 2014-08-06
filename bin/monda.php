@@ -38,7 +38,12 @@ if (getenv("MONDARC")) {
     $cfgf=getenv("HOME")."/.mondarc";
 }
 if (file_exists($cfgf) && !getenv("MONDA_PASS2")) {
-    $cfgargs=strtr(file_get_contents($cfgf),"\n"," ");
+    $cfgargs="";
+    foreach (file($cfgf) as $line) {
+        if (preg_match("#^-#",$line)) { 
+            $cfgargs.=strtr($line,"\n"," ");
+        }
+    }
     $cmdargs=$_SERVER["argv"];
     foreach ($cmdargs as $id=>$cmd) {
         $cmdargs[$id]="'$cmd'";

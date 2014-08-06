@@ -1,0 +1,33 @@
+#!/bin/sh
+
+# Local variables
+MDIR=$(dirname $0)
+MPHP=$MDIR/bin/monda.php
+MTMP=$MDIR/temp
+MLOG=$MDIR/log
+
+### Monda php process variables
+# For system wide tmp, use this
+#export MONDA_TMP=/tmp
+
+# For another config file, usee this
+#export MONDARC=/some/file.cf
+
+# For debuging, you can use this
+#export MONDA_DEBUG=debug
+
+if [ "$UID" = "0" ] || [ "$USER" = "root" ]; then
+    echo "Cannot run monda as root!"
+    exit 2
+fi
+
+if ! [ -w "$MTMP" ] && ! [ -w "$MLOG" ]; then
+   echo "Monda temp($MTMP) or log($MLOG) directories are not writeable!\n"
+   exit 2
+fi
+
+# Nice us
+ionice -c idle -p $$
+renice -n 19 $$ >/dev/null 2>/dev/null 
+
+exec $MPHP $@

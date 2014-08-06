@@ -2,12 +2,12 @@
 
 namespace App\Model;
 
-use \Exception,Nette,
+use \ZabbixApi,Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
     Nette\Database\Context,
-    \ZabbixApi;
+    \Exception;
 
 /**
  * Monda global class
@@ -22,7 +22,7 @@ class Monda extends Nette\Object {
     const _1YEAR=31536000;
 
     function init_api() {
-        if (!$this->opts->noapi && !$this->opts->help) {
+        if ($this->opts->zapi && !$this->opts->help) {
             if ($this->opts->zapiurl && $this->opts->zapiuser && $this->opts->zapipw) {
                 Debugger::log("Initialising Zabbix API\n", Debugger::DEBUG);
                 try {
@@ -68,7 +68,7 @@ class Monda extends Nette\Object {
         if ($ret === NULL) {
             if (!isset($this->api)) {
                 if (!self::init_api()) {
-                    CliDebug::warn("Zabbix Api query ignored (noapi=true)! ($cmd)\n");
+                    CliDebug::warn("Zabbix Api query ignored (zapi=false)! ($cmd)\n");
                     return(Array());
                 }
             }
