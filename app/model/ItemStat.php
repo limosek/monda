@@ -26,7 +26,7 @@ class ItemStat extends Monda {
         if ($key) {
             $iq["filter"] = Array("key_" => $key);
         }
-        $i = $this->apiCmd("itemGet",$iq);
+        $i = Monda::apiCmd("itemGet",$iq);
         $ret = Array();
         foreach ($i as $item) {
             $ret[] = $item->itemid;
@@ -37,10 +37,10 @@ class ItemStat extends Monda {
     function itemInfo($itemid) {
         $iq = Array(
             "monitored" => true,
-            "selectHosts" => "refer",
+            "output" => "extend",
             "itemids" => Array($itemid)
         );
-        $item = $this->apiCmd("itemGet",$iq);
+        $item = Monda::apiCmd("itemGet",$iq);
         return($item);
     }
     
@@ -56,11 +56,11 @@ class ItemStat extends Monda {
             }
             foreach ($opts->items as $item) {
                 //List($host,$key)=preg_split("/:/",$item);
-                $i=$this->itemSearch($item,false,$opts->hostgroups);
+                $i=self::itemSearch($item,false,$opts->hostgroups);
                 if (count($i)>0) {
                     $opts->itemids=array_merge($opts->itemids,$i);
                 } else {
-                    $this->dbg->warn("Item $item not found! Continuing.\n");
+                    CliDebug::warn("Item $item not found! Continuing.\n");
                 }
             }
         }
@@ -78,21 +78,27 @@ class ItemStat extends Monda {
         } else {
             $hostidssql="";
         }
+        if ($opts->isloionly) {
+            $loisql="loi>0 AND";
+        } else {
+            $loisql="";
+        }
         $wids=Tw::twToIds($opts);
         if (count($wids)>0) {
             $windowidsql=sprintf("windowid IN (%s) AND",join(",",$wids));
         } else {
             return(false);
         }
-        $rows=$this->mquery(
+        $rows=self::mquery(
                 "SELECT * from itemstat
-                 WHERE $itemidssql $hostidssql $windowidsql true"
+                 WHERE $itemidssql $hostidssql $windowidsql $loisql true
+                ORDER by loi DESC, cv DESC"
                 );
         return($rows);
     }
     
     function isToIds($opts,$pkey=false) {
-        $ids=$this->isSearch($opts);
+        $ids=self::isSearch($opts);
         if (!$ids) {
             return(false);
         }
@@ -114,16 +120,16 @@ class ItemStat extends Monda {
     function isCompute($wid) {
         
         $w=Tw::twGet($wid)->fetch();
-        $this->mbegin();
-        $this->dbg->warn("Computing item statistics for window id $w->id (zabbix_id:$w->serverid,$w->description)\n");
-        $items=$this->isToIds($this->opts);
+        self::mbegin();
+        CliDebug::warn("Computing item statistics for window id $w->id (zabbix_id:$w->serverid,$w->description)\n");
+        $items=self::isToIds($this->opts);
         if (count($items)>0) {
             $itemidsql=sprintf("AND itemid IN (%s)",join($items));
         } else {
             $itemidsql="";
         }
-        $this->sreset();
-        $rows=$this->zcquery(
+        Monda::sreset();
+        $rows=self::zcquery(
             "SELECT itemid AS itemid,
                     min(value) AS min,
                     max(value) AS max,
@@ -150,41 +156,41 @@ class ItemStat extends Monda {
                 ",
                 $w->fstamp,$w->tstamp,$w->fstamp,$w->tstamp);
         if (count($rows)==0) {
-            $d=$this->mquery("DELETE FROM itemstat WHERE windowid=?",$wid);
-            $this->mquery("UPDATE timewindow
+            $d=self::mquery("DELETE FROM itemstat WHERE windowid=?",$wid);
+            self::mquery("UPDATE timewindow
                 SET updated=?, found=0, processed=0, ignored=0, lowcnt=0, lowavg=0, stddev0=0 WHERE id=?",
                 New \DateTime(),
                 $wid);
-            $this->mcommit();
+            self::mcommit();
             return(false);
         }
         $hostids=Array();
         $itemids=Array();
         $rowscnt=0;
         foreach ($rows as $s) {
-            $this->dbg->dbg(sprintf("Processing %d of %d items (id=%d,stddev=%.2f)\n",$rowscnt,count($rows),$s->itemid, $s->stddev));
-            $this->sadd("found");
+            CliDebug::dbg(sprintf("Processing %d of %d items (id=%d,stddev=%.2f)\n",$rowscnt,count($rows),$s->itemid, $s->stddev));
+            Monda::sadd("found");
             $rowscnt++;
             $itemids[]=$s->itemid;
             if ($s->stddev == 0) {
-                $this->sadd("ignored");
-                $this->sadd("stddev0");
+                Monda::sadd("ignored");
+                Monda::sadd("stddev0");
                 continue;
             }
             if ($s->cnt < $this->opts->min_values_per_window) {
-                $this->sadd("ignored");
-                $this->sadd("lowcnt");
+                Monda::sadd("ignored");
+                Monda::sadd("lowcnt");
                 continue;
             }
             if ($s->avg < $this->opts->min_avg_for_cv) {
-                $this->sadd("ignored");
-                $this->sadd("lowavg");
+                Monda::sadd("ignored");
+                Monda::sadd("lowavg");
                 continue;
             }
-            $this->sadd("processed"); 
+            Monda::sadd("processed"); 
             $cv=$s->stddev/$s->avg;
-            $d=$this->mquery("DELETE FROM itemstat WHERE windowid=? AND itemid=?",$wid,$s->itemid);
-            $r=$this->mquery("INSERT INTO itemstat ",
+            $d=self::mquery("DELETE FROM itemstat WHERE windowid=? AND itemid=?",$wid,$s->itemid);
+            $r=self::mquery("INSERT INTO itemstat ",
                     Array(
                         "cnt" => $s->cnt,
                         "itemid" => $s->itemid,
@@ -197,54 +203,50 @@ class ItemStat extends Monda {
                         "cv" => $cv
                     )); 
         }
-        $this->mquery("UPDATE timewindow
+        self::mquery("UPDATE timewindow
                 SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, stddev0=? WHERE id=?",
                 New \DateTime(),
-                $this->sget("found"),
-                $this->sget("processed"),
-                $this->sget("ignored"),
-                $this->sget("lowcnt"),
-                $this->sget("lowavg"),
-                $this->sget("stddev0"),
+                Monda::sget("found"),
+                Monda::sget("processed"),
+                Monda::sget("ignored"),
+                Monda::sget("lowcnt"),
+                Monda::sget("lowavg"),
+                Monda::sget("stddev0"),
                 $wid);
-        $this->mcommit();
-        return($this->sget());
+        self::mcommit();
+        return(Monda::sget());
     }
     
     public function IsMultiCompute($opts) {
-        if (!$opts->empty && !$opts->createdonly && !$opts->updated) {
-            $this->dbg->warn("All windows will be recomputed! Consider using selector for empty or just created windows.\n");
+        if (\App\Presenters\BasePresenter::isOptDefault("empty")) {
+            $opts->empty=true;
         }
         $windows=Tw::twSearch($this->opts)->fetchAll();
-        $this->dbg->warn(sprintf("Need to compute %d windows\n",count($windows)));
+        CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($windows),date("Y-m-d H:i",$opts->start),date("Y-m-d H:i",$opts->end)));
         foreach ($windows as $w) {
-            if ($this->doJob()) {
+            if (self::doJob()) {
                 $stats=ItemStat::isCompute($w->id,$this->opts->itemids,$this->opts->hosts);
-                if (!$stats) {
-                    $this->mexit(10,"No data in history available!\n");
-                } else {
-                    $this->dbg->info(sprintf("Window %d: found=%d, processed=%d, ignored=%d\n",$w->id,$stats["found"],$stats["processed"],$stats["ignored"]));
-                }
-                $this->exitJob();
-                
+                CliDebug::info(sprintf("Window %d: found=%d, processed=%d, ignored=%d\n",$w->id,$stats["found"],$stats["processed"],$stats["ignored"]));
+                self::exitJob();
             }
         }
+        self::exitJobServer();
     }
     
     public function IsDelete($opts) {
-        $items=$this->IsToIds($opts);
+        $items=self::IsToIds($opts);
         $windowids=Tw::TwtoIds($opts);
-        $this->dbg->warn(sprintf("Will delete %d itemstat entries (%d windows).\n",count($items),count($windowids)));
+        CliDebug::warn(sprintf("Will delete %d itemstat entries (%d windows).\n",count($items),count($windowids)));
         if (count($items)>0 && count($windowids)>0) {
-            $this->mbegin();
-            $this->mquery("DELETE FROM itemstat WHERE ?", $items);
-            $this->mquery("UPDATE timewindow SET updated=NULL,loi=0 WHERE id IN (?)",$windowids);
-            $this->mcommit();
+            self::mbegin();
+            self::mquery("DELETE FROM itemstat WHERE ?", $items);
+            self::mquery("UPDATE timewindow SET updated=NULL,loi=0 WHERE id IN (?)",$windowids);
+            self::mcommit();
         }
     }
     
     public function IsShow($opts) {
-        $stats=$this->mquery("
+        $stats=self::mquery("
             SELECT 
                 MIN(value),MAX(value),
             FROM itemstat
@@ -257,8 +259,9 @@ class ItemStat extends Monda {
     
     public function IsLoi($opts) {
         $wids=Tw::twToIds($opts);
+        CliDebug::warn(sprintf("Need to compute itemstat loi for %d windows.\n",count($wids)));
         if (count($wids)>0) {
-            $stat=$this->mquery("
+            $stat=self::mquery("
                 SELECT MIN(cv) AS mincv,
                     MAX(cv) AS maxcv,
                     MIN(cnt) AS mincnt,
@@ -266,11 +269,11 @@ class ItemStat extends Monda {
                 FROM itemstat
                 WHERE windowid IN (?)",$wids)->fetch();
 
-            $lsql=$this->mquery("
+            $lsql=self::mquery("
                 UPDATE itemstat 
-                SET loi=100*(cv/?)*(cnt/?)
+                SET loi=100*(cv/?)
                 WHERE windowid IN (?)
-                ",$stat->maxcv,$stat->maxcnt,$wids);
+                ",$stat->maxcv,$wids);
         }
     }
 }

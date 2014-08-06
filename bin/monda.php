@@ -8,13 +8,24 @@ use Nette\Utils\Strings,
     \ZabbixApi;
 
 proc_nice(19);
+if (getenv("MONDA_TMP")) {
+    $tmpdir=getenv("MONDA_TMP");
+} else {
+    $tmpdir=__DIR__ . "/../temp";
+}
+$cachedir="$tmpdir/cache";
+$sqlcachedir="$cachedir/sql";
+$apicachedir="$cachedir/api";
 
-if (!file_exists(__DIR__ . "/../temp/cache/sql")) {
-    mkdir(__DIR__ . "/../temp/cache/sql",0700,true);
+if (!file_exists($sqlcachedir)) {
+    mkdir($sqlcachedir,0700,true);
 }
-if (!file_exists(__DIR__ . "/../temp/cache/api")) {
-    mkdir(__DIR__ . "/../temp/cache/api",0700,true);
+if (!file_exists($apicachedir)) {
+    mkdir($apicachedir,0700,true);
 }
+putenv("MONDA_CACHEDIR=$cachedir");
+putenv("MONDA_SQLCACHEDIR=$sqlcachedir");
+putenv("MONDA_APICACHEDIR=$apicachedir");
 
 $container = require __DIR__ . '/../app/bootstrap.php';
 Debugger::$maxDepth = 15;

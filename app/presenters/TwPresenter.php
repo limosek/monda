@@ -9,43 +9,36 @@ use Nette\Application\Responses\TextResponse,
 class TwPresenter extends BasePresenter
 {
     
-    public $tw;
-    
-    public function renderDefault() {
-        $this->Help();
-        $this->mexit();
-    }
-    
     public function renderTw() {
-        $this->Help();
-        $this->mexit();
+        self::Help();
+        self::mexit();
     }
     
     public function getOpts($ret) {
         $ret=parent::getOpts($ret);
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "start",
-                "s","start-datetime",
+                "s","start",
                 "Start time of analysis.",
                 date_format(New \DateTime(date("Y-01-01 00:00")),"U"),
                 date("Y-01-01 00:00")
                 );
-        $ret->start=$this->timetoseconds($ret->start);
-        $ret=$this->parseOpt($ret,
+        $ret->start=self::timetoseconds($ret->start);
+        $ret=self::parseOpt($ret,
                 "end",
-                "e","end-datetime",
+                "e","end",
                 "End time of analysis.",
                 $this->roundtime(time()-3600),
                 "-1 hour"
                 );
-        $ret->end=$this->timetoseconds($ret->end);
-        $ret=$this->parseOpt($ret,
+        $ret->end=self::timetoseconds($ret->end);
+        $ret=self::parseOpt($ret,
                 "description",
                 "d","window-description",
                 "Window description.",
                 ""
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "length",
                 "l","window_length",
                 "Window description.",
@@ -55,63 +48,66 @@ class TwPresenter extends BasePresenter
         $ret->length=preg_split("/,/",$ret->length);
         foreach ($ret->length as $id=>$length) {
             if (!is_numeric($length)) {
-                $ret->length[$id]=$this->timetoseconds($length)-time();
+                $ret->length[$id]=self::timetoseconds($length)-time();
             }
         }
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "startalign",
                 "ss","align_start",
                 "Align start time to be on timewindow boundary (0 minutes for hour, monday for week, 1st day for month)",
                 true,
                 "yes"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "wsort",
                 "ws","windows_sort",
                 "Sort order of windows to select ({random|start|length|loi|updated}/{+|-}",
                 "start/-",
                 "start/-"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "empty",
                 "m","only_empty_results",
                 "Work only on results which are empty (skip already computed objects)",
                 false,
                 "no"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "loionly",
                 "L","only_with_loi",
                 "Select only objects which have loi>0",
                 false,
                 "no"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "createdonly",
                 "c","only_just_created_windows",
                 "Select only windows which were just created and contains np data",
                 false,
                 "no"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "updated",
                 "u","windows_updated_before",
                 "Select only windows which were updated less than datetime",
                 false,
                 "no care"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "wids",
                 "w","window_ids",
                 "Select only windows with this ids",
                 false,
                 "no care"
                 );
+        if ($ret->wids) {
+            $ret->wids=preg_split("/,/",$ret->wids);
+        }
         return($ret);
     }
     
     public function Help() {
-        echo "
+        \App\Model\CliDebug::warn("
      Time Window operations
      
      tw:create [common opts]
@@ -137,46 +133,40 @@ class TwPresenter extends BasePresenter
      If no start and end date given, all data will be affected.
      
     [common opts]
-     \n";
-        $this->helpOpts();
+     \n");
+        self::helpOpts();
     }
     
     public function renderShow() {
-        $this->tw=New \App\Model\Tw($this->opts);
-        $windows=$this->tw->twSearch($this->opts);
+        $windows=\App\Model\Tw::twSearch($this->opts);
         $this->exportdata=$windows->fetchAll();
         parent::renderShow($this->exportdata);
-        $this->mexit();
+        self::mexit();
     }
     
     public function renderStats() {
-        $this->tw=New \App\Model\Tw($this->opts);
-        $this->exportdata=$this->tw->twStats($this->opts);
+        $this->exportdata=\App\Model\Tw::twStats($this->opts);
         parent::renderShow($this->exportdata);
-        $this->mexit();
+        self::mexit();
     }
     
     public function renderLoi() {
-        $this->tw=New \App\Model\Tw($this->opts);
-        $this->tw->twLoi($this->opts);
-        $this->mexit();
+        \App\Model\Tw::twLoi($this->opts);
+        self::mexit();
     }
     
     public function renderCreate() {
-        $this->tw=New \App\Model\Tw($this->opts);
-        $this->tw->twMultiCreate($this->opts);
-        $this->mexit();
+        \App\Model\Tw::twMultiCreate($this->opts);
+        self::mexit();
     }
     
     public function renderDelete() {
-        $this->tw=New \App\Model\Tw($this->opts);
-        $this->tw->twDelete($this->opts);
-        $this->mexit();
+        \App\Model\Tw::twDelete($this->opts);
+        self::mexit();
     }
     
     public function renderEmpty() {
-        $this->tw=New \App\Model\Tw($this->opts);
-        $this->tw->twEmpty($this->opts);
-        $this->mexit();
+        \App\Model\Tw::twEmpty($this->opts);
+        self::mexit();
     }
 }

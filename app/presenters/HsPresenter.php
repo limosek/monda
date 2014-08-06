@@ -6,12 +6,12 @@ use Nette\Application\Responses\TextResponse,
     Nette\Security\AuthenticationException,
     Model, Nette\Application\UI;
 
-class HsPresenter extends TwPresenter
+class HsPresenter extends BasePresenter
 {
     private $hs;
     
     public function Help() {
-        echo "
+        \App\Model\CliDebug::warn("
      Host operations
             
      hs:show [common opts]
@@ -22,13 +22,14 @@ class HsPresenter extends TwPresenter
         Compute stats based on host and itemids
      
     [common opts]
-    \n";
-        $this->helpOpts();
+    \n");
+        self::helpOpts();
     }
     
     public function getOpts($ret) {
         $ret=parent::getOpts($ret);
-        $ret=$this->parseOpt($ret,
+        $ret=TwPresenter::getOpts($ret);
+        $ret=self::parseOpt($ret,
                 "hostids",
                 "Hi","hostids",
                 "Hostids to get",
@@ -38,7 +39,7 @@ class HsPresenter extends TwPresenter
         if ($ret->hostids) {
             $ret->hostids=preg_split("/,/",$ret->hostids);
         }
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "hostgroups",
                 "Hg","hostgroup",
                 "Hostgroups to get",
@@ -48,7 +49,7 @@ class HsPresenter extends TwPresenter
         if ($ret->hostgroups) {
             $ret->hostgroups=preg_split("/,/",$ret->hostgroups);
         }
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "hosts",
                 "Hh","hosts",
                 "Hostnames to get",
@@ -58,45 +59,50 @@ class HsPresenter extends TwPresenter
         if ($ret->hosts) {
             $ret->hosts=preg_split("/,/",$ret->hosts);
         }
-        $this->hs=New \App\Model\HostStat($ret);
-        $ret=$this->hs->hostsToIds($ret);
+        $ret=\App\Model\HostStat::hostsToIds($ret);
         return($ret);
     }
     
-    public function renderDefault() {
-        $this->Help();
-        $this->mexit();
-    }
     public function renderHs() {
-        $this->Help();
-        $this->mexit();
+        self::Help();
+        self::mexit();
+    }
+    
+    function expandHost($hostid) {
+        $iq = Array(
+                "monitored" => true,
+                "output" => "extend",
+                "hostids" => array($hostid)
+            );
+        $h=\App\Model\Monda::apiCmd("hostGet",$iq);
+        if (count($h)>0) {
+            return($h[0]->host);
+        } else {
+            return("unknown");
+        }
     }
 
     public function renderShow() {
-        $hs=New \App\Model\HostStat($this->opts);
-        $rows=$hs->hsSearch($this->opts);
+        $rows=  \App\Model\HostStat::hsSearch($this->opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
-            BasePresenter::renderShow($this->exportdata);
+            parent::renderShow($this->exportdata);
         }
-        $this->mexit();
+        self::mexit();
     }
     
     public function renderCompute() {
-        $this->hs=New \App\Model\HostStat($this->opts);
-        $this->hs->hsMultiCompute($this->opts);
-        $this->mexit();
+        \App\Model\HostStat::hsMultiCompute($this->opts);
+        self::mexit();
     }
     
     public function renderUpdate() {
-        $this->hs=New \App\Model\HostStat($this->opts);
-        $this->hs->hsUpdate($this->opts);
-        $this->mexit();
+        \App\Model\HostStat::hsUpdate($this->opts);
+        self::mexit();
     }
     
     public function renderDelete() {
-        $this->hs=New \App\Model\HostStat($this->opts);
-        $this->hs->hsDelete($this->opts);
-        $this->mexit();
+        \App\Model\HostStat::hsDelete($this->opts);
+        self::mexit();
     }
 }

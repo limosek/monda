@@ -15,15 +15,15 @@ class Tw extends Monda {
     
     function twCreate($zid,$start,$length,$description) {
         
-        $id=$this->mquery("SELECT id FROM timewindow WHERE tfrom=? AND seconds IN (?) AND serverid=?",
+        $id=Monda::mquery("SELECT id FROM timewindow WHERE tfrom=? AND seconds IN (?) AND serverid=?",
                 New \DateTime("@$start"),
                 $length,
                 $zid
         )->fetch();
         if ($id==false) {
-            $this->dbg->warn("Creating window $start,$length,$description\n");
+            CliDebug::warn("Creating window $start,$length,$description\n");
             return(
-                $this->mquery("INSERT INTO timewindow",Array(
+                Monda::mquery("INSERT INTO timewindow",Array(
                     "description" => $description,
                     "tfrom" => New \DateTime("@$start"),
                     "seconds" => $length,
@@ -31,12 +31,12 @@ class Tw extends Monda {
                     "serverid" => $zid
             )));
         } else {
-            $this->dbg->dbg("Skiping window zabbix_id=$zid,start=$start,length=$length,$description (already in db)\n");
+            CliDebug::dbg("Skiping window zabbix_id=$zid,start=$start,length=$length,$description (already in db)\n");
         }
     }
    
     function twMultiCreate($opts) {
-        $this->mbegin();
+        Monda::mbegin();
         foreach ($opts->length as $length) {
             for ($i=$opts->start;$i<$opts->end;$i=$i+$length) {
                 if ($opts->startalign) {
@@ -61,15 +61,15 @@ class Tw extends Monda {
                 } else {
                     $desc=date("Y-m-d H:i",$i)."/$length";
                 }
-                $this->twCreate($this->opts->zid,$i,$length,$desc);
+                Tw::twCreate($this->opts->zid,$i,$length,$desc);
             }
         }
-        $this->mcommit();
+        Monda::mcommit();
     }
     
     function twSearch($opts) {
         if ($opts->wids) {
-            return($this->twGet($opts->wids));
+            return(self::twGet($opts->wids));
         }
         $onlyemptysql="";
         if ($opts->empty) {
@@ -129,7 +129,7 @@ class Tw extends Monda {
         } else {
             $loionlysql="true";
         }
-        $rows = $this->mquery("
+        $rows = Monda::mquery("
             SELECT 
                 id,
                 tfrom,
@@ -166,7 +166,7 @@ class Tw extends Monda {
     }
     
     function twGet($wid) {
-        $id=$this->mquery("
+        $id=Monda::mquery("
             SELECT id,
                 tfrom,
                 extract(epoch from tfrom) AS fstamp,
@@ -201,7 +201,7 @@ class Tw extends Monda {
     }
     
     function twStats($opts) {
-        $row=$this->mquery("
+        $row=Monda::mquery("
             SELECT
                 MIN(tfrom) AS mintfrom,
                 MAX(tfrom) AS maxtfrom,
@@ -223,58 +223,61 @@ class Tw extends Monda {
     }
     
     function twLoi($opts) {
-        $this->mbegin();
         $opts->empty=false;
         $opts->updated=true;
-        $wids=$this->twToIds($opts);
-        $this->dbg->warn(sprintf("Recomputing loi for %d windows\n",count($wids)));
-        $uloi=$this->mquery("
+        $wids=self::twToIds($opts);
+        CliDebug::warn(sprintf("Recomputing loi for %d windows\n",count($wids)));
+        if (count($wids)==0) {
+            return(false);
+        }
+        Monda::mbegin();
+        $uloi=Monda::mquery("
             UPDATE timewindow
             SET loi=round(seconds::float/300*1000*(processed::float/found::float))
             WHERE id IN (?) AND processed>0 AND found>0
             ",$wids);    
-        $this->mcommit();
+        Monda::mcommit();
     }
     
     function twDelete($opts) {
-        $this->mbegin();
-        $wids=$this->twToIds($opts);
-        $this->dbg->warn(sprintf("Deleting timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n",
+        Monda::mbegin();
+        $wids=self::twToIds($opts);
+        CliDebug::warn(sprintf("Deleting timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n",
                     $opts->zid,
                     date("Y-m-d H:i",$opts->start),
                     date("Y-m-d H:i",$opts->end),
                     join(",",$opts->length),
                     count($wids)));
         if (count($wids)>0) {
-            $d1=$this->mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
-            $d2=$this->mquery("DELETE FROM hoststat WHERE windowid IN (?)",$wids);
-            $d3=$this->mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d4=$this->mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d5=$this->mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d6=$this->mquery("DELETE FROM timewindow WHERE id IN (?)",$wids);
+            $d1=Monda::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
+            $d2=Monda::mquery("DELETE FROM hoststat WHERE windowid IN (?)",$wids);
+            $d3=Monda::mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d4=Monda::mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d5=Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d6=Monda::mquery("DELETE FROM timewindow WHERE id IN (?)",$wids);
         }
-        return($this->mcommit());
+        return(Monda::mcommit());
     }
     
     function twEmpty($opts) {
-        $this->mbegin();
-        $wids=$this->twToIds($opts);
-        $this->dbg->warn(sprintf("Emptying timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n",
+        Monda::mbegin();
+        $wids=self::twToIds($opts);
+        CliDebug::warn(sprintf("Emptying timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n",
                     $opts->zid,
                     date("Y-m-d H:i",$opts->start),
                     date("Y-m-d H:i",$opts->end),
                     join(",",$opts->length),
                     count($wids)));
         if (count($wids)>0) {
-            $d1=$this->mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
-            $d2=$this->mquery("DELETE FROM hoststat WHERE windowid IN (?)",$wids);
-            $d3=$this->mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d4=$this->mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d5=$this->mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d6=$this->mquery("UPDATE timewindow SET updated=?, processed=0,found=0,loi=0 WHERE id IN (?)",
+            $d1=Monda::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
+            $d2=Monda::mquery("DELETE FROM hoststat WHERE windowid IN (?)",$wids);
+            $d3=Monda::mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d4=Monda::mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d5=Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
+            $d6=Monda::mquery("UPDATE timewindow SET updated=?, processed=0,found=0,loi=0 WHERE id IN (?)",
                     New \DateTime(),$wids);
         }
-        return($this->mcommit());
+        return(Monda::mcommit());
     }
     
 }

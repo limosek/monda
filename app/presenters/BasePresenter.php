@@ -11,22 +11,40 @@ use \Exception,Nette,
  */
 abstract class BasePresenter extends Nette\Application\UI\Presenter
 {
-    public $dbg;
-    public $monda;
-    public $opts;
     public $getopts=Array();
     public $exportdata;
     const TW_STEP=300;
-    
+    public $cache; // Cache
+    public $apicache; // Cache for zabbix api
+    public $sqlcache;
+    public $api;   // ZabbixApi class
+    public $zq;    // Zabbix query link id
+    public $mq;    // Monda query link id
+    public $dbg;    // Cli debugger
+    public $zabbix_url;
+    public $zabbix_user;
+    public $zabbix_pw;
+    public $zabbix_db_type;
+    public $stats=Array();
+    public $lastns=false;
+    public $opts;
+    public $cpustats;
+    public $cpustatsstamp;
+    public $childpids=Array();
+    public $childs;
+    public $debuglevel="warning";
+    public $lastsql;
+    public $jobstats;
+
     public function roundTime($tme) {
         return(round($tme/self::TW_STEP)*self::TW_STEP);
     }
     
     function mexit($code=0,$msg="") {
         if ($code==0) {
-            $this->dbg->warn($msg);
+            Model\CliDebug::warn($msg);
         } else {
-            $this->dbg->err($msg);
+            Model\CliDebug::err($msg);
         }
         
         if (!getenv("MONDA_CHILD")) {
@@ -36,13 +54,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
     
     public function renderDefault() {
-        $this->renderHelp();
-    }
-    
-    public function renderHelp() {
         $this->Help();
-        $this->mexit();
-    }
+        self::mexit();
+    }    
     
     function timetoseconds($t) {
         if ($t[0] == "@") {
@@ -78,195 +92,254 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             $this->opts=New \stdClass();
         }
         $this->opts=$this->getOpts($this->opts);
-        //dump($this->opts);exit;
         if ($this->opts->help) {
+            $this->opts->noapi=true;
             $this->forward($this->getName().":default");
         }
         parent::startup();
+
+        return($this);
+    }
+    
+    function __construct() {
+        global $container;
+        
+        $c = $container;
+        $this->dbg=New Model\CliDebug();
+        $this->apicache = New Nette\Caching\Cache(
+                    New Nette\Caching\Storages\FileStorage(getenv("MONDA_APICACHEDIR")));
+        $this->sqlcache = New Nette\Caching\Cache(
+                    New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")));
+        $this->cache = New Nette\Caching\Cache(
+                    New Nette\Caching\Storages\FileStorage(getenv("MONDA_CACHEDIR")));
     }
   
-    function parseOpt($obj,$key,$short,$long,$desc,$default=null,$defaulthelp=false) {
-        if (array_key_exists($key,$this->getopts)) {
-            throw New \Nette\Neon\Exception("Duplicated parameter (key=$key)!\n");
-        }
-        if (array_key_exists($short,$this->getopts)) {
-            throw New \Nette\Neon\Exception("Duplicated parameter (short=$short)!\n");
-        }
-        if (array_key_exists($long,$this->getopts)) {
-            throw New \Nette\Neon\Exception("Duplicated parameter (long=$long)!\n");
+    function parseOpt($obj,$key,$short,$long,$desc,$default=null,$defaulthelp=false,$choices=false,$params=false) {
+        if (!$params) {
+            $params=$this->params;
         }
         $this->getopts[$key]=Array(
             "short" => $short,
             "long" => $long,
             "description" => $desc,
             "default" => $default,
-            "defaulthelp" => $defaulthelp
+            "defaulthelp" => $defaulthelp,
+            "choices" => $choices
         );
-        if (array_key_exists($short,$this->params)) {
-            $obj->$key=$this->params[$short];
-        } elseif (array_key_exists($long,$this->params)) {
-            $obj->$key=$this->params[$long];
-        } elseif (array_key_exists("_$short",$this->params)) {
-            $obj->$key=!$this->params["_$short"];
-        } elseif (array_key_exists("_$long",$this->params)) {
-            $obj->$key=!$this->params["_$long"];
+        if (array_key_exists($short,$params)) {
+            $value=$params[$short];
+        } elseif (array_key_exists($long,$params)) {
+            $value=$params[$long];
+        } elseif (array_key_exists("_$short",$params)) {
+            $value=!$params["_$short"];
+        } elseif (array_key_exists("_$long",$params)) {
+            $value=!$params["_$long"];
         } else {
-            $obj->$key=$default;
+            $value=$default;
+            $obj->defaults[]=$key;
+        }
+        $obj->$key=$value;
+        if ($choices) {
+            if (array_search($value,$choices)===false) {
+                self::mexit(14,sprintf("Bad option %s for parameter %s(%s). Possible values: {%s}\n",$value,$short,$long,join($choices,"|")));
+            }
         }
         if (is_object($this->dbg) && isset($obj->$key)) {
-            $this->dbg->dbg("Setting option $long($desc) to ".  strtr(\Nette\Diagnostics\Debugger::dump($obj->$key,true),"\n"," ")."\n");
+            Model\CliDebug::dbg("Setting option $long($desc) to ".  strtr(\Nette\Diagnostics\Debugger::dump($obj->$key,true),"\n"," ")."\n");
         }
         return($obj);
     }
     
+    function setOpt($opt,$value) {
+        $this->params[$opt]=$value;
+    }
+    
+    function isOptDefault($key) {
+        if (array_search($key,$this->opts->defaults)===false) {
+            return(false);
+        } else {
+            return(true);
+        }
+    }
+    
     function helpOpts() {
-        echo "[Common options]:\n";
-        foreach ($this->getopts as $opt) {
+        Model\CliDebug::warn(sprintf("[Common options for %s]:\n",$this->getName()));
+        $opts=$this->getopts;
+        foreach ($opts as $key=>$opt) {
             if (!$opt["defaulthelp"]) {
                 $opt["defaulthelp"]=$opt["default"];
             }
-            $this->dbg->write(sprintf("-%s|--%s 'value': %s (default <%s>)\n",
-                    $opt["short"],$opt["long"],     $opt["description"],    $opt["defaulthelp"]));
+            if (array_key_exists("choices",$opt) && is_array($opt["choices"])) {
+                $choicesstr="Choices: {".join("|",$opt["choices"])."}\n";
+            } else {
+                $choicesstr="";
+            }
+            if (self::isOptDefault($key)) {
+                $avalue="Default";
+            } else {
+                if (is_array($this->opts->$key)) {
+                    $avalue=join(",",$this->opts->$key);
+                } elseif (is_bool($this->opts->$key)) {
+                    $avalue=sprintf("%b",$this->opts->$key);    
+                } else {
+                    $avalue=$this->opts->$key;
+                }
+            }
+            Model\CliDebug::warn(sprintf("-%s|--%s 'value':\n   %s\n   Default: <%s>\n   Actual value: %s\n   %s\n",
+                    $opt["short"],$opt["long"],     $opt["description"],    $opt["defaulthelp"], $avalue, $choicesstr));
         }
     }
     
     function getOpts($ret) {
-        //dump($this->params);exit;
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "help",
                 "h","help",
                 "Help. If used with module, help will be module specific",
                 false
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "debug",
                 "D","debug",
                 "Debug level (debug,info,warning,error,critical)",
                 "info"
                 );
         $this->dbg=New Model\CliDebug($ret->debug);
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "dry",
                 "R","dry_run",
                 "Only show what would be done. Do not touch db.",
                 false,
                 "no"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "fork",
                 "F","fork_level",
                 "Fork level (how many processes to run simultanously)",
                 false,
                 "no fork"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "maxload",
                 "Ml","max_load",
                 "Run jobs only if OS loadavg is lower than value",
                 10
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "maxcpuwait",
                 "Mw","max_cpuwait",
                 "Run jobs only if CPU wait time lower than value[%%]",
                 20
                 );
-       $ret=$this->parseOpt($ret,
+       /* $ret=self::parseOpt($ret,
                 "maxbackends",
                 "Mb","max_backends",
                 "Run jobs only if there is less then value connected backends in DB",
                 20
-                );
-        $ret=$this->parseOpt($ret,
+                ); */
+        $ret=self::parseOpt($ret,
                 "noapi",
                 "na","no_api",
                 "Do not use Zabbix API. Use only cached values.",
                 false,
                 "API enabled"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "outputmode",
                 "Om","output_mode",
                 "Use this output mode {cli|csv|dump}",
                 "cli",
                 "cli"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "outputverb",
                 "Ov","output_verbosity",
-                "Use this output verbosity {brief,list,full}",
-                "brief",
-                "brief"
+                "Use this output verbosity {id,expanded}",
+                "ids",
+                "ids"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "zdsn",
                 "Zd","zabbix_dsn",
                 "Use this zabbix Database settings",
                 "pgsql:host=127.0.0.1;port=5432;dbname=zabbix",
                 "pgsql:host=127.0.0.1;port=5432;dbname=zabbix"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "zdbuser",
                 "Zu","zabbix_db_user",
                 "Use this zabbix Database user",
                 "zabbix",
                 "zabbix"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "zdbpw",
                 "Zp","zabbix_db_pw",
                 "Use this zabbix Database password",
                 "",
                 ""
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "zid",
                 "Zi","zabbix_id",
                 "Use this zabbix server ID",
                 "1",
                 "1"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "mdsn",
                 "Md","monda_dsn",
                 "Use this monda Database settings",
                 "pgsql:host=127.0.0.1;port=5432;dbname=monda",
                 "pgsql:host=127.0.0.1;port=5432;dbname=monda"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "mdbuser",
                 "Mu","monda_db_user",
                 "Use this monda Database user",
                 "monda",
                 "monda"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "mdbpw",
                 "Mp","monda_db_pw",
                 "Use this monda Database password",
                 "",
                 ""
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "zapiurl",
                 "Za","zabbix_api_url",
                 "Use this zabbix API url",
                 "http://localhost/api_jsonrpc2.php",
                 "http://localhost/api_jsonrpc2.php"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "zapiuser",
                 "Zau","zabbix_api_user",
                 "Use this zabbix API user",
                 "monda",
                 "monda"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "zapipw",
                 "Zap","zabbix_api_pw",
                 "Use this zabbix API password",
                 "",
                 ""
+                );
+        $ret=self::parseOpt($ret,
+                "apicacheexpire",
+                "Ace","api_cache_expire",
+                "Maximum time to cache api requests. Use 0 to not cache.",
+                "24 hours",
+                "24 hours"
+                );
+        $ret=self::parseOpt($ret,
+                "sqlcacheexpire",
+                "Sce","sql_cache_expire",
+                "Maximum time to cache sql requests. Use 0 to not cache.",
+                "24 hours",
+                "24 hours"
                 );
         return($ret);
     }
@@ -278,8 +351,6 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         }
     }
     
-    
-    
     function renderCli() {
 
        foreach ((array) $this->exportdata as $id=>$row) {
@@ -289,7 +360,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             }
             echo "\n\n";
         }
-        $this->mexit();
+        self::mexit();
     }
     
     function renderCsv() {
@@ -298,35 +369,35 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         foreach ((array) $this->exportdata as $id => $row) {
             if ($i == 0) {
                 foreach ($row as $r => $v) {
-                    echo "$r;";
+                    echo sprintf('"%s";',$r);
                 }
                 echo "\n";
             }
             foreach ($row as $r => $v) {
-                echo "$v;";
+                echo sprintf('"%s";',$v);
             }
             echo "\n";
             $i++;
         }
-        $this->mexit();
+        self::mexit();
     }
     
     function renderDump() {
         var_export($this->exportdata);
-        $this->mexit();
+        self::mexit();
     }
     
     function renderShow($var) {
         $this->exportdata=$var;
         switch ($this->opts->outputmode) {
             case "cli":
-                $this->renderCli();
+                self::renderCli();
                 break;
             case "csv":
-                $this->renderCsv();
+                self::renderCsv();
                 break;
             case "dump":
-                $this->renderDump();
+                self::renderDump();
                 break;
             default:
                 throw New Nette\Neon\Exception("Unknown output mode!\n");

@@ -12,9 +12,8 @@ use Nette,
  * ItemStat global class
  */
 class CliDebug {
-    
-    public $debuglevel;
-    private $levels=Array(
+
+    private static $levels=Array(
         "debug" => 0,
         "info" => 1,
         "warning" =>2,
@@ -24,55 +23,67 @@ class CliDebug {
     
     public function comparelevel($l1,$l2) {
         if (!is_numeric($l1)) {
-            $l1=$this->levels[$l1];
+            $l1=self::$levels[$l1];
         }
         if (!is_numeric($l2)) {
-            $l2=$this->levels[$l2];
+            $l2=self::$levels[$l2];
         }
         return($l1>=$l2);
     }
   
     public function __construct($level=Debugger::WARNING) {
-        $this->debuglevel=$level;
+        if (!array_key_exists(self::getLevel(), self::$levels)) {
+            fprintf(STDERR,"Unknown log level ".self::getLevel()."!\n");
+        }
+    }
+    
+    public function getLevel() {
         if (getenv("MONDA_DEBUG")) {
-            $this->debuglevel=getenv("MONDA_DEBUG");
+            $l=getenv("MONDA_DEBUG");
+        } else {
+            if (isset($this->debuglevel)) {
+                $l=$this->debuglevel;
+            } else {
+                $l="warning";
+            }
         }
-        if (!array_key_exists($this->debuglevel, $this->levels)) {
-            fprintf(STDERR,"Unknown log level $this->debuglevel! Using 'info'.\n");
-            $this->debuglevel="info";
+        if (!array_key_exists($l, self::$levels)) {
+            fprintf(STDERR,"Unknown log level ".$l."!\n");
+            $l="info";
         }
+        return($l);
     }
             
     function log($message,$priority=Debugger::INFO) {
-        if ($this->comparelevel($priority,$this->debuglevel)) {
+        if (self::comparelevel($priority,self::getLevel())) {
             fprintf(STDERR,$message);
         }
      }
      
      function write($message,$priority=Debugger::WARNING) {
-        if ($this->comparelevel($priority,$this->debuglevel)) {
+        if (self::comparelevel($priority,self::getLevel())) {
             fprintf(STDOUT,$message);
         }
      }
      
      function dbg($message) {
-         $this->log($message,Debugger::DEBUG);
+         self::log($message,Debugger::DEBUG);
      }
      
      function info($message) {
-         $this->log($message,Debugger::INFO);
+         self::log($message,Debugger::INFO);
      }
      
      function warn($message) {
-         $this->log($message,Debugger::WARNING);
+         self::log($message,Debugger::WARNING);
      }
      
      function err($message) {
-         $this->log($message,Debugger::ERROR);
+         self::log($message,Debugger::ERROR);
      }
      
      function crit($message) {
-         $this->log($message,Debugger::CRITICAL);
+         self::log($message,Debugger::CRITICAL);
      }
 }
     

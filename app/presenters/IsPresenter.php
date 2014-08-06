@@ -6,11 +6,11 @@ use Nette\Application\Responses\TextResponse,
     Nette\Security\AuthenticationException,
     Model, Nette\Application\UI;
 
-class IsPresenter extends HsPresenter
+class IsPresenter extends BasePresenter
 {
     
     public function Help() {
-        echo "
+        \App\Model\CliDebug::warn("
      ItemStats operations
             
      is:show [common opts]
@@ -19,12 +19,14 @@ class IsPresenter extends HsPresenter
      is:loi [common opts]
 
      [common opts]
-    \n";
-        $this->helpOpts();
+    \n");
+        self::helpOpts();
     }
     
     public function getOpts($ret) {
-        $ret=parent::getOpts($ret);
+        $ret=BasePresenter::getOpts($ret);
+        $ret=TwPresenter::getOpts($ret);
+        $ret=HsPresenter::getOpts($ret);
         $ret=$this->parseOpt($ret,
                 "min_values_per_window",
                 "Mvw","min_values_per_window",
@@ -59,45 +61,66 @@ class IsPresenter extends HsPresenter
         if ($ret->items) {
             $ret->items=preg_split("/,/",$ret->items);
         }
-        $is=New \App\Model\ItemStat($ret);
-        $ret=$is->itemsToIds($ret);
+        $ret=$this->parseOpt($ret,
+                "isloionly",
+                "ISL","itemstat_with_loi",
+                "Search only items with loi>0",
+                false,
+                false
+                );
+        $ret=\App\Model\ItemStat::itemsToIds($ret);
         return($ret);
     }
     
-    public function renderDefault() {
-        $this->Help();
-        $this->mexit();
-    }
     public function renderIs() {
-        $this->Help();
-        $this->mexit();
+        self::Help();
+        self::mexit();
+    }
+    
+    public function expandItem($itemid,$withhost=false) {
+        $ii=\App\Model\ItemStat::itemInfo($itemid);
+        if (count($ii)>0) {
+            if ($withhost) {
+                return(HsPresenter::expandHost($ii[0]->hostid).":".$ii[0]->key_);
+            } else {
+                return($ii[0]->key_);
+            }
+        } else {
+            return("unknown");
+        }
     }
 
     public function renderShow() {
-        $is=New \App\Model\ItemStat($this->opts);
-        $rows=$is->isSearch($this->opts);
+        $rows=\App\Model\ItemStat::isSearch($this->opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
-            BasePresenter::renderShow($this->exportdata);
+            if ($this->opts->outputverb=="expanded") {
+                $i=0;
+                foreach ($this->exportdata as $i=>$row) {
+                    $i++;
+                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
+                    $row["host"]=HsPresenter::expandHost($row->hostid);
+                    $row["key"]=self::expandItem($row->itemid);
+                    $this->exportdata[$i]=$row;
+                }
+            }
+            parent::renderShow($this->exportdata);
         }
-        $this->mexit();
+        self::mexit();
     }
     
     public function renderLoi() {
-        $is=New \App\Model\ItemStat($this->opts);
-        $is->IsLoi($this->opts);
-        $this->mexit();
+        \App\Model\ItemStat::IsLoi($this->opts);
+        self::mexit();
     }
     
     public function renderCompute() {
-        $is=New \App\Model\ItemStat($this->opts);
-        $is->IsMultiCompute($this->opts);
-        $this->mexit(0,"Done\n");
+        \App\Model\ItemStat::IsMultiCompute($this->opts);
+        self::mexit(0,"Done\n");
     }
     
     public function renderDelete() {
-        $is=New \App\Model\ItemStat($this->opts);
-        $is->IsDelete($this->opts);
-        $this->mexit(0,"Done\n");
+        \App\Model\ItemStat::IsDelete($this->opts);
+        self::mexit(0,"Done\n");
     }
 }

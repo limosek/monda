@@ -13,29 +13,17 @@ use \Exception,Nette,
  * Monda global class
  */
 class Monda extends Nette\Object {
-
-    public $cache; // Cache
-    public $apicache; // Cache for zabbix api
-    public $sqlcache;
-    private $api;   // ZabbixApi class
-    private $zq;    // Zabbix query link id
-    private $mq;    // Monda query link id
-    public $dbg;    // Cli debugger
-    private $zabbix_url;
-    private $zabbix_user;
-    private $zabbix_pw;
-    private $zabbix_db_type;
-    private $stats=Array();
-    private $lastns=false;
-    public $opts;
-    public $cpustats;
-    public $cpustatsstamp;
-    public $childpids=Array();
-    public $childs;
+    
+    public $debuglevel;
+    const _1HOUR=3600;
+    const _1DAY=86400;
+    const _1WEEK=604800;
+    const _1MONTH=2678400;
+    const _1YEAR=31536000;
 
     function init_api() {
-        if (isset($this->opts->noapi) && !$this->opts->noapi) {
-            if ($this->opts->zapiurl && $this->opts->zapiuser && isset($this->opts->zapipw)) {
+        if (!$this->opts->noapi && !$this->opts->help) {
+            if ($this->opts->zapiurl && $this->opts->zapiuser && $this->opts->zapipw) {
                 Debugger::log("Initialising Zabbix API\n", Debugger::DEBUG);
                 try {
                     $this->api = new ZabbixApi($this->opts->zapiurl, $this->opts->zapiuser, $this->opts->zapipw);
@@ -53,19 +41,19 @@ class Monda extends Nette\Object {
 
     function init_sql() {
 
-        $this->dbg->dbg("Using Zabbix db (".$this->opts->zdsn.")\n");
+        CliDebug::dbg("Using Zabbix db (".$this->opts->zdsn.")\n");
         $this->zq = New Context(
                         New Nette\Database\Connection(
                                 $this->opts->zdsn, $this->opts->zdbuser, $this->opts->zdbpw, array("lazy" => true))
                         );
-        $this->zlowpri();
+        Monda::zlowpri();
         
-        $this->dbg->dbg("Using Monda db (".$this->opts->mdsn.")\n");
+        CliDebug::dbg("Using Monda db (".$this->opts->mdsn.")\n");
         $this->mq = New Context(
                         New Nette\Database\Connection(
                                 $this->opts->mdsn, $this->opts->mdbuser, $this->opts->mdbpw, array("lazy" => true))
                         );
-        $this->mlowpri();
+        Monda::mlowpri();
 
         if ($this->zq && $this->mq) {
             return(true);
@@ -74,33 +62,20 @@ class Monda extends Nette\Object {
         }
     }
 
-    function __construct($opts) {
-        global $container;
-
-        $c = $container;
-        $this->opts=$opts;
-        $this->dbg=New CliDebug();
-        $this->apicache = New Nette\Caching\Cache(
-                    New Nette\Caching\Storages\FileStorage('temp/cache/api'));
-        $this->sqlcache = New Nette\Caching\Cache(
-                    New Nette\Caching\Storages\FileStorage('temp/cache/sql'));
-        $this->cache = New Nette\Caching\Cache(
-                    New Nette\Caching\Storages\FileStorage('temp/cache'));
-    }
-    
     function apiCmd($cmd,$req) {
         $ckey=$cmd.serialize($req);
         $ret = $this->apicache->load($ckey);
         if ($ret === NULL) {
             if (!isset($this->api)) {
-                if (!$this->init_api()) {
-                    return(false);
+                if (!self::init_api()) {
+                    CliDebug::warn("Zabbix Api query ignored (noapi=true)! ($cmd)\n");
+                    return(Array());
                 }
             }
-            $this->dbg->dbg("Zabbix Api query ($cmd)\n");
+            CliDebug::dbg("Zabbix Api query ($cmd)\n");
             $ret = $this->api->$cmd($req);
             $this->apicache->save($ckey, $ret, array(
-                Nette\Caching\Cache::EXPIRE => '24 hours',
+                Nette\Caching\Cache::EXPIRE => $this->opts->apicacheexpire,
             ));
         }
         return($ret);
@@ -108,32 +83,32 @@ class Monda extends Nette\Object {
     
     function zquery($query) {
         if (!$this->zq) {
-             $this->init_sql();
+             Monda::init_sql();
         }
-        $args = func_get_args();
+        if (!is_array($query)) {
+            $args = func_get_args();
+        } else {
+            $args=$query;
+        }
         $psql=new \Nette\Database\SqlPreprocessor($this->zq->connection);
         List($sql)=$psql->process($args);
-        $this->dbg->dbg("zquery($sql)\n");
+        CliDebug::dbg("zquery(\n$sql\n)=\n");
         $ret=$this->zq->queryArgs(array_shift($args),$args);
+        CliDebug::dbg(sprintf("%d\n",count($ret)));
+        $this->lastsql=$sql;
         return($ret);
     }
     
     function zcquery($query) {
-        if (!$this->zq) {
-             $this->init_sql();
-        }
         $args = func_get_args();
         $ckey=serialize($args);
         $ret=$this->sqlcache->load($ckey);
         if ($ret===null) {
-            $psql=new \Nette\Database\SqlPreprocessor($this->zq->connection);
-            List($sql)=$psql->process($args);
-            $this->dbg->dbg("zcquery($sql)\n");
-            $ret=$this->zq->queryArgs(array_shift($args),$args)->fetchAll();
+            $ret=self::zquery($args)->fetchAll();
             $this->sqlcache->save($ckey,
                     $ret,
                     array(
-                        Nette\Caching\Cache::EXPIRE => '24 hours',
+                        Nette\Caching\Cache::EXPIRE => $this->opts->sqlcacheexpire,
                         )
                     );
         }
@@ -145,9 +120,9 @@ class Monda extends Nette\Object {
         switch ($db[0]) {
             case "pgsql":
                 try {
-                    $this->zquery("SELECT set_backend_priority(pg_backend_pid(), 19);");
+                    Monda::zquery("SELECT set_backend_priority(pg_backend_pid(), 19);");
                 } catch (Exception $e) {
-                    $this->dbg->warn("Missing set_backend_priority extension on Zabbix DB.\n");  
+                    CliDebug::warn("Missing set_backend_priority extension on Zabbix DB.\n");  
                 }
                 break;
         }
@@ -158,9 +133,9 @@ class Monda extends Nette\Object {
         switch ($db[0]) {
             case "pgsql":
                 try {
-                    $this->mquery("SELECT set_backend_priority(pg_backend_pid(), 19);");
+                    Monda::mquery("SELECT set_backend_priority(pg_backend_pid(), 19);");
                 } catch (Exception $e) {
-                    $this->dbg->warn("Missing set_backend_priority extension on Monda DB.\n");  
+                    CliDebug::warn("Missing set_backend_priority extension on Monda DB.\n");  
                 }
                 break;
         }
@@ -170,7 +145,7 @@ class Monda extends Nette\Object {
         $db=preg_split("/:/",$this->opts->zdsn);
         switch ($db[0]) {
             case "pgsql":
-               $ret=$this->zquery("SELECT count(*) AS cnt
+               $ret=Monda::zquery("SELECT count(*) AS cnt
                     FROM pg_stat_activity WHERE current_query<>'<IDLE>'")->fetch()->cnt;
                 break;
             default:
@@ -183,7 +158,7 @@ class Monda extends Nette\Object {
         $db=preg_split("/:/",$this->opts->mdsn);
         switch ($db[0]) {
             case "pgsql":
-               $ret=$this->mquery("SELECT count(*) AS cnt
+               $ret=Monda::mquery("SELECT count(*) AS cnt
                     FROM pg_stat_activity WHERE current_query<>'<IDLE>'")->fetch()->cnt;
                 break;
             default:
@@ -194,30 +169,31 @@ class Monda extends Nette\Object {
     
     function mquery($query) {
         if (!$this->mq) {
-             $this->init_sql();
+             Monda::init_sql();
         }
-        $args = func_get_args();
+        if (!is_array($query)) {
+            $args = func_get_args();
+        } else {
+            $args=$query;
+        }
         $psql=new \Nette\Database\SqlPreprocessor($this->mq->connection);
         List($sql)=$psql->process($args);
-        $this->dbg->dbg("mquery($sql)\n");
+        CliDebug::dbg("mquery(\n$sql\n)\n");
         $ret=$this->mq->queryArgs(array_shift($args),$args);
+        $this->lastsql=$sql;
         return($ret);
     }
     
     function mcquery($query) {
-        if (!$this->mq) {
-             $this->init_sql();
-        }
         $args = func_get_args();
         $ckey=serialize($args);
         $ret=$this->sqlcache->load($ckey);
         if ($ret===null) {
-            $this->dbg->dbg("mcquery($ckey)\n");
-            $ret=$this->mq->query(array_shift($args), $args)->fetchAll();
+            $ret=self::mquery($args)->fetchAll();
             $this->sqlcache->save(
                     $ret,
                     array(
-                        Nette\Caching\Cache::EXPIRE => '24 hours',
+                        Nette\Caching\Cache::EXPIRE => $this->opts->sqlcacheexpire,
                         )
                     );
         }
@@ -225,24 +201,50 @@ class Monda extends Nette\Object {
     }
     
     function mbegin() {
-        if (!$this->mq) {
-             $this->init_sql();
+        if (!$this->mq || !$this->mq->getConnection()->getPdo()) {
+             Monda::init_sql();
         }
         $this->mq->beginTransaction();
     }
     
     function mcommit() {
         if ($this->opts->dry) {
-            $this->dbg->warn("Rolling back changes. Dry run requested!\n");
+            CliDebug::warn("Rolling back changes. Dry run requested!\n");
             $this->mq->rollBack();
         } else {
-            $this->dbg->dbg("Commiting changes\n");
+            CliDebug::dbg("Commiting changes\n");
             $this->mq->commit();
         }
     }
+    
+    function extractIds($array,$keys) {
+        $ret=Array();
+        foreach ($keys as $k) {
+            foreach ($array as $a) {
+                if (array_key_exists($k,$a)) {
+                    $ret[$k][]=$a[$k];
+                }
+            }
+            $ret[$k]=array_unique($ret[$k]);
+        }
+        return($ret);
+    }
+    
+    function IdsSearch($ids,$array) {
+        foreach ($array as $a) {
+            $ret=true;
+            foreach ($ids as $key=>$value) {
+                if (!(array_key_exists($key,$a) && $a[$key]==$value)) {
+                    $ret=false;
+                }
+            }
+            if ($ret) return(true);
+        }
+        return(false);
+    }
 
     function historyinfo() {
-        $hi = $this->zquery("SELECT min(clock),max(clock),COUNT(*)
+        $hi = Monda::zquery("SELECT min(clock),max(clock),COUNT(*)
                 FROM history
                 GROUP BY itemid
                 WHERE clock>?",
@@ -293,15 +295,15 @@ class Monda extends Nette\Object {
     function systemStats($secs=false) {
         if ($secs || !isset($this->cpustatsstamp)) {
             if (!$secs) $secs=1;
-            $this->dbg->dbg("Collecting system stats for $secs seconds\n");
+            CliDebug::dbg("Collecting system stats for $secs seconds\n");
             $stat1 = file('/proc/stat');
             $info1 = explode(" ", preg_replace("!cpu +!", "", $stat1[0]));
             sleep($secs);
         } else {
             if (microtime(true)-$this->cpustatsstamp<1) {
-                return($this->systemStats(1));
+                return(Monda::systemStats(1));
             } else {
-                $this->dbg->dbg(sprintf("Collected system stats for last %.2f seconds\n",microtime(true)-$this->cpustatsstamp));                
+                CliDebug::dbg(sprintf("Collected system stats for last %.2f seconds\n",microtime(true)-$this->cpustatsstamp));                
             }
             $info1 = $this->cpustats;
         }
@@ -322,43 +324,70 @@ class Monda extends Nette\Object {
             $this->cpustats=$info2;
             $this->cpustatsstamp=microtime(true);
         }
+        $this->jobstats=$cpu;
         return($cpu);
+    }
+    
+    function initJobServer() {
+        CliDebug::warn(sprintf("Initializing job server. Maximum childs=%d.\n",$this->opts->fork));
+        $stat=self::systemStats(3);
+        unset($this->zq);
+        unset($this->mq);
+        unset($this->api);
+        $this->zq=null;
+        $this->mq=null;
+        $this->api=null;
+    }
+    
+    function exitJobServer() {
+        if ($this->childs>0) {
+            CliDebug::warn(sprintf("Stopping job server. Waiting for %d childs.\n",$this->childs));
+        }
+        while ($this->childs>0) {
+            CliDebug::info(sprintf("Waiting for %d childs.\n",$this->childs));
+            self::waitForChilds(true);
+            sleep(1);
+        }
     }
 
     function doJob() {
         
-        $stat=$this->systemStats(2);
-        if (isset($this->opts->maxload)) {
-            List($min1,$min5,$min15)=  sys_getloadavg();
-            while ($min1>$this->opts->maxload) {
-                $this->dbg->warn(sprintf("Waiting for lower loadavg (actual=%f,max=%f)\n",$min1,$this->opts->maxload));
-                $stat=$this->systemStats(10);
-                List($min1,$min5,$min15)=  sys_getloadavg();
-            }
-        }
-        /*if (isset($this->opts->maxbackends)) {
-            $cnt=$this->zbackends();
-            $cnt2=$this->mbackends();
-            while ($cnt>$this->opts->maxbackends || $cnt2>$this->opts->maxbackends) {
-                $this->dbg->warn(sprintf("Waiting for lower number of psql backends (actual=[zabbix=%d,monda=%d],max=%d)\n",$cnt,$cnt2,$this->opts->maxbackends));
-                $stat=$this->systemStats(10);
-                $cnt= $this->zbackends();
-                $cnt2=$this->mbackends();
-            }
-        }*/
-        if (isset($this->opts->maxcpuwait)) {
-            while ($stat["iowait"]>$this->opts->maxcpuwait) {
-                $this->dbg->warn(sprintf("Waiting for lower iowait (actual=%f,max=%f)\n",$stat["iowait"],$this->opts->maxcpuwait));
-                $stat=$this->systemStats(10);
-            }
-        }
         if (!$this->opts->fork) {
             return(true);
         }
+        
+        if (!$this->jobstats) {
+            self::initJobServer();
+        }
+        if (isset($this->opts->maxload)) {
+            List($min1,$min5,$min15)=  sys_getloadavg();
+            while ($min1>$this->opts->maxload) {
+                CliDebug::warn(sprintf("Waiting for lower loadavg (actual=%f,max=%f)\n",$min1,$this->opts->maxload));
+                self::systemStats(5);
+                List($min1,$min5,$min15)=  sys_getloadavg();
+            }
+        }
+        /* if (isset($this->opts->maxbackends)) {
+            $cnt=self::zbackends();
+            $cnt2=self::mbackends();
+            while ($cnt>$this->opts->maxbackends || $cnt2>$this->opts->maxbackends) {
+                CliDebug::warn(sprintf("Waiting for lower number of psql backends (actual=[zabbix=%d,monda=%d],max=%d)\n",$cnt,$cnt2,$this->opts->maxbackends));
+                $stat=self::systemStats(10);
+                $cnt= self::zbackends();
+                $cnt2=self::mbackends();
+            }
+        } */
+        if (isset($this->opts->maxcpuwait)) {
+            while ($this->jobstats["iowait"]>$this->opts->maxcpuwait) {
+                CliDebug::warn(sprintf("Waiting for lower iowait (actual=%f,max=%f)\n",$this->jobstats["iowait"],$this->opts->maxcpuwait));
+                self::systemStats(5);
+            }
+        }
+        
         if (!function_exists('pcntl_fork')
                 || !function_exists('pcntl_wait')
                 || !function_exists('pcntl_wifexited')) {
-            $this->dbg->warn("pcntl_* functions disabled, cannot fork!\n");
+            CliDebug::warn("pcntl_* functions disabled, cannot fork!\n");
             return(true);
         }
         if ($this->childs<$this->opts->fork) {
@@ -369,38 +398,58 @@ class Monda extends Nette\Object {
                 if ($pid) {
                     $this->childpids[]=$pid;
                     $this->childs++;
-                    $this->dbg->dbg("Parent (childs=$this->childs)\n");
+                    //CliDebug::info("Jobserver: Parent (childs=$this->childs)\n");
                     return(false);
                 } else {
                     putenv("MONDA_CHILD=1");
-                    $this->mq=false;
-                    $this->zq=false;
-                    $this->init_sql();
-                    $this->init_api();
+                    //CliDebug::info("Jobserver: Child (childs=$this->childs)\n");
                     return(true);
                 }
             }
         } else {
+            self::waitForChilds();
+        }
+    }
+    
+    function waitForChilds($end=false) {
+        if (!$end) {
+            $maxchilds=$this->opts->fork;
+        } else {
+            $maxchilds=0;
+        }
+        while ($this->childs>=$maxchilds) {
+            CliDebug::info("Jobserver: Waiting for childs (childs=$this->childs)\n");
             $s=false;
-            while (pcntl_wait($s)) {
+            $pid=pcntl_wait($s,WNOHANG);
+            $status=pcntl_wexitstatus($s);
+            while (!$pid) {
+                self::systemStats(2);
+                $pid=pcntl_wait($s,WNOHANG);
                 $status=pcntl_wexitstatus($s);
-                if (pcntl_wifexited($s) && $status==0) {
-                    $this->childs--;
-                    $this->dbg->dbg("Child exited (childs=$this->childs)\n");
-                    return(false);
-                } else {
-                    foreach ($this->childpids as $pid) {
-                        posix_kill($pid,SIGTERM);
-                    }
-                    BasePresenter::mexit(2,"One child died! Exiting!\n");
+            }
+
+            if ($status==0) {
+                $this->childs--;
+                CliDebug::info("Jobserver: Child exited (childs=$this->childs)\n");
+                return(false);
+            } else {
+                foreach ($this->childpids as $pid) {
+                    posix_kill($pid,SIGTERM);
                 }
+                \App\Presenters\BasePresenter::mexit(2,"One child died! Exiting!\n");
             }
         }
     }
     
     function exitJob() {
         if (getenv("MONDA_CHILD")) {
-            //$this->dbg->warn("Exit child.\n");
+            CliDebug::info("Jobserver: Exit child.\n");
+            unset($this->zq);
+            unset($this->mq);
+            unset($this->api);
+            for ($i=3;$i<100;$i++) {
+                @fclose($i);
+            }
             \App\Presenters\DefaultPresenter::mexit();
         }
     }
