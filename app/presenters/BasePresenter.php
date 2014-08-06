@@ -58,6 +58,15 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         self::mexit();
     }    
     
+    public function renderTest() {
+        try {
+            Model\Monda::init_api();
+        } catch (Exception $e) {
+            CliDebug::error("aaa\n");
+        }
+        self::mexit();
+    }
+    
     function timetoseconds($t) {
         if ($t[0] == "@") {
             return(substr($t, 1));

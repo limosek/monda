@@ -54,11 +54,26 @@ will need host and user for monda process itself. See above.
 
 ### Cloning
 
-There is no release yet. You must use git to clone monda repository. 
+There is no release yet. You must use git to clone monda repository. Git must be installed before.
 
 ```
-# apt-get install git
 # su -l monda
 $ git clone https://code.google.com/p/monda/
+$ cd monda
+$ export PATH=$PATH:$PWD/bin
+```
+Optionaly, you can add PATH for monda account permanently:
+
+```
+$ cat >>~/.profile <<EOF
+  export PATH=\$PATH:~/monda/bin
+EOF
 ```
 
+### Configuring
+
+Monda configuration is based entirely on commandline arguments. All help can be obtained by runing
+
+```
+
+```

@@ -7,7 +7,11 @@ use Nette\Utils\Strings,
     Nette\Database\Context,
     \ZabbixApi;
 
-proc_nice(19);
+// Renice us to lowest priority
+//proc_nice(19);
+// Renice us to lowest io priority
+//system("which ionice >/dev/null && ionice -c idle -p ".posix_getpid());
+
 if (getenv("MONDA_TMP")) {
     $tmpdir=getenv("MONDA_TMP");
 } else {
