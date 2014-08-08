@@ -26,6 +26,7 @@ class CronPresenter extends IsPresenter
      cron:1hour
      cron:1day
      cron:1week
+     cron:1month
      
     [common opts]
      \n";
@@ -151,20 +152,24 @@ class CronPresenter extends IsPresenter
                 switch ($name) {
                     case "1month":
                         self::renderRange($opts,$s,$e, \App\Model\Monda::_1WEEK,"1week",false,false);
+                        self::compute($opts,$s,$e);
                         break;
                     case "1week":
                         self::renderRange($opts,$s,$e, \App\Model\Monda::_1DAY,"1day",false,false);
+                        self::compute($opts,$s,$e);
                         break;
                     case "1day":
                         self::renderRange($opts,$s,$e, \App\Model\Monda::_1HOUR,"1hour",false,false);
+                        self::compute($opts,$s,$e);
                         break;
                     case "1hour":
                         self::compute($opts,$s,$e,3600);
                         break;
                 }
+            } else {
+                self::compute($opts,$start,$end,$step);
             }
         }
-        self::compute($opts,$s,$e);
         if ($postprocess) {
             \App\Model\CliDebug::warn(sprintf("== $name postprocess-cron (%s to %s):\n",date("Y-m-d H:i",$start),date("Y-m-d H:i",$end)));
             self::postcompute($opts);
@@ -184,6 +189,7 @@ class CronPresenter extends IsPresenter
         \App\Model\HostStat::hsUpdate($opts);
         \App\Model\HostStat::hsMultiCompute($opts);
         \App\Model\HostStat::hsLoi($opts);
+        \App\Model\EventCorr::ecLoi($opts);
     }
     
     public function compute($opts,$s,$e,$l=false) {

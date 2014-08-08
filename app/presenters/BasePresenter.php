@@ -168,6 +168,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     function helpOpts() {
         Model\CliDebug::warn(sprintf("[Common options for %s]:\n",$this->getName()));
         $opts=$this->getopts;
+        if (!$this->opts->xhelp) {
+            return;
+        }
         foreach ($opts as $key=>$opt) {
             if (!$opt["defaulthelp"]) {
                 $opt["defaulthelp"]=$opt["default"];
@@ -198,6 +201,12 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "help",
                 "h","help",
                 "Help. If used with module, help will be module specific",
+                false
+                );
+        $ret=self::parseOpt($ret,
+                "xhelp",
+                "xh","advanced_help",
+                "Advanced help. If used with module, help will be module specific",
                 false
                 );
         $ret=self::parseOpt($ret,

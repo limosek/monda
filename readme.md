@@ -88,7 +88,7 @@ SQL command. You have to be postgresql admin user to run scripts. There are thre
 - db.sh {init|drop} will try to do all
 
 ```
-# cd /home/monda/monda
+# cd ~/monda
 # su postgres
 $ ./sql/db.sh init
 ```
@@ -161,7 +161,7 @@ $ monda cron:1month -s "1 year ago" -Sc
 
 ```
 
-To se results, use
+To see results, use
 ```
 $ monda tw:show -s yesterday -Om csv
 $ monda is:show -s yesterday -Om csv -Ov expanded

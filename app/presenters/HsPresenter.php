@@ -86,6 +86,15 @@ class HsPresenter extends BasePresenter
         $rows=  \App\Model\HostStat::hsSearch($this->opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
+            if ($this->opts->outputverb=="expanded") {
+                $i=0;
+                foreach ($this->exportdata as $i=>$row) {
+                    $i++;
+                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
+                    $row["host"]=HsPresenter::expandHost($row->hostid);
+                    $this->exportdata[$i]=$row;
+                }
+            }
             parent::renderShow($this->exportdata);
         }
         self::mexit();

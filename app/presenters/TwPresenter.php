@@ -62,8 +62,8 @@ class TwPresenter extends BasePresenter
                 "wsort",
                 "ws","windows_sort",
                 "Sort order of windows to select ({random|start|length|loi|updated}/{+|-}",
-                "start/-",
-                "start/-"
+                "loi/-",
+                "loi/-"
                 );
         $ret=self::parseOpt($ret,
                 "empty",
@@ -135,6 +135,12 @@ class TwPresenter extends BasePresenter
     [common opts]
      \n");
         self::helpOpts();
+    }
+    
+    public function expandTw($wid) {
+        $w= \App\Model\Tw::twGet($wid)->fetch();
+        $wstr=sprintf("%s/%d(%s)",$w->tfrom,$w->seconds,$w->description);
+        return($wstr);
     }
     
     public function renderShow() {

@@ -92,7 +92,7 @@ class ItemStat extends Monda {
         $rows=self::mquery(
                 "SELECT * from itemstat
                  WHERE $itemidssql $hostidssql $windowidsql $loisql true
-                ORDER by loi DESC, cv DESC"
+                ORDER by loi DESC"
                 );
         return($rows);
     }

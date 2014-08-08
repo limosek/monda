@@ -90,7 +90,8 @@ class IcPresenter extends BasePresenter
     public function renderShow() {
         $opts=$this->opts;
         $opts->empty=false;
-        $rows=  \App\Model\ItemCorr::icSearch($opts);
+        $opts->icempty=false;
+        $rows=  \App\Model\ItemCorr::icQuickSearch($opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
             if ($this->opts->outputverb=="expanded") {
@@ -100,6 +101,8 @@ class IcPresenter extends BasePresenter
                     \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d                 \r",$i,count($this->exportdata)));
                     $row["key1"]= IsPresenter::expandItem($row->itemid1,true);
                     $row["key2"]= IsPresenter::expandItem($row->itemid2,true);
+                    $row["window1"]= TwPresenter::expandTw($row->windowid1);
+                    $row["window2"]= TwPresenter::expandTw($row->windowid2);
                     $this->exportdata[$i]=$row;
                 }
             }

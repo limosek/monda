@@ -165,6 +165,31 @@ class Tw extends Monda {
         return($rows);
     }
     
+    function twSearchClock($clock) {
+        $rows = Monda::mquery("
+            SELECT 
+                id,
+                tfrom,
+                extract(epoch from tfrom) AS fstamp,
+                extract(epoch from tfrom)+seconds AS tstamp,
+                seconds,
+                description,
+                loi,
+                created,
+                updated,
+                found,
+                processed,
+                ignored,
+                stddev0,
+                lowavg,
+                lowcnt,
+                serverid
+            FROM timewindow
+            WHERE extract(epoch from tfrom)<? AND extract(epoch from tfrom)+seconds>?
+            ",$clock,$clock);
+        return($rows);
+    }
+    
     function twGet($wid) {
         $id=Monda::mquery("
             SELECT id,

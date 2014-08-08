@@ -14,8 +14,6 @@ class EcPresenter extends BasePresenter
      EventCorr operations
             
      ec:show [common opts]
-     ec:compute [common opts]
-     ec:delete [common opts]
      ec:loi [common opts]
  
      [common opts]
@@ -28,14 +26,6 @@ class EcPresenter extends BasePresenter
         $ret=TwPresenter::getOpts($ret);
         $ret=HsPresenter::getOpts($ret);
         $ret=IsPresenter::getOpts($ret);
-        $ret=self::parseOpt($ret,
-                "corr",
-                "Cr","corr",
-                "Selector for windows to correlate with basic windows",
-                "samewindow",
-                "samewindow",
-                Array("samewindow","samehour","samedow")
-                );
         return($ret);
     }
     
@@ -45,17 +35,7 @@ class EcPresenter extends BasePresenter
     }
     
     public function renderLoi() {
-        \App\Model\EventCorr::IcLoi($this->opts);
+        \App\Model\EventCorr::EcLoi($this->opts);
         self::mexit();
-    }
-    
-    public function renderCompute() {
-        \App\Model\EventCorr::IcMultiCompute($this->opts);
-        self::mexit(0,"Done\n");
-    }
-    
-    public function renderDelete() {
-        \App\Model\EventCorr::IcDelete($this->opts);
-        self::mexit(0,"Done\n");
     }
 }

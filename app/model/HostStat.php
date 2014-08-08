@@ -88,6 +88,7 @@ class HostStat extends Monda {
             WHERE
              hoststat.windowid IN (?)
              AND hoststat.hostid IN (?)
+             ORDER BY hoststat.loi DESC
             ",
                 $wids,
                 $opts->hostids);
