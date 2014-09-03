@@ -17,9 +17,21 @@ class RouterFactory {
      */
     public function createRouter() {
         $router = new RouteList();
-        $router[] = new Nette\Application\Routers\CliRouter(
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
+            $secured = Route::SECURED;
+        } else {
+            $secured=0;
+        }
+        
+        if (getenv("MONDA_CLI")) {
+            $router[] = new Nette\Application\Routers\CliRouter(
                         array('action' => 'Default')
-        );
+            );
+        }
+        $router[] = new Route('/monda/<presenter>/<action>', array(
+                 'presenter' => 'HtmlMap',
+                 'action' => 'tl',
+             ),$secured);
         return $router;
     }
 

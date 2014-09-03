@@ -7,6 +7,7 @@ use Nette,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
     Nette\Database\Context,
+    Nette\Utils\DateTime as DateTime,
     \ZabbixApi;
 
 /**
@@ -119,7 +120,7 @@ class HostStat extends Monda {
         $hostids=$this->opts->hostids;
         $itemids=$itemids=self::hosts2itemids($hostids);
         $wids=Tw::twToIds($opts);
-        CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d intems.\n",count($wids),count($hostids),count($itemids)));
+        CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items.\n",count($wids),count($hostids),count($itemids)));
         if (count($wids)==0 || count($hostids)<1 || count($itemids)<1) {
             return(false);
         }
@@ -162,7 +163,6 @@ class HostStat extends Monda {
             FROM itemstat
             LEFT JOIN hoststat ON (hoststat.hostid=itemstat.hostid)
             WHERE itemstat.windowid IN (?) AND itemstat.hostid IN (?)
-              AND hoststat.updated IS NULL
               AND itemstat.cnt>0
             GROUP BY itemstat.hostid,itemstat.windowid
             ",$wids,$opts->hostids);
@@ -181,16 +181,35 @@ class HostStat extends Monda {
                         "hostid" => $row->hostid,
                         "windowid" => $row->windowid,
                         "cnt" => $row->cnt,
-                        "loi" => $row->loi,
-                        "updated" => New \DateTime()
+                        "loi" => 0,
+                        "updated" => New DateTime()
                         )
                 );
             self::mcommit();
         }
     }
     
-    function hsLoi() {
-        
+    function hsLoi($opts) {
+        $wids=Tw::twToIds($opts);
+        CliDebug::warn(sprintf("Need to compute HostStat Loi on %d windows.\n",count($wids)));
+        if (count($wids)==0) {
+            return(false);
+        }
+        self::mbegin();
+        $stats=self::mquery("SELECT
+                  windowid,
+                  MAX(cnt) AS maxcnt,
+                  MIN(cnt) AS mincnt
+                FROM hoststat
+                WHERE windowid IN (?)
+                GROUP BY windowid",Tw::twToIds($opts))->fetchAll();
+        foreach ($stats as $s) {
+            foreach ($opts->hostids as $hostid) {
+                $lq=self::mquery("UPDATE hoststat set loi=100*cnt/? WHERE windowid=? AND hostid=?",$s->maxcnt,$s->windowid,$hostid);
+            }
+            
+        }
+        self::mcommit();
     }
     
 }

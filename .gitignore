@@ -7,3 +7,6 @@ temp/*
 !web.config
 app/config/config.local.neon
 nbproject
+*~
+
+app/config/*rc

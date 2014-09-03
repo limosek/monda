@@ -5,6 +5,8 @@ MDIR=$(dirname $0)
 MPHP=$MDIR/bin/monda.php
 MTMP=$MDIR/temp
 MLOG=$MDIR/log
+MWTMP=$MTMP/web
+MWLOG=$MLOG/web
 
 ### Monda php process variables
 # For system wide tmp, use this
@@ -30,4 +32,4 @@ fi
 ionice -c idle -p $$
 renice -n 19 $$ >/dev/null 2>/dev/null 
 
-exec $MPHP $@
+exec "$MPHP" "$@"

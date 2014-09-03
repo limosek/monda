@@ -14,7 +14,7 @@ use \ZabbixApi,Nette,
  */
 class Monda extends Nette\Object {
     
-    public $debuglevel;
+    public static $debuglevel;
     const _1HOUR=3600;
     const _1DAY=86400;
     const _1WEEK=604800;

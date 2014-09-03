@@ -68,7 +68,7 @@ There is no release yet. You must use git to clone monda repository. Git must be
 # su -l monda
 $ git clone https://code.google.com/p/monda/
 $ cd monda
-$ export PATH=$PATH:$PWD/bin
+$ export PATH=$PATH:$PWD
 ```
 Optionaly, you can add PATH for monda account permanently:
 
@@ -90,7 +90,7 @@ SQL command. You have to be postgresql admin user to run scripts. There are thre
 ```
 # cd ~/monda
 # su postgres
-$ ./sql/db.sh init
+$ ./misc/db.sh init
 ```
 
 ### Configuring
@@ -133,6 +133,32 @@ $ monda [module]
 Advanced help can be obtained by
 ```
 $ monda [module] -xh 2>&1 |less
+```
+
+### Configuring for apache (html outputs)
+
+Monda can do some HTML reports. This reports can be directly accessed by apache server
+if configured correctly. First, you have to create alias for apache web server and allow .htaccess.
+Be afraid! There is NO AUTHENTICATION in Monda. Use apache authentication if needed. Or use Allow from
+like in example.
+```
+Alias /monda /home/monda/monda/www
+<Location /monda>
+  #Order allow,deny
+  #Allow from localhost
+  #Allow from 127.0.0.1
+  #Deny from all
+  # To use system-wide tmp for monda web, uncomment this.
+  #SetEnv MONDA_TMP /tmp
+</Location>
+
+```
+
+Next, you have to assign right permissions for directories. You will need root access.
+Or configure manualy RW access for directories temp/web and log/web for your web server.
+Or use another directories with right permissions and use 
+```
+$ ./misc/wwwperms.sh
 ```
 
 ## Running

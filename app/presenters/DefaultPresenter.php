@@ -5,7 +5,8 @@ namespace App\Presenters;
 
 use Nette\Application\Responses\TextResponse,
     Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI;
+    Model, Nette\Application\UI,
+        Nette\Utils\DateTime as DateTime;
 
 class DefaultPresenter extends BasePresenter
 {

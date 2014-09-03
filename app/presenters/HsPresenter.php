@@ -4,7 +4,8 @@ namespace App\Presenters;
 
 use Nette\Application\Responses\TextResponse,
     Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI;
+    Model, Nette\Application\UI,
+        Nette\Utils\DateTime as DateTime;
 
 class HsPresenter extends BasePresenter
 {
@@ -60,6 +61,9 @@ class HsPresenter extends BasePresenter
             $ret->hosts=preg_split("/,/",$ret->hosts);
         }
         $ret=\App\Model\HostStat::hostsToIds($ret);
+        if (is_array($ret->hostids)) {
+            \App\Model\CliDebug::info(sprintf("Hostids selected: %s\n",join(",",$ret->hostids)));
+        }
         return($ret);
     }
     
@@ -102,6 +106,11 @@ class HsPresenter extends BasePresenter
     
     public function renderCompute() {
         \App\Model\HostStat::hsMultiCompute($this->opts);
+        self::mexit();
+    }
+    
+    public function renderLoi() {
+        \App\Model\HostStat::hsLoi($this->opts);
         self::mexit();
     }
     

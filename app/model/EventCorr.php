@@ -39,7 +39,7 @@ class EventCorr extends Monda {
         foreach ($events as $e) {
             $w=Tw::twSearchClock($e->clock)->fetchAll();
             $wids=self::extractIds($w,array("id"));
-            self::mquery("UPDATE timewindow SET loi=loi+100 WHERE id IN (?)",$wids["id"]);
+            self::mquery("UPDATE timewindow SET loi=loi+(seconds/3600) WHERE id IN (?)",$wids["id"]);
             foreach ($e->hosts as $h) {
                 self::mquery("UPDATE hoststat SET loi=loi+100 WHERE hostid=? AND windowid IN (?)",$h->hostid,$wids["id"]);
             }

@@ -3,6 +3,7 @@ namespace App\Model;
 
 use Nette,
     Nette\Utils\Strings,
+    Nette\Utils\DateTime as DateTime,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
     Nette\Database\Context,
@@ -16,7 +17,7 @@ class Tw extends Monda {
     function twCreate($zid,$start,$length,$description) {
         
         $id=Monda::mquery("SELECT id FROM timewindow WHERE tfrom=? AND seconds IN (?) AND serverid=?",
-                New \DateTime("@$start"),
+                New DateTime("@$start"),
                 $length,
                 $zid
         )->fetch();
@@ -25,10 +26,11 @@ class Tw extends Monda {
             return(
                 Monda::mquery("INSERT INTO timewindow",Array(
                     "description" => $description,
-                    "tfrom" => New \DateTime("@$start"),
+                    "tfrom" => New DateTime("@$start"),
                     "seconds" => $length,
-                    "created" => New \DateTime(),
-                    "serverid" => $zid
+                    "created" => New DateTime(),
+                    "serverid" => $zid,
+                    "parentid" => null
             )));
         } else {
             CliDebug::dbg("Skiping window zabbix_id=$zid,start=$start,length=$length,$description (already in db)\n");
@@ -42,16 +44,16 @@ class Tw extends Monda {
                 if ($opts->startalign) {
                     switch ($length) {
                         case 3600:
-                            $i=date_format(New \DateTime(date("Y-m-d H:00",$i)),"U");
+                            $i=date_format(New DateTime(date("Y-m-d H:00",$i)),"U");
                             break;
                         case 3600*24:
-                            $i=date_format(New \DateTime(date("Y-m-d 00:00",$i)),"U");
+                            $i=date_format(New DateTime(date("Y-m-d 00:00",$i)),"U");
                             break;
                         case 3600*24*7:
-                            $i=date_format(New \DateTime("@".strtotime("monday",$i)),"U");
+                            $i=date_format(New DateTime("@".strtotime("monday",$i)),"U");
                             break;
                         case 3600*24*31:
-                            $i=date_format(New \DateTime(date("Y-m-01 00:00",$i)),"U");
+                            $i=date_format(New DateTime(date("Y-m-01 00:00",$i)),"U");
                             break;
                     }
                     if ($i<$opts->start || $i+$length>$opts->end) continue;
@@ -131,8 +133,9 @@ class Tw extends Monda {
         }
         $rows = Monda::mquery("
             SELECT 
-                id,
+                id,parentid,
                 tfrom,
+                (tfrom+seconds*interval '1 second') AS tto,
                 extract(epoch from tfrom) AS fstamp,
                 extract(epoch from tfrom)+seconds AS tstamp,
                 seconds,
@@ -150,16 +153,16 @@ class Tw extends Monda {
                 COUNT(itemstat.itemid) AS itemcount
             FROM timewindow
             LEFT JOIN itemstat ON (windowid=id)
-            WHERE (serverid=? AND tfrom>=? AND tfrom<=? AND seconds IN (?) AND (updated<? OR ?) AND $createdsql AND $loionlysql)
+            WHERE (serverid=? AND tfrom>=? AND (tfrom+seconds*interval '1 second')<=? AND seconds IN (?) AND (updated<? OR ?) AND $createdsql AND $loionlysql)
             GROUP BY id
             HAVING $onlyemptysql true
             ORDER BY $sortsql
                 ",
                 $opts->zid,
-                New \DateTime("@$opts->start"),
-                New \DateTime("@$opts->end"),
+                New DateTime("@$opts->start"),
+                New DateTime("@$opts->end"),
                 $opts->length,
-                New \DateTime("@" . $updated),
+                New DateTime("@" . $updated),
                 $updatedflag
                );
         return($rows);
@@ -168,7 +171,7 @@ class Tw extends Monda {
     function twSearchClock($clock) {
         $rows = Monda::mquery("
             SELECT 
-                id,
+                id,parentid,
                 tfrom,
                 extract(epoch from tfrom) AS fstamp,
                 extract(epoch from tfrom)+seconds AS tstamp,
@@ -192,7 +195,7 @@ class Tw extends Monda {
     
     function twGet($wid) {
         $id=Monda::mquery("
-            SELECT id,
+            SELECT id,parentid,
                 tfrom,
                 extract(epoch from tfrom) AS fstamp,
                 extract(epoch from tfrom)+seconds AS tstamp,
@@ -257,9 +260,15 @@ class Tw extends Monda {
         }
         Monda::mbegin();
         $uloi=Monda::mquery("
-            UPDATE timewindow
-            SET loi=round(seconds::float/300*1000*(processed::float/found::float))
-            WHERE id IN (?) AND processed>0 AND found>0
+            UPDATE timewindow twchild
+            SET loi=round(100*(processed::float/found::float)),
+            parentid=( SELECT id from timewindow twparent
+              WHERE twchild.tfrom>=twparent.tfrom
+              AND (extract(epoch from twchild.tfrom)+twchild.seconds)<=(extract(epoch from twparent.tfrom)+twparent.seconds)
+              AND twchild.seconds<twparent.seconds
+              ORDER BY seconds
+              LIMIT 1 )
+            WHERE twchild.id IN (?) AND twchild.processed>0 AND twchild.found>0
             ",$wids);    
         Monda::mcommit();
     }
@@ -300,7 +309,7 @@ class Tw extends Monda {
             $d4=Monda::mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
             $d5=Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
             $d6=Monda::mquery("UPDATE timewindow SET updated=?, processed=0,found=0,loi=0 WHERE id IN (?)",
-                    New \DateTime(),$wids);
+                    New DateTime(),$wids);
         }
         return(Monda::mcommit());
     }

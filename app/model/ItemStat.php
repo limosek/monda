@@ -5,6 +5,7 @@ use Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
+    Nette\Utils\DateTime as DateTime,
     Nette\Database\Context,
     \ZabbixApi;
 
@@ -69,17 +70,17 @@ class ItemStat extends Monda {
     
     function isSearch($opts) {
         if ($opts->itemids) {
-            $itemidssql=sprintf("itemid IN (%s) AND",join(",",$opts->itemids));
+            $itemidssql=sprintf("i.itemid IN (%s) AND",join(",",$opts->itemids));
         } else {
             $itemidssql="";
         }
         if ($opts->hostids) {
-            $hostidssql=sprintf("hostid IN (%s) AND",join(",",$opts->hostids));
+            $hostidssql=sprintf("i.hostid IN (%s) AND",join(",",$opts->hostids));
         } else {
             $hostidssql="";
         }
         if ($opts->isloionly) {
-            $loisql="loi>0 AND";
+            $loisql="i.loi>0 AND";
         } else {
             $loisql="";
         }
@@ -90,9 +91,20 @@ class ItemStat extends Monda {
             return(false);
         }
         $rows=self::mquery(
-                "SELECT * from itemstat
+                "SELECT i.itemid AS itemid,
+                        i.min_ AS min_,
+                        i.max_ AS max_,
+                        i.avg_ AS avg_,
+                        i.stddev_ AS stddev_,
+                        i.loi AS loi,
+                        i.cnt AS cnt,
+                        i.hostid AS hostid,
+                        i.cv AS cv,
+                        i.windowid AS windowid
+                    FROM itemstat i
+                    JOIN timewindow tw ON (i.windowid=tw.id)
                  WHERE $itemidssql $hostidssql $windowidsql $loisql true
-                ORDER by loi DESC"
+                ORDER by i.loi DESC"
                 );
         return($rows);
     }
@@ -104,6 +116,7 @@ class ItemStat extends Monda {
         }
         $rows=$ids->fetchAll();
         $itemids=Array();
+        $tmparr=Array();
         foreach ($rows as $row) {
             if ($pkey) {
                 $itemids[]=Array(
@@ -111,7 +124,10 @@ class ItemStat extends Monda {
                     "windowid" => $row->windowid,
                     "hostid" => $row->hostid);
                 } else {
-                    $itemids[]=$row->itemid;
+                    if (!array_key_exists($row->itemid,$tmparr)) {
+                        $itemids[]=$row->itemid;
+                        $tmparr[$row->itemid]=true;
+                    }
                 }
         }
         return($itemids);
@@ -159,7 +175,7 @@ class ItemStat extends Monda {
             $d=self::mquery("DELETE FROM itemstat WHERE windowid=?",$wid);
             self::mquery("UPDATE timewindow
                 SET updated=?, found=0, processed=0, ignored=0, lowcnt=0, lowavg=0, stddev0=0 WHERE id=?",
-                New \DateTime(),
+                New DateTime(),
                 $wid);
             self::mcommit();
             return(false);
@@ -205,7 +221,7 @@ class ItemStat extends Monda {
         }
         self::mquery("UPDATE timewindow
                 SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, stddev0=? WHERE id=?",
-                New \DateTime(),
+                New DateTime(),
                 Monda::sget("found"),
                 Monda::sget("processed"),
                 Monda::sget("ignored"),

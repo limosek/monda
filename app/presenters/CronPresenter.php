@@ -4,7 +4,8 @@ namespace App\Presenters;
 
 use Nette\Application\Responses\TextResponse,
     Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI;
+    Model, Nette\Application\UI,
+        Nette\Utils\DateTime as DateTime;
 
 class CronPresenter extends IsPresenter
 {
@@ -57,8 +58,8 @@ class CronPresenter extends IsPresenter
         }
         $opts->length=Array(\App\Model\Monda::_1HOUR);
         if ($this->isOptDefault("start") && !$aopts) {
-            $opts->start=date_format(New \DateTime("121 minutes ago"),"U");
-            $opts->end=date_format(New \DateTime("61 minutes ago"),"U");
+            $opts->start=date_format(New DateTime("121 minutes ago"),"U");
+            $opts->end=date_format(New DateTime("61 minutes ago"),"U");
         }
         self::renderrange($opts,$opts->start,$opts->end,\App\Model\Monda::_1HOUR,"1hour");
         if (!$aopts) {
@@ -73,8 +74,8 @@ class CronPresenter extends IsPresenter
             $opts=$aopts;
         }
         if ($this->isOptDefault("start") && !$aopts) {
-            $opts->start=date_format(New \DateTime("00:00 yesterday"),"U");
-            $opts->end=date_format(New \DateTime("00:00 today"),"U");
+            $opts->start=date_format(New DateTime("00:00 yesterday"),"U");
+            $opts->end=date_format(New DateTime("00:00 today"),"U");
         }
         if ($this->isOptDefault("length")) {
             $opts->length=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY);
@@ -93,8 +94,11 @@ class CronPresenter extends IsPresenter
             $opts=$aopts;
         }
         if ($this->isOptDefault("start") && !$aopts) {
-            $start=date_format(New \DateTime("last monday 1 week ago"),"U");
-            $end=date_format(New \DateTime("last monday"),"U");
+            $start=date_format(New DateTime("last monday 1 week ago"),"U");
+            $end=date_format(New DateTime("last monday"),"U");
+            if ($start==$end) {
+                $end+=\App\Model\Monda::_1WEEK;
+            }
         } else {
             $start=$opts->start;
             $end=$opts->end;
@@ -116,14 +120,14 @@ class CronPresenter extends IsPresenter
             $opts=$aopts;
         }
         if ($this->isOptDefault("start") && !$aopts) {
-            $monthago=date_format(New \DateTime("1 month ago"),"U");
+            $monthago=date_format(New DateTime("1 month ago"),"U");
             $monthnow=time();
         } else {
             $monthago=$opts->start;
             $monthnow=$monthago+\App\Model\Monda::_1MONTH;
         }
-        $start=date_format(New \DateTime(date("Y-m-01 00:00",$monthago)),"U");
-        $end=date_format(New \DateTime(date("Y-m-01 00:00",$monthnow)),"U");
+        $start=date_format(New DateTime(date("Y-m-01 00:00",$monthago)),"U");
+        $end=date_format(New DateTime(date("Y-m-01 00:00",$monthnow)),"U");
         
         if ($this->isOptDefault("length")) {
             $opts->length=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY,\App\Model\Monda::_1MONTH);

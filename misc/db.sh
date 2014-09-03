@@ -1,6 +1,6 @@
 #!/bin/sh
 
-SQLDIR=$(dirname $0)
+SQLDIR=$(dirname $0)/../sql
 unset LANG
 
 psqlc () {

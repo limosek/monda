@@ -22,7 +22,7 @@ class ItemCorr extends Monda {
         }
         if (!isset($opts->nosort)) {
            $ranksql1=",RANK() OVER (PARTITION BY is1.itemid ORDER BY is1.loi DESC)+RANK() OVER (PARTITION BY is1.itemid ORDER BY is2.loi DESC) AS rank";
-           $ranksql2="ORDER BY rank, (ic.itemid1 IS NULL OR ic.itemid2 IS NULL) DESC";
+           $ranksql2="ORDER BY (tw1.loi+tw2.loi), rank, (ic.itemid1 IS NULL OR ic.itemid2 IS NULL) DESC";
         }
         if ($opts->hostids) {
             $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",$opts->hostids),join(",",$opts->hostids));
@@ -48,21 +48,21 @@ class ItemCorr extends Monda {
         }
         switch ($opts->corr) {
             case "samewindow":
-                $join1sql="is1.windowid=is2.windowid";
+                $join1sql="is1.windowid=is2.windowid AND is1.itemid<>is2.itemid";
                 $sameiwsql="AND is1.itemid<>is2.itemid
                             AND is1.windowid=is2.windowid";
                 break;
             case "samehour":
-                $join1sql="is1.itemid=is2.itemid";
+                $join1sql="is1.itemid=is2.itemid AND is1.windowid<>is2.windowid";
                 $sameiwsql="AND is1.itemid=is2.itemid
                             AND tw1.seconds=3600
                             AND is1.windowid<>is2.windowid
                             AND extract(hour from tw1.tfrom)=extract(hour from tw2.tfrom)";
                 break;
             case "samedow":
-                $join1sql="is1.itemid=is2.itemid";
+                $join1sql="is1.itemid=is2.itemid AND is1.windowid<>is2.windowid";
                 $sameiwsql="AND is1.itemid=is2.itemid
-                            AND tw1.seconds=68400
+                            AND tw1.seconds=86400
                             AND is1.windowid<>is2.windowid
                             AND extract(dow from tw1.tfrom)=extract(dow from tw2.tfrom)";
                 break;              
@@ -223,7 +223,7 @@ class ItemCorr extends Monda {
                         continue;
                     }
                     $j++;
-                    CliDebug::info(sprintf("Computing correlations for windows %d-%d (%d of %d)\n", $wid1,$wid2,$j,count($wids["windowid2"])));
+                    CliDebug::info(sprintf("Computing correlations for windows %d-%d\n", $wid1,$wid2));
                     $w2=Tw::twGet($wid2)->fetch();
                     $icrows = self::zcquery("
                     SELECT  h1.itemid AS itemid1,

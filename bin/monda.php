@@ -23,54 +23,29 @@ if (!file_exists($sqlcachedir)) {
 if (!file_exists($apicachedir)) {
     mkdir($apicachedir,0700,true);
 }
+
 putenv("MONDA_CACHEDIR=$cachedir");
 putenv("MONDA_SQLCACHEDIR=$sqlcachedir");
 putenv("MONDA_APICACHEDIR=$apicachedir");
-
-$container = require __DIR__ . '/../app/bootstrap.php';
-Debugger::$maxDepth = 15;
-Debugger::$maxLen = 2000;
-Debugger::$browser="chromium-browser";
-
-define("TCHARS"," \t\n\r\0\x0B'\"");
+putenv("MONDA_TMP=$tmpdir");
+putenv("MONDA_CLI=yes");
+#putenv("MONDA_LOG=" . __DIR__ . "/../log");
 
 if (getenv("MONDARC")) {
     $cfgf=getenv("MONDARC");
 } else {
     $cfgf=getenv("HOME")."/.mondarc";
 }
-if (file_exists($cfgf) && !getenv("MONDA_PASS2")) {
-    $cfgargs="";
-    foreach (file($cfgf) as $line) {
-        if (preg_match("#^-#",$line)) {
-            if (preg_match("#^(-[a-zA-Z0-9_\-]*) {1,4}(.*)$#",$line,$regs)) {
-                $option=trim($regs[1],TCHARS);
-                $value=trim($regs[2],TCHARS);
-                $cfgargs .= " '$option' '$value' ";
-            } else {
-                $cfgargs.=" '".trim($line,TCHARS)."' ";
-            }
-        }
-    }
-    $cmdargs=$_SERVER["argv"];
-    foreach ($cmdargs as $id=>$cmd) {
-        $cmd=trim($cmd,TCHARS);
-        $cmdargs[$id]="'$cmd'";
-    }
-    putenv("MONDA_PASS2=true");
-    $cmd=trim(array_shift($cmdargs),TCHARS);
-    $presenter=trim(array_shift($cmdargs),TCHARS);
-    if (!$presenter) {
-        $presenter="default";
-    }
-    $cmd=sprintf("'%s' '%s' %s --foo %s",$cmd,$presenter,$cfgargs,join(" ",$cmdargs));
-    //echo $cmd;exit;
-    system($cmd,$ret);
-    exit($ret);
-}
+putenv("MONDARC=$cfgf");
+
 $dbgidx=array_search("-D",$_SERVER["argv"]);
 if ($dbgidx && array_key_exists($dbgidx, $_SERVER["argv"])) {
         putenv("MONDA_DEBUG=".$_SERVER["argv"][$dbgidx+1]);
 }
+
+$container = require __DIR__ . '/../app/bootstrap.php';
+
+Debugger::$maxDepth = 15;
+Debugger::$maxLen = 2000;
 
 $container->application->run();

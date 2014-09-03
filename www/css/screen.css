@@ -52,3 +52,72 @@ form .error {
 html.js .jshidden {
 	display: none;
 }
+
+div.isbox {
+    border-style: solid;
+    float: left;
+    display: block;
+    margin: 5px;
+    padding: 3px;
+    line-height: 1.0;
+}
+
+.loi1, .loi2, .loi3 {
+    afont-size: 5px;
+    border-color: #eeeeee;
+    border-width: 1px;
+}
+
+.loi4, .loi5 {
+    afont-size: 8px;
+    border-color: #dddddd;
+    border-width: 2px;
+}
+
+.loi6, .loi7 {
+    font-size: 11px;
+    border-color: #cccccc;
+    border-width: 3px;
+}
+
+.loi8, .loi9, .loi10 {
+    afont-size: 15px;
+    border-color: #777777;
+    border-width: 3px;
+}
+
+.cv1, .cv2, .cv3 {
+    background-color: lightblue;
+}
+
+.cv4, .cv5, .cv6, .cv7 {
+    background-color: lightyellow;
+}
+
+.cv8, .cv9, .cv10 {
+    background-color: lightgreen;
+}
+
+.cnt1, .cnt2, .cnt3, .cnt4, .cnt5 {
+}
+
+.cnt6, .cnt7, .cnt8, .cnt9, .cnt10 {
+    box-shadow:              black 4px 6px 20px; 
+    -webkit-box-shadow: black 4px 6px 20px;
+    -moz-box-shadow:     black 4px 6px 20px;
+}
+
+div.tlbox {
+    border-style: solid;
+    border-width: 2px;
+    background-color: silver;
+    float: left;
+    display: block;
+    margin: 5px;
+    padding: 3px;
+    line-height: 1.0;
+    
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+}

@@ -1,0 +1,24 @@
+
+{block content}
+
+<script type="text/javascript">
+$('#content').jMosaic();
+</script>
+
+<div id="content">
+    {foreach $map->childs as $child1} 
+      <div id="{$child1->name}" class="isbox {join(" ",$child1->props->class)}" title="{$child1->props->description}">
+          <h3><a target="_blank" href="{$child1->props->gurl2}">{$child1->name}</a></h3>
+          <p class="description">{$child1->props->description}</p>
+          <p class="agenda">
+            Loi:&nbsp;{$child1->props->loi}<br>
+            Min:&nbsp;{$child1->props->min}<br>
+            Max:&nbsp;{$child1->props->max}<br>
+            Stddev:&nbsp;{$child1->props->stddev}<br>
+            Cv:&nbsp;{$child1->props->cv}<br>
+          </p>
+      </div>
+    {/foreach}
+</div>
+
+{/block}

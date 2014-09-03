@@ -4,7 +4,8 @@ namespace App\Presenters;
 
 use Nette\Application\Responses\TextResponse,
     Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI;
+    Model, Nette\Application\UI,
+        Nette\Utils\DateTime as DateTime;
 
 class IsPresenter extends BasePresenter
 {
@@ -69,6 +70,9 @@ class IsPresenter extends BasePresenter
                 false
                 );
         $ret=\App\Model\ItemStat::itemsToIds($ret);
+        if (is_array($ret->itemids)) {
+            \App\Model\CliDebug::info(sprintf("Itemids selected: %s\n",join(",",$ret->itemids)));
+        }
         return($ret);
     }
     

@@ -3,8 +3,8 @@
 namespace App\Presenters;
 
 use \Exception,Nette,
-	App\Model;
-
+	App\Model,
+        Nette\Utils\DateTime as DateTime;
 
 /**
  * Base presenter for all application presenters.
@@ -46,11 +46,14 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         } else {
             Model\CliDebug::err($msg);
         }
-        
         if (!getenv("MONDA_CHILD")) {
             $this->wait();
         }
-        exit($code);
+        if (!getenv("MONDA_CLI")) {
+            throw New Exception("Error #$code: $msg");
+        } else {
+            exit($code);
+        }
     }
     
     public function renderDefault() {
@@ -72,7 +75,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             $d = $r[3];
             $h = $r[4];
             $M = $r[5];
-            $dte = New \DateTime("$y-$m-$d $h:$M");
+            $dte = New DateTime("$y-$m-$d $h:$M");
             return(date_format($dte, "U"));
         } elseif (preg_match("/(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)/", $t, $r)) {
             $y = $r[1];
@@ -80,10 +83,10 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             $d = $r[3];
             $h = $r[4];
             $M = $r[5];
-            $dte = New \DateTime("$y-$m-$d $h:$M");
+            $dte = New DateTime("$y-$m-$d $h:$M".date("P"));
             return(date_format($dte, "U"));
         } else {
-            $dte = New \DateTime($t);
+            $dte = New DateTime($t);
             return(date_format($dte, "U"));
         }
     }
@@ -100,7 +103,6 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             $this->forward($this->getName().":default");
         }
         parent::startup();
-
         return($this);
     }
     
@@ -119,7 +121,11 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
   
     function parseOpt($obj,$key,$short,$long,$desc,$default=null,$defaulthelp=false,$choices=false,$params=false) {
         if (!$params) {
-            $params=$this->params;
+            if (count($_GET)>0) {
+                $params=$_GET;
+            } else {
+                $params=$this->params;
+            }
         }
         $this->getopts[$key]=Array(
             "short" => $short,
@@ -386,6 +392,11 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 echo "\n";
             }
             foreach ($row as $r => $v) {
+                if (is_object($v)) { 
+                    if (get_class($v)=="Nette\Utils\DateTime") {
+                        $v=$v->format("c");
+                    }
+                }
                 echo sprintf('"%s";',$v);
             }
             echo "\n";

@@ -1,0 +1,34 @@
+
+{block content}
+
+<script type="text/javascript">
+    jsPlumb.ready(function() {
+        var jsp = jsPlumb.getInstance({
+            Container:"content"
+          }
+        );
+       jsp.draggable("#54268");
+    });
+</script>
+
+<div id="content">
+   {block tlbox}
+    {foreach $map->getChildren() as $child} 
+      <div id="{$child->getValue()->name}" class="tlbox {join(" ",$child->getValue()->class)}" title="{$child->getValue()->description}">
+          <h3><a target="_blank" href="{$child->getValue()->url}">{$child->name}</a></h3>
+          <p class="description">{$child->getValue()->description}</p>
+          <p class="agenda">
+            Loi:&nbsp;{$child->getValue()->loi}<br>
+            Length:&nbsp;{$child->getValue()->seconds}<br>
+            Processed:&nbsp;{$child->getValue()->processed}<br>
+            Found:&nbsp;{$child->getValue()->found}<br>
+          </p>
+          {if !$child->isLeaf()}
+          {include tlbox, map => $child}
+          {/if}
+      </div>
+    {/foreach}
+   {/block}
+</div>
+
+{/block}

@@ -2,9 +2,10 @@
 
 namespace App\Presenters;
 
-use Nette\Application\Responses\TextResponse,
-    Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI;
+use \Exception,Nette,
+	App\Model,
+        App\Model\Tw,
+        Nette\Utils\DateTime as DateTime;
 
 class TwPresenter extends BasePresenter
 {
@@ -20,10 +21,13 @@ class TwPresenter extends BasePresenter
                 "start",
                 "s","start",
                 "Start time of analysis.",
-                date_format(New \DateTime(date("Y-01-01 00:00")),"U"),
+                date_format(New DateTime(date("Y-01-01 00:00P")),"U"),
                 date("Y-01-01 00:00")
                 );
         $ret->start=self::timetoseconds($ret->start);
+        if ($ret->start<631148400) {
+            self::mexit(4,sprintf("Bad start time (%d)?!\n",date("Y-m-d",$ret->start)));
+        }
         $ret=self::parseOpt($ret,
                 "end",
                 "e","end",
@@ -138,41 +142,41 @@ class TwPresenter extends BasePresenter
     }
     
     public function expandTw($wid) {
-        $w= \App\Model\Tw::twGet($wid)->fetch();
+        $w= Tw::twGet($wid)->fetch();
         $wstr=sprintf("%s/%d(%s)",$w->tfrom,$w->seconds,$w->description);
         return($wstr);
     }
     
     public function renderShow() {
-        $windows=\App\Model\Tw::twSearch($this->opts);
+        $windows=Tw::twSearch($this->opts);
         $this->exportdata=$windows->fetchAll();
         parent::renderShow($this->exportdata);
         self::mexit();
     }
     
     public function renderStats() {
-        $this->exportdata=\App\Model\Tw::twStats($this->opts);
+        $this->exportdata=Tw::twStats($this->opts);
         parent::renderShow($this->exportdata);
         self::mexit();
     }
     
     public function renderLoi() {
-        \App\Model\Tw::twLoi($this->opts);
+        Tw::twLoi($this->opts);
         self::mexit();
     }
     
     public function renderCreate() {
-        \App\Model\Tw::twMultiCreate($this->opts);
+        Tw::twMultiCreate($this->opts);
         self::mexit();
     }
     
     public function renderDelete() {
-        \App\Model\Tw::twDelete($this->opts);
+        Tw::twDelete($this->opts);
         self::mexit();
     }
     
     public function renderEmpty() {
-        \App\Model\Tw::twEmpty($this->opts);
+        Tw::twEmpty($this->opts);
         self::mexit();
     }
 }

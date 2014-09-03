@@ -7,10 +7,6 @@
 parameters:
 
 
-php:
-	date.timezone: Europe/Prague
-
-
 nette:
 	application:
 		errorPresenter: Error
@@ -21,6 +17,6 @@ nette:
 		expiration: 14 days
 
 
-#services:
-#	- App\RouterFactory
-#	router: @App\RouterFactory::createRouter
+services:
+	- App\RouterFactory
+	router: @App\RouterFactory::createRouter
