@@ -13,7 +13,7 @@
         <link href="{$basePath}/css/jsplumb.css" rel="stylesheet">
         
 	{block head}{/block}
-	<script src="{$basePath}/js/jquery.js"></script>
+	<script src="{$basePath}/js/jquery-1.11.1.min.js"></script>
         <script src="{$basePath}/js/jquery-ui.min.js"></script>
 	<script src="{$basePath}/js/netteForms.js"></script>
 	<script src="{$basePath}/js/main.js"></script>
@@ -24,6 +24,9 @@
         <script src="{$basePath}/js/mootools.jsPlumb-1.6.4-min.js"></script>
         <script src="{$basePath}/js/simpleyui-min.js"></script>
         <script src="{$basePath}/js/yui.jsPlumb-1.6.4-min.js"></script>
+        {ifset #script}
+        {include script}
+        {/ifset}
 </head>
 
 <body>

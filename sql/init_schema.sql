@@ -11,6 +11,7 @@ ALTER TABLE s_timewindowid
 CREATE TABLE timewindow
 (
   id integer NOT NULL DEFAULT nextval('s_timewindowid'::regclass),
+  parentid integer DEFAULT NULL,
   serverid integer DEFAULT 1,
   description character varying(255) DEFAULT NULL::character varying,
   tfrom timestamp with time zone NOT NULL,
@@ -31,6 +32,14 @@ WITH (
 );
 ALTER TABLE timewindow
   OWNER TO monda;
+CREATE INDEX i_id
+  ON timewindow
+  USING btree
+  (id);
+CREATE INDEX i_parentid
+  ON timewindow
+  USING btree
+  (parentid);
 CREATE UNIQUE INDEX i_times
   ON timewindow
   USING btree

@@ -142,7 +142,7 @@ class TwPresenter extends BasePresenter
     }
     
     public function expandTw($wid) {
-        $w= Tw::twGet($wid)->fetch();
+        $w= Tw::twGet($wid);
         $wstr=sprintf("%s/%d(%s)",$w->tfrom,$w->seconds,$w->description);
         return($wstr);
     }

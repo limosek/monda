@@ -135,7 +135,7 @@ class ItemStat extends Monda {
         
     function isCompute($wid) {
         
-        $w=Tw::twGet($wid)->fetch();
+        $w=Tw::twGet($wid);
         self::mbegin();
         CliDebug::warn("Computing item statistics for window id $w->id (zabbix_id:$w->serverid,$w->description)\n");
         $items=self::isToIds($this->opts);

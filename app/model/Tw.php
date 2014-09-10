@@ -71,7 +71,9 @@ class Tw extends Monda {
     
     function twSearch($opts) {
         if ($opts->wids) {
-            return(self::twGet($opts->wids));
+            $widssql=sprintf("AND id IN (%s)",join(",",$opts->wids));
+        } else {
+            $widssql="";
         }
         $onlyemptysql="";
         if ($opts->empty) {
@@ -153,7 +155,7 @@ class Tw extends Monda {
                 COUNT(itemstat.itemid) AS itemcount
             FROM timewindow
             LEFT JOIN itemstat ON (windowid=id)
-            WHERE (serverid=? AND tfrom>=? AND (tfrom+seconds*interval '1 second')<=? AND seconds IN (?) AND (updated<? OR ?) AND $createdsql AND $loionlysql)
+            WHERE (serverid=? AND tfrom>=? AND (tfrom+seconds*interval '1 second')<=? AND seconds IN (?) AND (updated<? OR ?) AND $createdsql AND $loionlysql $widssql)
             GROUP BY id
             HAVING $onlyemptysql true
             ORDER BY $sortsql
@@ -194,7 +196,7 @@ class Tw extends Monda {
     }
     
     function twGet($wid) {
-        $id=Monda::mquery("
+        $id=Monda::mcquery("
             SELECT id,parentid,
                 tfrom,
                 extract(epoch from tfrom) AS fstamp,
@@ -216,6 +218,9 @@ class Tw extends Monda {
              LEFT JOIN itemstat ON (windowid=id)
              WHERE id IN (?)
              GROUP BY timewindow.id",$wid);
+        if (count($id)==1) {
+            $id=$id[0];
+        }
         return($id);
     }
     
@@ -250,6 +255,34 @@ class Tw extends Monda {
         return($row->fetchAll());
     }
     
+    function TwTree($twids) {
+        if (count($twids)==0) {
+            return(false);
+        }
+        $result=self::mcquery(
+            "SELECT tw1.id AS id1,tw2.id AS id2,tw3.id AS id3 ,tw4.id AS id4,tw5.id AS id5,tw5.id AS id6
+            FROM timewindow tw1
+            LEFT JOIN timewindow tw2 ON (tw2.parentid=tw1.id)
+            LEFT JOIN timewindow tw3 ON (tw3.parentid=tw2.id)
+            LEFT JOIN timewindow tw4 ON (tw4.parentid=tw3.id)
+            LEFT JOIN timewindow tw5 ON (tw5.parentid=tw4.id)
+            LEFT JOIN timewindow tw6 ON (tw6.parentid=tw5.id)
+            WHERE tw2.id IN (?) OR tw3.id IN (?) OR tw4.id IN (?) OR tw5.id IN (?)",
+                $twids,$twids,$twids,$twids);
+        foreach ($result as $row) {
+            if ($row->id4) {
+                $tree[$row->id1][$row->id2][$row->id3][$row->id4]=$row->id4;
+            } elseif ($row->id3) {
+                $tree[$row->id1][$row->id2][$row->id3]=$row->id3;
+            } elseif ($row->id2) {
+                $tree[$row->id1][$row->id2]=$row->id2;
+            } elseif ($row->id1) {
+                $tree[$row->id1]=$row->id1;
+            }
+        }
+        return($tree);
+    }
+    
     function twLoi($opts) {
         $opts->empty=false;
         $opts->updated=true;
@@ -268,7 +301,7 @@ class Tw extends Monda {
               AND twchild.seconds<twparent.seconds
               ORDER BY seconds
               LIMIT 1 )
-            WHERE twchild.id IN (?) AND twchild.processed>0 AND twchild.found>0
+            WHERE twchild.id IN (?)
             ",$wids);    
         Monda::mcommit();
     }

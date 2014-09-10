@@ -65,7 +65,7 @@ class MapPresenter extends BasePresenter
         if (!$items) {
             self::mexit(2,"No items!\n");
         }
-        $w=\App\Model\Tw::twGet($opts->wids)->fetch();
+        $w=\App\Model\Tw::twGet($opts->wids);
         $items=$items->fetchAll();
         $maxcv=0;
         $maxloi=0;
@@ -117,37 +117,38 @@ class MapPresenter extends BasePresenter
         $this->template->map=$map;
     }
     
-    function TwTreeMap($tree,$twids,$id=false) {
+    function TwTreeMap($tree,$twids,$stats,$id=false) {
         if (is_array($tree)) {
-            $map=self::TwTreeMap($id,$twids,$id);
+            $map=self::TwTreeMap($id,$twids,$stats,$id);
             foreach ($tree as $wid=>$subtree) {
-                $submap=self::TwTreeMap($subtree,$twids,$wid);
+                $submap=self::TwTreeMap($subtree,$twids,$stats,$wid);
                 $map->addChild($submap);
             }
             return($map);
         } else {
             $props=New \StdClass();
-            if (!array_key_exists($id,$twids)) {
-                $props->name="!$id";
-                $props->id=0;
-            } else {
-                $window=$twids[$id];
-                $props->id=$window->id;
-                $props->id=$window->id;
-                $props->cv=$window->loi;
-                $props->seconds=$window->seconds;
-                $props->processed=$window->processed;
-                $props->found=$window->found;
-                $props->fstamp=$window->fstamp;
-                $props->tstamp=$window->tstamp;
-                $props->loi=$window->loi;
-                $props->url=self::link("Tw",Array("w"=>$window->id));
-                $props->description=$window->description;
-                $props->class=Array();
-                $props->class[]="loi".self::numtostep($window->loi,$minloi,$maxloi,10);
-                $props->class[]="processed".self::numtostep($window->processed,$minprocessed,$maxprocessed,10);
-                $props->class[]="ignored".self::numtostep($window->ignored,$minignored,$maxignored,10);
+            if (is_int($id) && !array_key_exists($id,$twids)) {
+                $twids[$id]= \App\Model\Tw::twGet($id);
             }
+            $window=$twids[$id];
+            $props->id=$window->id;
+            $props->id=$window->id;
+            $props->cv=$window->loi;
+            $props->seconds=$window->seconds;
+            $props->processed=$window->processed;
+            $props->found=$window->found;
+            $props->fstamp=$window->fstamp;
+            $props->tstamp=$window->tstamp;
+            $props->loi=$window->loi;
+            $props->url=self::link("Tw",Array("w"=>$window->id));
+            $props->description=$window->description;
+            $props->class=Array();
+            $props->class[]="loi".self::numtostep($window->loi,$stats["minloi"],$stats["maxloi"],10);
+            $props->class[]="processed".self::numtostep($window->processed,$stats["minprocessed"],$stats["maxprocessed"],10);
+            $props->class[]="ignored".self::numtostep($window->ignored,$stats["minignored"],$stats["maxignored"],10);
+            $props->class[]="dow_".date("l",$props->fstamp+date("Z"));
+            $props->class[]="hour_".date("H",$props->fstamp+date("Z"));
+            $props->class[]="month_".date("M",$props->fstamp+date("Z"));
             $map=New Node($props->id);
             $map->setValue($props);
             return($map);
@@ -157,30 +158,30 @@ class MapPresenter extends BasePresenter
     function renderTl() {
         $opts=$this->opts;
         $opts->wsort="start/+";
-        $windows=\App\Model\Tw::twSearch($opts);
-        if (!$windows || count($windows)<1) {
-            mexit(3,"No windows!\n");
-        }
-        $windows=$windows->fetchAll();
+        $wids=\App\Model\Tw::twToIds($opts);
+        $tree=\App\Model\Tw::twTree($wids);
         $maxloi=0;
         $minloi=0;
-        $tree=Array();
-        foreach ($windows as $window) {
-            $minloi=min($minloi,$window->loi);
-            $maxloi=max($maxloi,$window->loi);
-            $twids[$window->id]=$window;
-            $wids[$window->id]=$window->id;  
-            if ($window->parentid) {
-                $wids[$window->parentid]=$window->parentid;
-                $tree[$window->parentid][$window->id]=$window->id;
-            }
-        }        
         foreach ($wids as $w) {
             if (!array_key_exists($w,$twids)) {
-                $twids[$w]=  \App\Model\Tw::twGet($w)->fetch();
+                $twids[$w]=\App\Model\Tw::twGet($w);
             }
+            $maxloi=max($maxloi,$twids[$w]->loi);
+            $minloi=min($minloi,$twids[$w]->loi);
+            $maxprocessed=max($maxprocessed,$twids[$w]->processed);
+            $minprocessed=min($minprocessed,$twids[$w]->processed);
+            $maxignored=max($maxignored,$twids[$w]->ignored);
+            $minignored=min($minignored,$twids[$w]->ignored);
         }
-        $map=self::TwTreeMap($tree,$twids,$opts->mapname);
+        $stats=Array(
+            "minloi" => $minloi,
+            "maxloi" => $maxloi,
+            "minignored" => $minignored,
+            "maxignored" => $maxignored,
+            "minprocessed" => $minprocessed,
+            "maxprocessed" => $maxprocessed
+        );
+        $map=self::TwTreeMap($tree,$twids,$stats,$opts->mapname);
         $this->template->map=$map;
     }
     

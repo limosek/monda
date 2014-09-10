@@ -63,27 +63,28 @@ div.isbox {
 }
 
 .loi1, .loi2, .loi3 {
-    afont-size: 5px;
     border-color: #eeeeee;
     border-width: 1px;
+    z-index: 10;
 }
 
 .loi4, .loi5 {
-    afont-size: 8px;
     border-color: #dddddd;
     border-width: 2px;
+    z-index: 20;
 }
 
 .loi6, .loi7 {
-    font-size: 11px;
     border-color: #cccccc;
     border-width: 3px;
+    z-index: 30;
 }
 
 .loi8, .loi9, .loi10 {
-    afont-size: 15px;
     border-color: #777777;
     border-width: 3px;
+    z-index: 40;
+
 }
 
 .cv1, .cv2, .cv3 {
@@ -120,4 +121,8 @@ div.tlbox {
     -webkit-border-radius: 5px;
     -moz-border-radius: 5px;
     border-radius: 5px;
+}
+
+div.content {
+    background-color: yellow;
 }

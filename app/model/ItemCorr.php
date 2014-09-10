@@ -210,7 +210,7 @@ class ItemCorr extends Monda {
         }
         foreach ($wids["windowid1"] as $wid1) {
             $i++;
-            $w1=Tw::twGet($wid1)->fetch();
+            $w1=Tw::twGet($wid1);
             if (self::doJob()) {
                 //CliDebug::info(sprintf("Computing correlations for window %d (%d of %d)\n", $wid1,$i,count($wids["windowid1"])));
                 $j=0;
@@ -224,7 +224,7 @@ class ItemCorr extends Monda {
                     }
                     $j++;
                     CliDebug::info(sprintf("Computing correlations for windows %d-%d\n", $wid1,$wid2));
-                    $w2=Tw::twGet($wid2)->fetch();
+                    $w2=Tw::twGet($wid2);
                     $icrows = self::zcquery("
                     SELECT  h1.itemid AS itemid1,
                             h2.itemid AS itemid2,
