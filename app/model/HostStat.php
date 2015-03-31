@@ -48,17 +48,22 @@ class HostStat extends Monda {
     }
     
     function hosts2itemids($hostids) {
-        $iq = Array(
-                "monitored" => true,
-                "selectItems" => "refer",
-                "hostids" =>  $hostids
-            );
-        $h=Monda::apiCmd("hostGet",$iq);
         $itemids=Array();
-        if (count($h)>0) {
-            foreach ($h[0]->items as $item) {
-                $itemids[]=$item->itemid;
+        $c=1;
+        $hostcount=count($hostids);
+        foreach ($hostids as $hostid) {
+            $iq = Array(
+                "monitored" => true,
+                "hostids" =>  Array($hostid)
+            );
+            CliDebug::dbg("Querying items ($c of $hostcount hosts)\n");
+            $i=Monda::apiCmd("itemGet",$iq);
+            if (count($i)>0) {
+                    foreach ($i as $item) {
+                        $itemids[]=$item->itemid;
+                    }
             }
+            $c++;
         }
         return($itemids);
     }
@@ -118,7 +123,7 @@ class HostStat extends Monda {
     
     function hsUpdate($opts) {
         $hostids=$this->opts->hostids;
-        $itemids=$itemids=self::hosts2itemids($hostids);
+        $itemids=self::hosts2itemids($hostids);
         $wids=Tw::twToIds($opts);
         CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items.\n",count($wids),count($hostids),count($itemids)));
         if (count($wids)==0 || count($hostids)<1 || count($itemids)<1) {
@@ -126,7 +131,8 @@ class HostStat extends Monda {
         }
         self::mbegin();
         foreach ($hostids as $hostid) {
-            $hitemids=self::hosts2itemids($hostid);
+            $hitemids=self::hosts2itemids(array($hostid));
+            if (count($hitemids)<1) continue;
             $ius=self::mquery("
                 UPDATE itemstat
                 SET hostid=?
