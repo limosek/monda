@@ -25,13 +25,15 @@ class RouterFactory {
         
         if (getenv("MONDA_CLI")) {
             $router[] = new Nette\Application\Routers\CliRouter(
-                        array('action' => 'Default')
+                        array('action' => 'Default'
+                            )
             );
         }
-        $router[] = new Route('/monda/<presenter>/<action>', array(
+        $router[] = new Route('/monda/<presenter>/<action>',
+                array(
                  'presenter' => 'HtmlMap',
                  'action' => 'tl',
-             ),$secured);
+                ),$secured);
         return $router;
     }
 

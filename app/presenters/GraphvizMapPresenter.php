@@ -7,13 +7,13 @@ use \Exception,
     App\Model,
     Nette\Utils\DateTime as DateTime;
 
-class HtmlMapPresenter extends MapPresenter {
+class GraphvizMapPresenter extends MapPresenter {
 
     public function Help() {
         \App\Model\CliDebug::warn("
-     HTML Map operations
-            
-     hm:tw [common opts]
+     Graphviz Map operations
+  
+     gm:tw [common opts]
  
      [common opts]
     \n");
@@ -21,8 +21,10 @@ class HtmlMapPresenter extends MapPresenter {
     }
 
     function renderTl() {
+        $this->setLayout(false);
         $this->template->title = "Monda Timeline";
         parent::renderTl();
+        //Dump($this->template->map);exit;
     }
 
 }

@@ -132,7 +132,6 @@ class MapPresenter extends BasePresenter
             }
             $window=$twids[$id];
             $props->id=$window->id;
-            $props->id=$window->id;
             $props->cv=$window->loi;
             $props->seconds=$window->seconds;
             $props->processed=$window->processed;
@@ -162,6 +161,13 @@ class MapPresenter extends BasePresenter
         $tree=\App\Model\Tw::twTree($wids);
         $maxloi=0;
         $minloi=0;
+        $twids=Array();
+        $maxloi=0;
+        $minloi=1000000;
+        $maxprocessed=0;
+        $minprocessed=10000000;
+        $maxignored=0;
+        $minignored=1000000;
         foreach ($wids as $w) {
             if (!array_key_exists($w,$twids)) {
                 $twids[$w]=\App\Model\Tw::twGet($w);

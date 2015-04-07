@@ -55,6 +55,15 @@ if (file_exists(getenv("MONDARC")) && !getenv("MONDA_PASS2")) {
         if (!$presenter) {
             $presenter="default";
         }
+        if (preg_match("/:/",$presenter)) {
+            List($p,$a)=preg_split("/:/",$presenter);
+        } else {
+            $p=$presenter;
+            $a="Default";
+        }
+        if ($p=="hm") $p="HtmlMap";
+        if ($p=="gm") $p="GraphvizMap";
+        $presenter="$p:$a";
         $cmd=sprintf("'%s' '%s' %s --foo %s",$cmd,$presenter,$cfgargs,join(" ",$cmdargs));
         system($cmd,$ret);
         exit($ret);

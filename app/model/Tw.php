@@ -269,15 +269,26 @@ class Tw extends Monda {
             LEFT JOIN timewindow tw6 ON (tw6.parentid=tw5.id)
             WHERE tw2.id IN (?) OR tw3.id IN (?) OR tw4.id IN (?) OR tw5.id IN (?)",
                 $twids,$twids,$twids,$twids);
+        $treeids=Array();
         foreach ($result as $row) {
             if ($row->id4) {
                 $tree[$row->id1][$row->id2][$row->id3][$row->id4]=$row->id4;
-            } elseif ($row->id3) {
+                $treeids[$row->id1]=true;
+                $treeids[$row->id2]=true;
+                $treeids[$row->id3]=true;
+                $treeids[$row->id4]=true;
+            } elseif ($row->id3 && !array_key_exists($row->id3,$treeids)) {
                 $tree[$row->id1][$row->id2][$row->id3]=$row->id3;
-            } elseif ($row->id2) {
+                $treeids[$row->id1]=true;
+                $treeids[$row->id2]=true;
+                $treeids[$row->id3]=true;
+            } elseif ($row->id2 && !array_key_exists($row->id2,$treeids)) {
                 $tree[$row->id1][$row->id2]=$row->id2;
-            } elseif ($row->id1) {
+                $treeids[$row->id1]=true;
+                $treeids[$row->id2]=true;
+            } elseif ($row->id1 && !array_key_exists($row->id1,$treeids)) {
                 $tree[$row->id1]=$row->id1;
+                $treeids[$row->id1]=true;
             }
         }
         return($tree);

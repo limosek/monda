@@ -62,7 +62,7 @@ class HsPresenter extends BasePresenter
         }
         $ret=\App\Model\HostStat::hostsToIds($ret);
         if (is_array($ret->hostids)) {
-            \App\Model\CliDebug::info(sprintf("Hostids selected: %s\n",join(",",$ret->hostids)));
+            \App\Model\CliDebug::dbg(sprintf("Hostids selected: %s\n",join(",",$ret->hostids)));
         }
         return($ret);
     }
