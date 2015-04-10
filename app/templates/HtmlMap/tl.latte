@@ -1,4 +1,4 @@
-{block script}
+{block script_disabled}
 
 <script type="text/javascript">
     jsPlumb.ready(function() {
@@ -32,14 +32,14 @@
     {foreach $map->getChildren() as $child}
       <div id="{$child->getValue()->name}" class="tlbox {join(" ",$child->getValue()->class)}" title="{$child->getValue()->description}">
           <div class="header">
-          <h3><a target="_blank" href="{$child->getValue()->url}">{$child->getValue()->description}</a></h3>
-          <p class="description">{$child->getValue()->description} ({$child->getValue()->id})</p>
-          <p class="agenda">
-            Loi:&nbsp;{$child->getValue()->loi}<br>
-            Length:&nbsp;{$child->getValue()->seconds}<br>
-            Processed:&nbsp;{$child->getValue()->processed}<br>
-            Found:&nbsp;{$child->getValue()->found}<br>
-          </p>
+           <h3><a target="_blank" href="{$child->getValue()->url}">{$child->getValue()->description}</a></h3>
+           <div class="description">{$child->getValue()->description} ({$child->getValue()->id})</div>
+           <div class="agenda">
+              <div class="loi">Loi:&nbsp;{$child->getValue()->loi}</div>
+              <div class="length">Length:&nbsp;{$child->getValue()->seconds}</div>
+              <div class="processed">Processed:&nbsp;{$child->getValue()->processed}</div>
+              <div class="found">Found:&nbsp;{$child->getValue()->found}</div>
+           </div>
           </div>
           <div class="content">
           {if !$child->isLeaf()}

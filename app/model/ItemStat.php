@@ -90,6 +90,11 @@ class ItemStat extends Monda {
         } else {
             return(false);
         }
+        if ($opts->max_items) {
+            $limit="LIMIT ".$opts->max_items;
+        } else {
+            $limit="";
+        }
         $rows=self::mquery(
                 "SELECT i.itemid AS itemid,
                         i.min_ AS min_,
@@ -104,7 +109,8 @@ class ItemStat extends Monda {
                     FROM itemstat i
                     JOIN timewindow tw ON (i.windowid=tw.id)
                  WHERE $itemidssql $hostidssql $windowidsql $loisql true
-                ORDER by i.loi DESC"
+                ORDER by i.loi DESC "
+                . "$limit"
                 );
         return($rows);
     }
@@ -137,7 +143,7 @@ class ItemStat extends Monda {
         
         $w=Tw::twGet($wid);
         self::mbegin();
-        CliDebug::warn("Computing item statistics for window id $w->id (zabbix_id:$w->serverid,$w->description)\n");
+        CliDebug::warn("Computing item statistics for window id $w->id (zabbix_id:$w->serverid,<$w->fstamp-$w->tstamp>,$w->description)\n");
         $items=self::isToIds($this->opts);
         if (count($items)>0) {
             $itemidsql=sprintf("AND itemid IN (%s)",join($items));
@@ -153,7 +159,7 @@ class ItemStat extends Monda {
                     stddev(value) AS stddev,
                     max(value)-min(value) AS delta,
                     count(*) AS cnt
-                FROM history
+                FROM ".$this->opts->zabbix_history_table."
                 WHERE clock>=? and clock<? $itemidsql
                 GROUP BY itemid
 
@@ -166,7 +172,7 @@ class ItemStat extends Monda {
                     stddev(value) AS stddev,
                     max(value)-min(value) AS delta,
                     count(*) AS cnt
-                FROM history_uint
+                FROM ".$this->opts->zabbix_history_uint_table."
                 WHERE clock>? and clock<? $itemidsql
                 GROUP BY itemid
                 ",

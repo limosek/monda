@@ -1,45 +1,22 @@
 
-{block script}
-
-<script type="text/javascript">
-    jsPlumb.ready(function() {
-        var jsp = jsPlumb.getInstance({
-            Container:"content"
-          }
-        );
-            						
-	var stateMachineConnector = {				
-		connector:"StateMachine",
-		paintStyle:{ lineWidth:3,strokeStyle:"#056"},
-		hoverPaintStyle:{ strokeStyle:"#dbe300"},
-		endpoint:"Blank",
-		anchor:"Continuous",
-		overlays:[ ["PlainArrow", { location:1, width:15, length:12} ]]
-	};
-       jsp.draggable(jsPlumb.getSelector(".isbox"), {
-		drag:function() {
-			//console.log("DRAG")
-		}
-	});    
-    });
-</script>
-
-{/block}
-
 {block content}
-
 <div id="content">
+    <img src="{$top10graph}">
     {foreach $map->getChildren() as $child1} 
       <div id="{$child1->getValue()->name}" class="isbox {join(" ",$child1->getValue()->class)}" title="{$child1->getValue()->description}">
-          <h3><a target="_blank" href="{$child1->getValue()->gurl2}">{$child1->name}</a></h3>
-          <p class="description">{$child1->getValue()->description}</p>
-          <p class="agenda">
-            Loi:&nbsp;{$child1->getValue()->loi}<br>
-            Min:&nbsp;{$child1->getValue()->min}<br>
-            Max:&nbsp;{$child1->getValue()->max}<br>
-            Stddev:&nbsp;{$child1->getValue()->stddev}<br>
-            Cv:&nbsp;{$child1->getValue()->cv}<br>
-          </p>
+          <h3><a target="_blank" href="{$child1->getValue()->gurl2}">{$child1->getValue()->description}</a></h3>
+          <div class="description">{$child1->getValue()->description}</div>
+          <div class="agenda">
+              <div class="loi">Loi:&nbsp;{$child1->getValue()->loi}</div>
+              <div class="min">Min:&nbsp;{$child1->getValue()->min}</div>
+              <div class="max">Max:&nbsp;{$child1->getValue()->max}</div>
+              <div class="stddev">Stddev:&nbsp;{$child1->getValue()->stddev}</div>
+              <div class="cv">Cv:&nbsp;{$child1->getValue()->cv}</div>
+              <div class="cnt">Cnt:&nbsp;{$child1->getValue()->cnt}</div>
+          </div>
+          <div class="graphs">
+              <img src="{$child1->getValue()->gurl2}"</img>
+          </div>
       </div>
     {/foreach}
 </div>

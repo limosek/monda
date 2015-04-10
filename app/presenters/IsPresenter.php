@@ -63,6 +63,13 @@ class IsPresenter extends BasePresenter
             $ret->items=preg_split("/,/",$ret->items);
         }
         $ret=$this->parseOpt($ret,
+                "max_items",
+                "Im","max_items",
+                "Maximum number of items to get (LIMIT for SELECT)",
+                false,
+                "All"
+                );
+        $ret=$this->parseOpt($ret,
                 "isloionly",
                 "ISL","itemstat_with_loi",
                 "Search only items with loi>0",

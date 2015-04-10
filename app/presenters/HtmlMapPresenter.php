@@ -24,5 +24,10 @@ class HtmlMapPresenter extends MapPresenter {
         $this->template->title = "Monda Timeline";
         parent::renderTl();
     }
+    
+    function renderTw() {
+        parent::renderTw();
+        $this->template->title = "Timewindow ".$this->opts->wids;
+    }
 
 }

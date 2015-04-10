@@ -53,65 +53,75 @@ html.js .jshidden {
 	display: none;
 }
 
-div.isbox {
-    border-style: solid;
-    float: left;
+.loih1 {
+    background-color: #66dddd;
+}
+.loih2 {
+    background-color: #77dddd;
+}
+.loih3 {
+    background-color: #88dddd;
+}
+.loih4 {
+    background-color: #99dddd;
+}
+.loih5 {
+    background-color: #aadddd;
+}
+.loih6 {
+    background-color: #bbdddd;
+}
+.loih7 {
+    background-color: #ccdddd;
+}
+.loih8 {
+    background-color: #dddddd;
+}
+.loih9 {
+    background-color: #eedddd;
+}
+.loih10 {
+    background-color: #ffdddd;
+}
+
+div.l_hour {
+    width: 10px;
+    height: 10px;
+}
+
+div.l_hour {
+    display: none;
+}
+
+div.l_day {
+    width: 10%;
+}
+
+.day_sow {
+    clear: left;
+}
+
+.tlbox {
     display: block;
-    margin: 5px;
-    padding: 3px;
-    line-height: 1.0;
-}
-
-.loi1, .loi2, .loi3 {
-    border-color: #eeeeee;
-    border-width: 1px;
-    z-index: 10;
-}
-
-.loi4, .loi5 {
-    border-color: #dddddd;
-    border-width: 2px;
-    z-index: 20;
-}
-
-.loi6, .loi7 {
-    border-color: #cccccc;
-    border-width: 3px;
-    z-index: 30;
-}
-
-.loi8, .loi9, .loi10 {
-    border-color: #777777;
-    border-width: 3px;
-    z-index: 40;
-
-}
-
-.cv1, .cv2, .cv3 {
-    background-color: lightblue;
-}
-
-.cv4, .cv5, .cv6, .cv7 {
-    background-color: lightyellow;
-}
-
-.cv8, .cv9, .cv10 {
-    background-color: lightgreen;
-}
-
-.cnt1, .cnt2, .cnt3, .cnt4, .cnt5 {
-}
-
-.cnt6, .cnt7, .cnt8, .cnt9, .cnt10 {
-    box-shadow:              black 4px 6px 20px; 
-    -webkit-box-shadow: black 4px 6px 20px;
-    -moz-box-shadow:     black 4px 6px 20px;
 }
 
 div.tlbox {
     border-style: solid;
     border-width: 2px;
-    background-color: silver;
+    float: left;
+    margin: 5px;
+    padding: 3px;
+    line-height: 1.0;
+    
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+}
+
+div.isbox {
+    width: 100%;
+    border-style: solid;
+    border-width: 2px;
     float: left;
     display: block;
     margin: 5px;
@@ -125,4 +135,20 @@ div.tlbox {
 
 div.content {
     background-color: yellow;
+}
+
+div.agenda {
+    // width: 100%;
+}
+
+/* Okna, ve kterych ze zabbixu neprisly zadne data. Mely by byt videt spis jako chyba. */
+div.found0 {
+    background-color: white;
+    border: 1px dashed;
+}
+
+/* Okna, kde nejsou zadne rozumne data k procesovani. */
+div.processed0 {
+    background-color: white;
+    border: 1px dashed;
 }

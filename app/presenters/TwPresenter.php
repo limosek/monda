@@ -65,7 +65,7 @@ class TwPresenter extends BasePresenter
         $ret=self::parseOpt($ret,
                 "wsort",
                 "ws","windows_sort",
-                "Sort order of windows to select ({random|start|length|loi|updated}/{+|-}",
+                "Sort order of windows to select ({random|start|length|loi|loih|updated}/{+|-}",
                 "loi/-",
                 "loi/-"
                 );
@@ -104,6 +104,13 @@ class TwPresenter extends BasePresenter
                 false,
                 "no care"
                 );
+        $ret=self::parseOpt($ret,
+                "max_windows",
+                "Wm","max_windows",
+                "Maximum number of windows to fetch (LIMIT SELECT)",
+                false,
+                "All"
+                );
         if ($ret->wids) {
             $ret->wids=preg_split("/,/",$ret->wids);
         }
@@ -128,6 +135,9 @@ class TwPresenter extends BasePresenter
         
      tw:stats
         Show statistics about timewindows in db
+    
+    tw:zstats
+        Show statistics about zabbix data at timewindows
         
      tw:loi
         Recompute Level of Interest for windows
@@ -156,6 +166,12 @@ class TwPresenter extends BasePresenter
     
     public function renderStats() {
         $this->exportdata=Tw::twStats($this->opts);
+        parent::renderShow($this->exportdata);
+        self::mexit();
+    }
+    
+    public function renderZStats() {
+        $this->exportdata=Tw::twZstats($this->opts);
         parent::renderShow($this->exportdata);
         self::mexit();
     }

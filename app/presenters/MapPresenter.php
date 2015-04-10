@@ -31,13 +31,6 @@ class MapPresenter extends BasePresenter
                 "monda",
                 "monda"
                 );
-        $ret=self::parseOpt($ret,
-                "zaburl",
-                "Zu","zabbix_url",
-                "Base of zabbix urls",
-                "http://localhost/zabbix",
-                "http://localhost/zabbix"
-                );
         return($ret);
     }
     
@@ -66,6 +59,7 @@ class MapPresenter extends BasePresenter
             self::mexit(2,"No items!\n");
         }
         $w=\App\Model\Tw::twGet($opts->wids);
+        $map->w=$w;
         $items=$items->fetchAll();
         $maxcv=0;
         $maxloi=0;
@@ -94,8 +88,8 @@ class MapPresenter extends BasePresenter
             $props->max=$item->max_;
             $props->avg=$item->avg_;
             $props->cnt=$item->cnt;
-            $props->gurl1=sprintf("%s/chart.php?itemid=%d&period=%d&stime=%d&width=200&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
-            $props->gurl2=sprintf("%s/chart.php?itemid=%d&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
+            $props->gurl1=sprintf("%s/chart.php?itemids[]=%d&period=%d&stime=%d&width=200&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
+            $props->gurl2=sprintf("%s/chart.php?itemids[]=%d&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
             if ($opts->outputverb=="expanded") {
                 $props->description= HsPresenter::expandHost($item->hostid).":".IsPresenter::expandItem($item->itemid);
             } else {
@@ -115,6 +109,14 @@ class MapPresenter extends BasePresenter
             $map->addChild($child);
         }
         $this->template->map=$map;
+        $i=1;
+        $zitemids="";
+        foreach ($items as $item) {
+            $zitemids.="itemids[]=$item->itemid&";
+            $i++;
+            if ($i>10) break;
+        }
+        $this->template->top10graph=sprintf("%s/chart.php?%s&&graphtype=0&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$zitemids,$w->seconds,$w->fstamp,time());
     }
     
     function TwTreeMap($tree,$twids,$stats,$id=false) {
@@ -143,11 +145,38 @@ class MapPresenter extends BasePresenter
             $props->description=$window->description;
             $props->class=Array();
             $props->class[]="loi".self::numtostep($window->loi,$stats["minloi"],$stats["maxloi"],10);
+            $props->class[]="loih".self::numtostep($window->loih,$stats["minloih"],$stats["maxloih"],10);
             $props->class[]="processed".self::numtostep($window->processed,$stats["minprocessed"],$stats["maxprocessed"],10);
             $props->class[]="ignored".self::numtostep($window->ignored,$stats["minignored"],$stats["maxignored"],10);
-            $props->class[]="dow_".date("l",$props->fstamp+date("Z"));
-            $props->class[]="hour_".date("H",$props->fstamp+date("Z"));
-            $props->class[]="month_".date("M",$props->fstamp+date("Z"));
+            switch ($window->seconds) {
+                case \App\Model\Monda::_1HOUR:
+                    $props->class[]="l_hour";
+                    $props->class[]="hour_".date("H",$props->fstamp+date("Z"));
+                    break;
+                case \App\Model\Monda::_1DAY:
+                    $props->class[]="l_day";
+                    $props->class[]="dow_".date("l",$props->fstamp+date("Z"));
+                    if (date("l",$props->fstamp+date("Z"))==$this->opts->sow) {
+                        $props->class[]="day_sow";
+                    }
+                    break;
+                case \App\Model\Monda::_1WEEK:
+                    $props->class[]="l_week";
+                    break;
+                case \App\Model\Monda::_1MONTH:
+                    $props->class[]="l_month";
+                    $props->class[]="month_".date("M",$props->fstamp+date("Z"));
+                    break;
+               case \App\Model\Monda::_1YEAR:
+                    $props->class[]="l_year";
+                    break;
+            }
+            if ($window->processed==0) {
+                $props->class[]="processed0";
+            }
+            if ($window->found==0) {
+                $props->class[]="found0";
+            }
             $map=New Node($props->id);
             $map->setValue($props);
             return($map);
@@ -161,8 +190,9 @@ class MapPresenter extends BasePresenter
         $tree=\App\Model\Tw::twTree($wids);
         $maxloi=0;
         $minloi=0;
-        $twids=Array();
         $maxloi=0;
+        $minloih=0;
+        $maxloih=0;
         $minloi=1000000;
         $maxprocessed=0;
         $minprocessed=10000000;
@@ -174,6 +204,8 @@ class MapPresenter extends BasePresenter
             }
             $maxloi=max($maxloi,$twids[$w]->loi);
             $minloi=min($minloi,$twids[$w]->loi);
+            $maxloih=max($maxloih,$twids[$w]->loih);
+            $minloih=min($minloih,$twids[$w]->loih);
             $maxprocessed=max($maxprocessed,$twids[$w]->processed);
             $minprocessed=min($minprocessed,$twids[$w]->processed);
             $maxignored=max($maxignored,$twids[$w]->ignored);
@@ -182,6 +214,8 @@ class MapPresenter extends BasePresenter
         $stats=Array(
             "minloi" => $minloi,
             "maxloi" => $maxloi,
+            "minloih" => $minloih,
+            "maxloih" => $maxloih,
             "minignored" => $minignored,
             "maxignored" => $maxignored,
             "minprocessed" => $minprocessed,

@@ -136,9 +136,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             "choices" => $choices
         );
         if (array_key_exists($short,$params)) {
-            $value=$params[$short];
+            $value=stripslashes($params[$short]);
         } elseif (array_key_exists($long,$params)) {
-            $value=$params[$long];
+            $value=stripslashes($params[$long]);
         } elseif (array_key_exists("_$short",$params)) {
             $value=!$params["_$short"];
         } elseif (array_key_exists("_$long",$params)) {
@@ -325,11 +325,18 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "M0nda"
                 );
         $ret=self::parseOpt($ret,
+                "zaburl",
+                "ZU","zabbix_url",
+                "Base of zabbix urls",
+                "http://localhost/zabbix",
+                "http://localhost/zabbix"
+                );
+        $ret=self::parseOpt($ret,
                 "zapiurl",
                 "Za","zabbix_api_url",
                 "Use this zabbix API url",
-                "http://localhost/zabbix/api_jsonrpc.php",
-                "http://localhost/zabbix/api_jsonrpc.php"
+                $ret->zaburl."/api_jsonrpc.php",
+                $ret->zaburl."/api_jsonrpc.php"
                 );
         $ret=self::parseOpt($ret,
                 "zapiuser",
@@ -346,6 +353,20 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 ""
                 );
         $ret=self::parseOpt($ret,
+                "zabbix_history_table",
+                "Zht","zabbix_history_table",
+                "Zabbix history table to work on",
+                "history",
+                "history"
+                );
+        $ret=self::parseOpt($ret,
+                "zabbix_history_uint_table",
+                "Zhut","zabbix_history_uint_table",
+                "Zabbix history_uint table to work on",
+                "history_uint",
+                "history_uint"
+                );
+        $ret=self::parseOpt($ret,
                 "apicacheexpire",
                 "Ace","api_cache_expire",
                 "Maximum time to cache api requests. Use 0 to not cache.",
@@ -358,6 +379,24 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Maximum time to cache sql requests. Use 0 to not cache.",
                 "24 hours",
                 "24 hours"
+                );
+        $ret=self::parseOpt($ret,
+                "nocache",
+                "nc","nocache",
+                "Disable both SQL and API cache",
+                false,
+                "no"
+                );
+        if (isset($ret->nocache)) {
+            $ret->sql_cache_expire=0;
+            $ret->api_cache_expire=0;
+        }
+        $ret=self::parseOpt($ret,
+                "sow",
+                "sw","sow",
+                "Star day of week",
+                "Monday",
+                "Monday"
                 );
         return($ret);
     }

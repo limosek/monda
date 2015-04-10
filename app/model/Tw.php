@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Model;
 
 use Nette,
@@ -13,125 +14,133 @@ use Nette,
  * TimeWindow global class
  */
 class Tw extends Monda {
-    
-    function twCreate($zid,$start,$length,$description) {
-        
-        $id=Monda::mquery("SELECT id FROM timewindow WHERE tfrom=? AND seconds IN (?) AND serverid=?",
-                New DateTime("@$start"),
-                $length,
-                $zid
-        )->fetch();
-        if ($id==false) {
+
+    function twCreate($zid, $start, $length, $description) {
+
+        $id = Monda::mquery("SELECT id FROM timewindow WHERE tfrom=? AND seconds IN (?) AND serverid=?", New DateTime("@$start"), $length, $zid
+                )->fetch();
+        if ($id == false) {
             CliDebug::warn("Creating window $start,$length,$description\n");
             return(
-                Monda::mquery("INSERT INTO timewindow",Array(
-                    "description" => $description,
-                    "tfrom" => New DateTime("@$start"),
-                    "seconds" => $length,
-                    "created" => New DateTime(),
-                    "serverid" => $zid,
-                    "parentid" => null
+                    Monda::mquery("INSERT INTO timewindow", Array(
+                        "description" => $description,
+                        "tfrom" => New DateTime("@$start"),
+                        "seconds" => $length,
+                        "created" => New DateTime(),
+                        "serverid" => $zid,
+                        "parentid" => null
             )));
         } else {
             CliDebug::dbg("Skiping window zabbix_id=$zid,start=$start,length=$length,$description (already in db)\n");
         }
     }
-   
+
     function twMultiCreate($opts) {
         Monda::mbegin();
         foreach ($opts->length as $length) {
-            for ($i=$opts->start;$i<$opts->end;$i=$i+$length) {
+            for ($i = $opts->start; $i < $opts->end; $i = $i + $length) {
                 if ($opts->startalign) {
                     switch ($length) {
                         case 3600:
-                            $i=date_format(New DateTime(date("Y-m-d H:00",$i)),"U");
+                            $i = date_format(New DateTime(date("Y-m-d H:00", $i)), "U");
                             break;
-                        case 3600*24:
-                            $i=date_format(New DateTime(date("Y-m-d 00:00",$i)),"U");
+                        case 3600 * 24:
+                            $i = date_format(New DateTime(date("Y-m-d 00:00", $i)), "U");
                             break;
-                        case 3600*24*7:
-                            $i=date_format(New DateTime("@".strtotime("monday",$i)),"U");
+                        case 3600 * 24 * 7:
+                            $i = date_format(New DateTime("@" . strtotime("monday", $i)), "U");
                             break;
-                        case 3600*24*31:
-                            $i=date_format(New DateTime(date("Y-m-01 00:00",$i)),"U");
+                        case 3600 * 24 * 31:
+                            $i = date_format(New DateTime(date("Y-m-01 00:00", $i)), "U");
                             break;
                     }
-                    if ($i<$opts->start || $i+$length>$opts->end) continue;
+                    if ($i < $opts->start || $i + $length > $opts->end)
+                        continue;
                 }
                 if ($opts->description) {
-                    $desc=$opts->description;
+                    $desc = $opts->description;
                 } else {
-                    $desc=date("Y-m-d H:i",$i)."/$length";
+                    $desc = date("Y-m-d H:i", $i) . "/$length";
                 }
-                Tw::twCreate($this->opts->zid,$i,$length,$desc);
+                Tw::twCreate($this->opts->zid, $i, $length, $desc);
             }
         }
         Monda::mcommit();
     }
-    
+
     function twSearch($opts) {
         if ($opts->wids) {
-            $widssql=sprintf("AND id IN (%s)",join(",",$opts->wids));
+            $widssql = sprintf("AND id IN (%s)", join(",", $opts->wids));
         } else {
-            $widssql="";
+            $widssql = "";
         }
-        $onlyemptysql="";
+        $onlyemptysql = "";
         if ($opts->empty) {
             $onlyemptysql = "(updated IS NULL OR COUNT(itemstat.itemid)=0) AND";
         } else {
             $onlyemptysql = "(updated IS NOT NULL AND COUNT(itemstat.itemid)>0) AND";
         }
-        if (preg_match("#/#",$opts->wsort)) {
-            List($sc,$so)=preg_split("#/#",$opts->wsort);
+        if (preg_match("#/#", $opts->wsort)) {
+            List($sc, $so) = preg_split("#/#", $opts->wsort);
         } else {
-            $sc=$opts->wsort;
-            $so="+";
+            $sc = $opts->wsort;
+            $so = "+";
         }
         switch ($sc) {
             case "random":
-                $sortsql="RANDOM()";
+                $sortsql = "RANDOM()";
                 break;
             case "start":
-                $sortsql="tfrom";
+                $sortsql = "tfrom";
                 break;
             case "length":
-                $sortsql="seconds";
+                $sortsql = "seconds";
                 break;
             case "loi":
-                $sortsql="loi";
+                $sortsql = "loi";
+                break;
+            case "loih":
+                $sortsql = "loi/(seconds/3600)";
                 break;
             case "updated":
-                $sortsql="updated";
+                $sortsql = "updated";
                 break;
             default:
-                $sortsql="id";
+                $sortsql = "id";
         }
-        if ($so=="-") { $sortsql.=" DESC"; }
-        
-        $updatedflag="true";
+        if ($so == "-") {
+            $sortsql.=" DESC";
+        }
+
+        $updatedflag = "true";
         if (is_numeric($opts->updated)) {
-            $updatedflag=false;
-            $updated=$opts->updated;
-        } elseif ($opts->updated==false) {
-            $updatedflag=true;
-            $updated=0;
+            $updatedflag = false;
+            $updated = $opts->updated;
+        } elseif ($opts->updated == false) {
+            $updatedflag = true;
+            $updated = 0;
         } else {
-            $updated=time();
+            $updated = time();
         }
-        if ($opts->createdonly) { 
-            $createdsql="updated IS NULL";
+        if ($opts->createdonly) {
+            $createdsql = "updated IS NULL";
         } else {
-            $createdsql="true";
+            $createdsql = "true";
         }
         if ($opts->loionly) {
-            if ($opts->loionly===true) {
-                $loionlysql="timewindow.loi>0 AND timewindow.loi IS NOT NULL";
+            if ($opts->loionly === true) {
+                $loionlysql = "timewindow.loi>0 AND timewindow.loi IS NOT NULL";
             } else {
-                $loionlysql="timewindow.loi>$opts->loi AND timewindow.loi IS NOT NULL";
+                $loionlysql = "timewindow.loi>$opts->loi AND timewindow.loi IS NOT NULL";
             }
-            $updatedflag=true;
+            $updatedflag = true;
         } else {
-            $loionlysql="true";
+            $loionlysql = "true";
+        }
+        if ($opts->max_windows) {
+            $limit = "LIMIT " . $opts->max_windows;
+        } else {
+            $limit = "";
         }
         $rows = Monda::mquery("
             SELECT 
@@ -152,6 +161,7 @@ class Tw extends Monda {
                 lowavg,
                 lowcnt,
                 serverid,
+                timewindow.loi/(timewindow.seconds/3600) AS loih,
                 COUNT(itemstat.itemid) AS itemcount
             FROM timewindow
             LEFT JOIN itemstat ON (windowid=id)
@@ -159,17 +169,12 @@ class Tw extends Monda {
             GROUP BY id
             HAVING $onlyemptysql true
             ORDER BY $sortsql
-                ",
-                $opts->zid,
-                New DateTime("@$opts->start"),
-                New DateTime("@$opts->end"),
-                $opts->length,
-                New DateTime("@" . $updated),
-                $updatedflag
-               );
+                $limit
+                ", $opts->zid, New DateTime("@$opts->start"), New DateTime("@$opts->end"), $opts->length, New DateTime("@" . $updated), $updatedflag
+        );
         return($rows);
     }
-    
+
     function twSearchClock($clock) {
         $rows = Monda::mquery("
             SELECT 
@@ -180,6 +185,7 @@ class Tw extends Monda {
                 seconds,
                 description,
                 loi,
+                loi/(seconds/3600) AS loih,
                 created,
                 updated,
                 found,
@@ -191,12 +197,12 @@ class Tw extends Monda {
                 serverid
             FROM timewindow
             WHERE extract(epoch from tfrom)<? AND extract(epoch from tfrom)+seconds>?
-            ",$clock,$clock);
+            ", $clock, $clock);
         return($rows);
     }
-    
+
     function twGet($wid) {
-        $id=Monda::mcquery("
+        $id = Monda::mcquery("
             SELECT id,parentid,
                 tfrom,
                 extract(epoch from tfrom) AS fstamp,
@@ -213,31 +219,35 @@ class Tw extends Monda {
                 lowavg,
                 lowcnt,
                 serverid,
+                timewindow.loi/(timewindow.seconds/3600) AS loih,
                 COUNT(itemstat.itemid) AS itemcount
              FROM timewindow
              LEFT JOIN itemstat ON (windowid=id)
              WHERE id IN (?)
-             GROUP BY timewindow.id",$wid);
-        if (count($id)==1) {
-            $id=$id[0];
+             GROUP BY timewindow.id", $wid);
+        if (count($id) == 1) {
+            $id = $id[0];
         }
         return($id);
     }
-    
+
     function twToIds($opts) {
-        $widrows=Tw::twSearch($opts);
-        $wids=Array();
-        while ($wid=$widrows->fetch()) {
-            $wids[]=$wid->id;
+        $widrows = Tw::twSearch($opts);
+        $wids = Array();
+        while ($wid = $widrows->fetch()) {
+            $wids[] = $wid->id;
         }
         return($wids);
     }
-    
-    function twStats($opts) {
-        $row=Monda::mquery("
+
+    function twStats($opts, $zabbix = false) {
+        $wids = self::twToIds($opts);
+        $row = Monda::mcquery("
             SELECT
                 MIN(tfrom) AS mintfrom,
                 MAX(tfrom) AS maxtfrom,
+                extract(epoch from MIN(tfrom)) AS minfstamp,
+                extract(epoch from MAX(tfrom)) AS maxtstamp,
                 MIN(seconds) AS minlength,
                 MIN(found) AS minfound,
                 MAX(found) AS maxfound,
@@ -251,59 +261,79 @@ class Tw extends Monda {
                 MAX(loi) AS maxloi,
                 STDDEV(loi) AS stddevloi
             FROM timewindow
-            WHERE serverid=? AND updated IS NOT NULL AND processed>0",$opts->zid);
-        return($row->fetchAll());
+            WHERE id IN (?)", $wids);
+        if (!$zabbix) {
+            return($row[0]);
+        } else {
+            $fstamp = $row[0]->minfstamp;
+            $tstamp = $row[0]->maxtstamp;
+            $zrows = Monda::zcquery("
+            SELECT DISTINCT ceil(clock/3600)*3600 AS cclock,
+                COUNT(clock) AS cnt
+            FROM history WHERE clock>? and clock<?
+            GROUP BY ceil(clock/3600)*3600
+            UNION
+            SELECT DISTINCT ceil(clock/3600)*3600 AS cclock,
+               COUNT(clock) AS cnt
+            FROM history_uint WHERE clock>? and clock<?
+            GROUP BY ceil(clock/3600)*3600", $fstamp, $tstamp, $fstamp, $tstamp);
+            return($zrows);
+        }
     }
     
+    function twZstats($opts) {
+        return(self::twStats($opts,true));
+    }
+
     function TwTree($twids) {
-        if (count($twids)==0) {
+        if (count($twids) == 0) {
             return(false);
         }
-        $result=self::mcquery(
-            "SELECT tw1.id AS id1,tw2.id AS id2,tw3.id AS id3 ,tw4.id AS id4,tw5.id AS id5,tw5.id AS id6
+        $result = self::mcquery(
+                        "SELECT tw1.id AS id1,tw2.id AS id2,tw3.id AS id3 ,tw4.id AS id4,tw5.id AS id5,tw5.id AS id6
             FROM timewindow tw1
             LEFT JOIN timewindow tw2 ON (tw2.parentid=tw1.id)
             LEFT JOIN timewindow tw3 ON (tw3.parentid=tw2.id)
             LEFT JOIN timewindow tw4 ON (tw4.parentid=tw3.id)
             LEFT JOIN timewindow tw5 ON (tw5.parentid=tw4.id)
             LEFT JOIN timewindow tw6 ON (tw6.parentid=tw5.id)
-            WHERE tw2.id IN (?) OR tw3.id IN (?) OR tw4.id IN (?) OR tw5.id IN (?)",
-                $twids,$twids,$twids,$twids);
-        $treeids=Array();
+            WHERE tw2.id IN (?) OR tw3.id IN (?) OR tw4.id IN (?) OR tw5.id IN (?)
+            ORDER BY tw1.tfrom,tw2.tfrom,tw3.tfrom,tw4.tfrom", $twids, $twids, $twids, $twids);
+        $treeids = Array();
         foreach ($result as $row) {
             if ($row->id4) {
-                $tree[$row->id1][$row->id2][$row->id3][$row->id4]=$row->id4;
-                $treeids[$row->id1]=true;
-                $treeids[$row->id2]=true;
-                $treeids[$row->id3]=true;
-                $treeids[$row->id4]=true;
-            } elseif ($row->id3 && !array_key_exists($row->id3,$treeids)) {
-                $tree[$row->id1][$row->id2][$row->id3]=$row->id3;
-                $treeids[$row->id1]=true;
-                $treeids[$row->id2]=true;
-                $treeids[$row->id3]=true;
-            } elseif ($row->id2 && !array_key_exists($row->id2,$treeids)) {
-                $tree[$row->id1][$row->id2]=$row->id2;
-                $treeids[$row->id1]=true;
-                $treeids[$row->id2]=true;
-            } elseif ($row->id1 && !array_key_exists($row->id1,$treeids)) {
-                $tree[$row->id1]=$row->id1;
-                $treeids[$row->id1]=true;
+                $tree[$row->id1][$row->id2][$row->id3][$row->id4] = $row->id4;
+                $treeids[$row->id1] = true;
+                $treeids[$row->id2] = true;
+                $treeids[$row->id3] = true;
+                $treeids[$row->id4] = true;
+            } elseif ($row->id3 && !array_key_exists($row->id3, $treeids)) {
+                $tree[$row->id1][$row->id2][$row->id3] = $row->id3;
+                $treeids[$row->id1] = true;
+                $treeids[$row->id2] = true;
+                $treeids[$row->id3] = true;
+            } elseif ($row->id2 && !array_key_exists($row->id2, $treeids)) {
+                $tree[$row->id1][$row->id2] = $row->id2;
+                $treeids[$row->id1] = true;
+                $treeids[$row->id2] = true;
+            } elseif ($row->id1 && !array_key_exists($row->id1, $treeids)) {
+                $tree[$row->id1] = $row->id1;
+                $treeids[$row->id1] = true;
             }
         }
         return($tree);
     }
-    
+
     function twLoi($opts) {
-        $opts->empty=false;
-        $opts->updated=true;
-        $wids=self::twToIds($opts);
-        CliDebug::warn(sprintf("Recomputing loi for %d windows\n",count($wids)));
-        if (count($wids)==0) {
+        $opts->empty = false;
+        $opts->updated = true;
+        $wids = self::twToIds($opts);
+        CliDebug::warn(sprintf("Recomputing loi for %d windows\n", count($wids)));
+        if (count($wids) == 0) {
             return(false);
         }
         Monda::mbegin();
-        $uloi=Monda::mquery("
+        $uloi = Monda::mquery("
             UPDATE timewindow twchild
             SET loi=round(100*(processed::float/found::float)),
             parentid=( SELECT id from timewindow twparent
@@ -313,51 +343,40 @@ class Tw extends Monda {
               ORDER BY seconds
               LIMIT 1 )
             WHERE twchild.id IN (?)
-            ",$wids);    
+            ", $wids);
         Monda::mcommit();
     }
-    
+
     function twDelete($opts) {
         Monda::mbegin();
-        $wids=self::twToIds($opts);
-        CliDebug::warn(sprintf("Deleting timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n",
-                    $opts->zid,
-                    date("Y-m-d H:i",$opts->start),
-                    date("Y-m-d H:i",$opts->end),
-                    join(",",$opts->length),
-                    count($wids)));
-        if (count($wids)>0) {
-            $d1=Monda::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
-            $d2=Monda::mquery("DELETE FROM hoststat WHERE windowid IN (?)",$wids);
-            $d3=Monda::mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d4=Monda::mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d5=Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d6=Monda::mquery("DELETE FROM timewindow WHERE id IN (?)",$wids);
+        $wids = self::twToIds($opts);
+        CliDebug::warn(sprintf("Deleting timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n", $opts->zid, date("Y-m-d H:i", $opts->start), date("Y-m-d H:i", $opts->end), join(",", $opts->length), count($wids)));
+        if (count($wids) > 0) {
+            $d1 = Monda::mquery("DELETE FROM itemstat WHERE windowid IN (?)", $wids);
+            $d2 = Monda::mquery("DELETE FROM hoststat WHERE windowid IN (?)", $wids);
+            $d3 = Monda::mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $wids, $wids);
+            $d4 = Monda::mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $wids, $wids);
+            $d5 = Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $wids, $wids);
+            $d6 = Monda::mquery("DELETE FROM timewindow WHERE id IN (?)", $wids);
         }
         return(Monda::mcommit());
     }
-    
+
     function twEmpty($opts) {
         Monda::mbegin();
-        $wids=self::twToIds($opts);
-        CliDebug::warn(sprintf("Emptying timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n",
-                    $opts->zid,
-                    date("Y-m-d H:i",$opts->start),
-                    date("Y-m-d H:i",$opts->end),
-                    join(",",$opts->length),
-                    count($wids)));
-        if (count($wids)>0) {
-            $d1=Monda::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
-            $d2=Monda::mquery("DELETE FROM hoststat WHERE windowid IN (?)",$wids);
-            $d3=Monda::mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d4=Monda::mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d5=Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$wids,$wids);
-            $d6=Monda::mquery("UPDATE timewindow SET updated=?, processed=0,found=0,loi=0 WHERE id IN (?)",
-                    New DateTime(),$wids);
+        $wids = self::twToIds($opts);
+        CliDebug::warn(sprintf("Emptying timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n", $opts->zid, date("Y-m-d H:i", $opts->start), date("Y-m-d H:i", $opts->end), join(",", $opts->length), count($wids)));
+        if (count($wids) > 0) {
+            $d1 = Monda::mquery("DELETE FROM itemstat WHERE windowid IN (?)", $wids);
+            $d2 = Monda::mquery("DELETE FROM hoststat WHERE windowid IN (?)", $wids);
+            $d3 = Monda::mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $wids, $wids);
+            $d4 = Monda::mquery("DELETE FROM hostcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $wids, $wids);
+            $d5 = Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $wids, $wids);
+            $d6 = Monda::mquery("UPDATE timewindow SET updated=?, processed=0,found=0,loi=0 WHERE id IN (?)", New DateTime(), $wids);
         }
         return(Monda::mcommit());
     }
-    
+
 }
 
 ?>

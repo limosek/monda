@@ -3,13 +3,21 @@
 if (getenv("MONDA_TMP")) {
     $tmpdir=getenv("MONDA_TMP");
 } else {
-    $tmpdir=__DIR__ . "/../temp/web";
+    if (is_writable(__DIR__ . "/../temp")) {
+        $tmpdir=__DIR__ . "/../temp";
+    } else {
+        $tmpdir=__DIR__ . "/../temp/web";
+    }
 }
 
 if (getenv("MONDA_LOG")) {
     $logdir=getenv("MONDA_LOG");
 } else {
-    $logdir=__DIR__ . "/../log/web";
+    if (is_writable(__DIR__ . "/../log")) {
+        $logdir=__DIR__ . "/../log";
+    } else {
+        $logdir=__DIR__ . "/../log/web";
+    }
 }
 
 $cachedir="$tmpdir/cache";
