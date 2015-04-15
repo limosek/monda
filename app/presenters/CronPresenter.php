@@ -186,6 +186,7 @@ class CronPresenter extends IsPresenter
         }
         \App\Model\Tw::twMultiCreate($opts);
         $opts->empty=true;
+        $opts->wsort="start/+";
         \App\Model\ItemStat::IsMultiCompute($opts);
         $opts->empty=false;
         \App\Model\Tw::twLoi($opts);

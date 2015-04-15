@@ -101,6 +101,33 @@ div.l_day {
     clear: left;
 }
 
+.l_day::before {
+  content: "Den";
+  background-color: yellow;
+  width: 100%;
+  display: block;
+  padding: 2px;
+  text-align: center;
+}
+
+.l_week::before {
+  content: "Týden";
+  background-color: yellow;
+  width: 100%;
+  display: block;
+  padding: 2px;
+  text-align: center;
+}
+
+.l_month::before {
+  content: "Měsíc";
+  background-color: yellow;
+  width: 100%;
+  display: block;
+  padding: 2px;
+  text-align: center;
+}
+
 .tlbox {
     display: block;
 }

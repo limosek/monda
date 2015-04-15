@@ -13,7 +13,10 @@ class HtmlMapPresenter extends MapPresenter {
         \App\Model\CliDebug::warn("
      HTML Map operations
             
-     hm:tw [common opts]
+     hm:tw [common opts] Information about timewindow
+     hm:month [common opts] Monthly information about timewindows
+     hm:year [common opts] Yearly information about timewindows
+     hm:tl [common opts] Timewindows tree
  
      [common opts]
     \n");
@@ -23,6 +26,11 @@ class HtmlMapPresenter extends MapPresenter {
     function renderTl() {
         $this->template->title = "Monda Timeline";
         parent::renderTl();
+    }
+    
+    function renderMonth() {
+        $this->template->title = "Monda month overview";
+        parent::renderMonth();
     }
     
     function renderTw() {

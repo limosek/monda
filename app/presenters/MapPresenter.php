@@ -31,6 +31,20 @@ class MapPresenter extends BasePresenter
                 "monda",
                 "monda"
                 );
+        $ret=self::parseOpt($ret,
+                "minmapdepth",
+                false,"minmapdepth",
+                "Minimum depth of map",
+                false,
+                "No limit"
+                );
+        $ret=self::parseOpt($ret,
+                "maxmapdepth",
+                false,"maxmapdepth",
+                "Maximum depth of map",
+                false,
+                "No limit"
+                );
         return($ret);
     }
     
@@ -43,6 +57,9 @@ class MapPresenter extends BasePresenter
     
     function numtostep($num,$min,$max,$steps=10) {
         $range=abs($max-$min);
+        if ($range==0 || $max==0) {
+            return(1);
+        }
         $step=$range/$steps;
         $ret=min(1+round($steps*($num/$max)),$steps);
         return($ret);
@@ -119,11 +136,11 @@ class MapPresenter extends BasePresenter
         $this->template->top10graph=sprintf("%s/chart.php?%s&&graphtype=0&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$zitemids,$w->seconds,$w->fstamp,time());
     }
     
-    function TwTreeMap($tree,$twids,$stats,$id=false) {
+    function TwTreeMap($tree,$twids,$stats,$zstats,$id=false) {
         if (is_array($tree)) {
-            $map=self::TwTreeMap($id,$twids,$stats,$id);
+            $map=self::TwTreeMap($id,$twids,$stats,$zstats,$id);
             foreach ($tree as $wid=>$subtree) {
-                $submap=self::TwTreeMap($subtree,$twids,$stats,$wid);
+                $submap=self::TwTreeMap($subtree,$twids,$stats,$zstats,$wid);
                 $map->addChild($submap);
             }
             return($map);
@@ -132,50 +149,55 @@ class MapPresenter extends BasePresenter
             if (is_int($id) && !array_key_exists($id,$twids)) {
                 $twids[$id]= \App\Model\Tw::twGet($id);
             }
-            $window=$twids[$id];
-            $props->id=$window->id;
-            $props->cv=$window->loi;
-            $props->seconds=$window->seconds;
-            $props->processed=$window->processed;
-            $props->found=$window->found;
-            $props->fstamp=$window->fstamp;
-            $props->tstamp=$window->tstamp;
-            $props->loi=$window->loi;
-            $props->url=self::link("Tw",Array("w"=>$window->id));
-            $props->description=$window->description;
-            $props->class=Array();
-            $props->class[]="loi".self::numtostep($window->loi,$stats["minloi"],$stats["maxloi"],10);
-            $props->class[]="loih".self::numtostep($window->loih,$stats["minloih"],$stats["maxloih"],10);
-            $props->class[]="processed".self::numtostep($window->processed,$stats["minprocessed"],$stats["maxprocessed"],10);
-            $props->class[]="ignored".self::numtostep($window->ignored,$stats["minignored"],$stats["maxignored"],10);
-            switch ($window->seconds) {
-                case \App\Model\Monda::_1HOUR:
-                    $props->class[]="l_hour";
-                    $props->class[]="hour_".date("H",$props->fstamp+date("Z"));
-                    break;
-                case \App\Model\Monda::_1DAY:
-                    $props->class[]="l_day";
-                    $props->class[]="dow_".date("l",$props->fstamp+date("Z"));
-                    if (date("l",$props->fstamp+date("Z"))==$this->opts->sow) {
-                        $props->class[]="day_sow";
-                    }
-                    break;
-                case \App\Model\Monda::_1WEEK:
-                    $props->class[]="l_week";
-                    break;
-                case \App\Model\Monda::_1MONTH:
-                    $props->class[]="l_month";
-                    $props->class[]="month_".date("M",$props->fstamp+date("Z"));
-                    break;
-               case \App\Model\Monda::_1YEAR:
-                    $props->class[]="l_year";
-                    break;
-            }
-            if ($window->processed==0) {
-                $props->class[]="processed0";
-            }
-            if ($window->found==0) {
-                $props->class[]="found0";
+            if (array_key_exists($id,$twids)) {
+                $window=$twids[$id];
+                $props->id=$window->id;
+                $props->cv=$window->loi;
+                $props->seconds=$window->seconds;
+                $props->processed=$window->processed;
+                $props->found=$window->found;
+                $props->fstamp=$window->fstamp;
+                $props->tstamp=$window->tstamp;
+                $props->loi=$window->loi;
+                $props->url=self::link("Tw",Array("w"=>$window->id));
+                $props->description=$window->description;
+                $props->zabbix=$window->description;
+                $props->class=Array();
+                $props->class[]="loi".self::numtostep($window->loi,$stats["minloi"],$stats["maxloi"],10);
+                $props->class[]="loih".self::numtostep($window->loih,$stats["minloih"],$stats["maxloih"],10);
+                $props->class[]="processed".self::numtostep($window->processed,$stats["minprocessed"],$stats["maxprocessed"],10);
+                $props->class[]="ignored".self::numtostep($window->ignored,$stats["minignored"],$stats["maxignored"],10);
+                switch ($window->seconds) {
+                    case \App\Model\Monda::_1HOUR:
+                        $props->class[]="l_hour";
+                        $props->class[]="hour_".date("H",$props->fstamp+date("Z"));
+                        break;
+                    case \App\Model\Monda::_1DAY:
+                        $props->class[]="l_day";
+                        $props->class[]="dow_".date("l",$props->fstamp+date("Z"));
+                        if (date("l",$props->fstamp+date("Z"))==$this->opts->sow) {
+                            $props->class[]="day_sow";
+                        }
+                        break;
+                    case \App\Model\Monda::_1WEEK:
+                        $props->class[]="l_week";
+                        break;
+                    case \App\Model\Monda::_1MONTH:
+                        $props->class[]="l_month";
+                        $props->class[]="month_".date("M",$props->fstamp+date("Z"));
+                        break;
+                   case \App\Model\Monda::_1YEAR:
+                        $props->class[]="l_year";
+                        break;
+                }
+                if ($window->processed==0) {
+                    $props->class[]="processed0";
+                }
+                if ($window->found==0) {
+                    $props->class[]="found0";
+                }
+            } else {
+                $props->id=$id;
             }
             $map=New Node($props->id);
             $map->setValue($props);
@@ -187,42 +209,27 @@ class MapPresenter extends BasePresenter
         $opts=$this->opts;
         $opts->wsort="start/+";
         $wids=\App\Model\Tw::twToIds($opts);
-        $tree=\App\Model\Tw::twTree($wids);
-        $maxloi=0;
-        $minloi=0;
-        $maxloi=0;
-        $minloih=0;
-        $maxloih=0;
-        $minloi=1000000;
-        $maxprocessed=0;
-        $minprocessed=10000000;
-        $maxignored=0;
-        $minignored=1000000;
+        $tree=\App\Model\Tw::twTree($wids,$opts->minmapdepth,$opts->maxmapdepth);
+        $stats=  \App\Model\Tw::twStats($opts);
+        $twids=Array();
         foreach ($wids as $w) {
             if (!array_key_exists($w,$twids)) {
                 $twids[$w]=\App\Model\Tw::twGet($w);
             }
-            $maxloi=max($maxloi,$twids[$w]->loi);
-            $minloi=min($minloi,$twids[$w]->loi);
-            $maxloih=max($maxloih,$twids[$w]->loih);
-            $minloih=min($minloih,$twids[$w]->loih);
-            $maxprocessed=max($maxprocessed,$twids[$w]->processed);
-            $minprocessed=min($minprocessed,$twids[$w]->processed);
-            $maxignored=max($maxignored,$twids[$w]->ignored);
-            $minignored=min($minignored,$twids[$w]->ignored);
         }
-        $stats=Array(
-            "minloi" => $minloi,
-            "maxloi" => $maxloi,
-            "minloih" => $minloih,
-            "maxloih" => $maxloih,
-            "minignored" => $minignored,
-            "maxignored" => $maxignored,
-            "minprocessed" => $minprocessed,
-            "maxprocessed" => $maxprocessed
-        );
-        $map=self::TwTreeMap($tree,$twids,$stats,$opts->mapname);
+        $map=self::TwTreeMap($tree,$twids,$stats,false,$opts->mapname);
         $this->template->map=$map;
+    }
+    
+    function renderMonth() {
+        $opts=$this->opts;
+        $opts->wsort="start/+";
+        $opts->maxmapdepth=3;
+        $opts->length=Array(\App\Model\Monda::_1DAY,\App\Model\Monda::_1WEEK,\App\Model\Monda::_1MONTH);
+        $wids=\App\Model\Tw::twToIds($opts);
+        $tree=\App\Model\Tw::twTree($wids,$opts->minmapdepth,$opts->maxmapdepth);
+        $wstats=  \App\Model\Tw::twStats($opts);
+        $this->template->map=$tree;
     }
     
 }

@@ -139,20 +139,26 @@ class ItemStat extends Monda {
         return($itemids);
     }
         
-    function isCompute($wid) {
+    function isCompute($opts,$wids) {
         
-        $w=Tw::twGet($wid);
-        self::mbegin();
-        CliDebug::warn("Computing item statistics for window id $w->id (zabbix_id:$w->serverid,<$w->fstamp-$w->tstamp>,$w->description)\n");
+        $windows=Tw::twGet($wids,true);
+        $widstxt=join(",",$wids);
+        $casesql="CASE \n";
+        foreach ($windows as $w) {
+            $casesql.=sprintf("WHEN clock BETWEEN %d AND %d THEN %d\n",$w->fstamp,$w->tstamp,$w->id);
+        }
+        $casesql.="END\n";
+        $wstats=Tw::twStats($opts);
+        CliDebug::warn("Computing item statistics for windows $widstxt (zabbix_id:$opts->zid,<$wstats->minfstamp-$wstats->maxtstamp>)\n");
         $items=self::isToIds($this->opts);
         if (count($items)>0) {
             $itemidsql=sprintf("AND itemid IN (%s)",join($items));
         } else {
             $itemidsql="";
         }
-        Monda::sreset();
         $rows=self::zcquery(
-            "SELECT itemid AS itemid,
+            "SELECT $casesql AS wid,
+                itemid AS itemid,
                     min(value) AS min,
                     max(value) AS max,
                     avg(value) AS avg,
@@ -161,11 +167,12 @@ class ItemStat extends Monda {
                     count(*) AS cnt
                 FROM ".$this->opts->zabbix_history_table."
                 WHERE clock>=? and clock<? $itemidsql
-                GROUP BY itemid
+                GROUP BY itemid,wid
 
                 UNION
 
-                SELECT itemid AS itemid,
+                SELECT $casesql AS wid,
+                    itemid AS itemid,
                     min(value) AS min,
                     max(value) AS max,
                     avg(value) AS avg,
@@ -174,23 +181,44 @@ class ItemStat extends Monda {
                     count(*) AS cnt
                 FROM ".$this->opts->zabbix_history_uint_table."
                 WHERE clock>? and clock<? $itemidsql
-                GROUP BY itemid
+                
+                GROUP BY itemid,wid
+                ORDER BY wid,itemid
                 ",
-                $w->fstamp,$w->tstamp,$w->fstamp,$w->tstamp);
+                $wstats->minfstamp,$wstats->maxtstamp,$wstats->minfstamp,$wstats->maxtstamp);
+        self::mbegin();
         if (count($rows)==0) {
-            $d=self::mquery("DELETE FROM itemstat WHERE windowid=?",$wid);
+            $d=self::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
             self::mquery("UPDATE timewindow
-                SET updated=?, found=0, processed=0, ignored=0, lowcnt=0, lowavg=0, stddev0=0 WHERE id=?",
+                SET updated=?, found=0, processed=0, ignored=0, lowcnt=0, lowavg=0, stddev0=0 WHERE id IN (?)",
                 New DateTime(),
-                $wid);
+                $wids);
             self::mcommit();
             return(false);
         }
         $hostids=Array();
         $itemids=Array();
         $rowscnt=0;
+        $wid=false;
         foreach ($rows as $s) {
-            CliDebug::dbg(sprintf("Processing %d of %d items (id=%d,stddev=%.2f)\n",$rowscnt,count($rows),$s->itemid, $s->stddev));
+            if ($wid!=$s->wid) {
+                if ($wid) {
+                    Monda::mquery("UPDATE timewindow
+                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, stddev0=? WHERE id=?",
+                    New DateTime(),
+                    Monda::sget("found"),
+                    Monda::sget("processed"),
+                    Monda::sget("ignored"),
+                    Monda::sget("lowcnt"),
+                    Monda::sget("lowavg"),
+                    Monda::sget("stddev0"),
+                    $wid);
+                }
+                Monda::sreset();
+                $wid=$s->wid;
+                $d=self::mquery("DELETE FROM itemstat WHERE windowid=?",$wid);
+            }
+            CliDebug::dbg(sprintf("Processing %d of %d items in window %d (id=%d,stddev=%.2f)\n",$rowscnt,count($rows),$wid,$s->itemid, $s->stddev));
             Monda::sadd("found");
             $rowscnt++;
             $itemids[]=$s->itemid;
@@ -211,7 +239,7 @@ class ItemStat extends Monda {
             }
             Monda::sadd("processed"); 
             $cv=$s->stddev/$s->avg;
-            $d=self::mquery("DELETE FROM itemstat WHERE windowid=? AND itemid=?",$wid,$s->itemid);
+            
             $r=self::mquery("INSERT INTO itemstat ",
                     Array(
                         "cnt" => $s->cnt,
@@ -225,16 +253,16 @@ class ItemStat extends Monda {
                         "cv" => $cv
                     )); 
         }
-        self::mquery("UPDATE timewindow
-                SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, stddev0=? WHERE id=?",
-                New DateTime(),
-                Monda::sget("found"),
-                Monda::sget("processed"),
-                Monda::sget("ignored"),
-                Monda::sget("lowcnt"),
-                Monda::sget("lowavg"),
-                Monda::sget("stddev0"),
-                $wid);
+        Monda::mquery("UPDATE timewindow
+                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, stddev0=? WHERE id=?",
+                    New DateTime(),
+                    Monda::sget("found"),
+                    Monda::sget("processed"),
+                    Monda::sget("ignored"),
+                    Monda::sget("lowcnt"),
+                    Monda::sget("lowavg"),
+                    Monda::sget("stddev0"),
+                    $wid);
         self::mcommit();
         return(Monda::sget());
     }
@@ -243,16 +271,9 @@ class ItemStat extends Monda {
         if (\App\Presenters\BasePresenter::isOptDefault("empty")) {
             $opts->empty=true;
         }
-        $windows=Tw::twSearch($this->opts)->fetchAll();
-        CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($windows),date("Y-m-d H:i",$opts->start),date("Y-m-d H:i",$opts->end)));
-        foreach ($windows as $w) {
-            if (self::doJob()) {
-                $stats=ItemStat::isCompute($w->id,$this->opts->itemids,$this->opts->hosts);
-                CliDebug::info(sprintf("Window %d: found=%d, processed=%d, ignored=%d\n",$w->id,$stats["found"],$stats["processed"],$stats["ignored"]));
-                self::exitJob();
-            }
-        }
-        self::exitJobServer();
+        $wids=Tw::twToIds($this->opts);
+        CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($wids),date("Y-m-d H:i",$opts->start),date("Y-m-d H:i",$opts->end)));
+        self::isCompute($opts,$wids);
     }
     
     public function IsDelete($opts) {

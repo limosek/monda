@@ -75,7 +75,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             $d = $r[3];
             $h = $r[4];
             $M = $r[5];
-            $dte = New DateTime("$y-$m-$d $h:$M");
+            $dte = New DateTime("$y-$m-$d $h:$M".date("P"));
             return(date_format($dte, "U"));
         } elseif (preg_match("/(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)/", $t, $r)) {
             $y = $r[1];
@@ -135,7 +135,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             "defaulthelp" => $defaulthelp,
             "choices" => $choices
         );
-        if (array_key_exists($short,$params)) {
+        if ($short && array_key_exists($short,$params)) {
             $value=stripslashes($params[$short]);
         } elseif (array_key_exists($long,$params)) {
             $value=stripslashes($params[$long]);
@@ -377,8 +377,8 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "sqlcacheexpire",
                 "Sce","sql_cache_expire",
                 "Maximum time to cache sql requests. Use 0 to not cache.",
-                "24 hours",
-                "24 hours"
+                "1 hour",
+                "1 hour"
                 );
         $ret=self::parseOpt($ret,
                 "nocache",

@@ -18,7 +18,10 @@ class Monda extends Nette\Object {
     const _1HOUR=3600;
     const _1DAY=86400;
     const _1WEEK=604800;
-    const _1MONTH=2678400;
+    const _1MONTH=2505600;
+    const _1MONTH28=2419200;
+    const _1MONTH30=2592000;
+    const _1MONTH31=2678400;
     const _1YEAR=31536000;
 
     function init_api() {
@@ -61,7 +64,7 @@ class Monda extends Nette\Object {
             throw Exception("Cannot connect to monda or zabbix db");
         }
     }
-
+    
     function apiCmd($cmd,$req) {
         $ckey=$cmd.serialize($req);
         $ret = $this->apicache->load($ckey);
@@ -190,7 +193,7 @@ class Monda extends Nette\Object {
         $ret=$this->sqlcache->load($ckey);
         if ($ret===null) {
             $ret=self::mquery($args)->fetchAll();
-            $this->sqlcache->save(
+            $this->sqlcache->save($ckey,
                     $ret,
                     array(
                         Nette\Caching\Cache::EXPIRE => $this->opts->sqlcacheexpire,

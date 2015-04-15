@@ -45,23 +45,18 @@ class TwPresenter extends BasePresenter
         $ret=self::parseOpt($ret,
                 "length",
                 "l","window_length",
-                "Window description.",
-                "31day,1week,1day,1hour",
-                "31day,1week,1day,1hour"
+                "Window length. Leave empty to get all lengths.",
+                false,
+                "All"
                 );
-        $ret->length=preg_split("/,/",$ret->length);
-        foreach ($ret->length as $id=>$length) {
-            if (!is_numeric($length)) {
-                $ret->length[$id]=self::timetoseconds($length)-time();
+        if ($ret->length) {
+            $ret->length=preg_split("/,/",$ret->length);
+                foreach ($ret->length as $id=>$length) {
+                if (!is_numeric($length)) {
+                    $ret->length[$id]=self::timetoseconds($length)-time();
+                }
             }
         }
-        $ret=self::parseOpt($ret,
-                "startalign",
-                "ss","align_start",
-                "Align start time to be on timewindow boundary (0 minutes for hour, monday for week, 1st day for month)",
-                true,
-                "yes"
-                );
         $ret=self::parseOpt($ret,
                 "wsort",
                 "ws","windows_sort",
@@ -86,7 +81,7 @@ class TwPresenter extends BasePresenter
         $ret=self::parseOpt($ret,
                 "createdonly",
                 "c","only_just_created_windows",
-                "Select only windows which were just created and contains np data",
+                "Select only windows which were just created and contains no data",
                 false,
                 "no"
                 );
@@ -103,6 +98,20 @@ class TwPresenter extends BasePresenter
                 "Select only windows with this ids",
                 false,
                 "no care"
+                );
+        $ret=self::parseOpt($ret,
+                "chgloi",
+                "Cl","change_loi",
+                "Change loi of selected windows. Can be number, +number or -number",
+                false,
+                "None"
+                );
+        $ret=self::parseOpt($ret,
+                "rename",
+                "Rn","rename",
+                "Rename selected window(s). Can contain macros %Y, %M, %d, %H, %i, %l, %F",
+                false,
+                "None"
                 );
         $ret=self::parseOpt($ret,
                 "max_windows",
@@ -138,6 +147,9 @@ class TwPresenter extends BasePresenter
     
     tw:zstats
         Show statistics about zabbix data at timewindows
+    
+    tw:modify
+        Modify or rename window(s)
         
      tw:loi
         Recompute Level of Interest for windows
@@ -181,8 +193,15 @@ class TwPresenter extends BasePresenter
         self::mexit();
     }
     
+    public function renderModify() {
+        Tw::twModify($this->opts);
+        self::mexit();
+    }
+    
     public function renderCreate() {
-        Tw::twMultiCreate($this->opts);
+        if (!Tw::twMultiCreate($this->opts)) {
+            self::mexit(5,"No window lengths specified! Use -l!\n");
+        }
         self::mexit();
     }
     
