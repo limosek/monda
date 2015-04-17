@@ -27,6 +27,27 @@ class EcPresenter extends BasePresenter
         $ret=TwPresenter::getOpts($ret);
         $ret=HsPresenter::getOpts($ret);
         $ret=IsPresenter::getOpts($ret);
+        $ret=self::parseOpt($ret,
+                "inc_loi_event_itemstat",
+                false,"inc_loi_event_item",
+                "Increase LOI for item with event",
+                100,
+                100
+                );
+        $ret=self::parseOpt($ret,
+                "inc_loi_event_window",
+                false,"inc_loi_event_window",
+                "Increase LOI for time window with event",
+                100,
+                100
+                );
+        $ret=self::parseOpt($ret,
+                "inc_loi_event_host",
+                false,"inc_loi_event_host",
+                "Increase LOI for time host with event",
+                100,
+                100
+                );
         return($ret);
     }
     

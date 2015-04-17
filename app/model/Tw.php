@@ -44,7 +44,9 @@ class Tw extends Monda {
         $lengths=join(",",$opts->length);
         CliDebug::warn("Creating windows from $fdate to $tdate and lengths $lengths\n");
         Monda::mbegin();
-        for ($i = $opts->start; $i < $opts->end; $i = $i + Monda::_1HOUR) {
+        $start=round($opts->start/3600,0)*3600;
+        $end=(round($opts->end/3600,0)+1)*3600;
+        for ($i = $start; $i < $end; $i = $i + Monda::_1HOUR) {
             foreach ($opts->length as $length) {
                 if ($length==Monda::_1YEAR && date("m:d:H",$i)=="01:01:00") {
                     Tw::twCreate($this->opts->zid, $i, $length, "Year_" . date("Y", $i));
@@ -53,13 +55,13 @@ class Tw extends Monda {
                     $monthseconds = date("t", $i) * 3600 * 24;
                     Tw::twCreate($this->opts->zid, $i, $monthseconds, "Month_" . date("Y-m", $i));
                 }
-                if ($length==Monda::_1WEEK && date("N",$i)==1) {
+                if ($length==Monda::_1WEEK && date("N-H",$i)=="1-00") {
                     Tw::twCreate($this->opts->zid, $i, $length, "Week_" . date("Y-m-d", $i));
                 }
                 if ($length==Monda::_1DAY && date("H",$i)==0) {
                     Tw::twCreate($this->opts->zid, $i, $length, "Day_" . date("Y-m-d", $i));
                 }
-                if ($length==Monda::_1HOUR && date("H",$i)==0) {
+                if ($length==Monda::_1HOUR && date("i",$i)==0) {
                     Tw::twCreate($this->opts->zid, $i, $length, "Hour_" . date("Y-m-d H", $i));
                 }
             }
@@ -163,9 +165,10 @@ class Tw extends Monda {
                 found,
                 processed,
                 ignored,
-                stddev0,
+                lowstddev,
                 lowavg,
                 lowcnt,
+                lowcv,
                 serverid,
                 timewindow.loi/(timewindow.seconds/3600) AS loih,
                 COUNT(itemstat.itemid) AS itemcount
@@ -188,7 +191,12 @@ class Tw extends Monda {
         return($rows);
     }
 
-    function twSearchClock($clock) {
+    function twSearchClock($clock,$empty=true) {
+        if ($empty) {
+            $emptysql="found>0";
+        } else {
+            $emptysql="true";
+        }
         $rows = Monda::mquery("
             SELECT 
                 id,parentid,
@@ -204,12 +212,12 @@ class Tw extends Monda {
                 found,
                 processed,
                 ignored,
-                stddev0,
+                lowstddev,
                 lowavg,
                 lowcnt,
                 serverid
             FROM timewindow
-            WHERE extract(epoch from tfrom)<? AND extract(epoch from tfrom)+seconds>?
+            WHERE extract(epoch from tfrom)<? AND extract(epoch from tfrom)+seconds>? AND $emptysql
             ", $clock, $clock);
         return($rows);
     }
@@ -231,7 +239,7 @@ class Tw extends Monda {
                 found,
                 processed,
                 ignored,
-                stddev0,
+                lowstddev,
                 lowavg,
                 lowcnt,
                 serverid,
@@ -256,28 +264,30 @@ class Tw extends Monda {
         return($wids);
     }
 
-    function twStats($opts, $zabbix = false) {
+    function twStats($opts,$zabbix=false) {
         $wids = self::twToIds($opts);
         $row = Monda::mcquery("
             SELECT
+                COUNT(*) AS cnt,
                 MIN(tfrom) AS mintfrom,
                 MAX(tfrom) AS maxtfrom,
                 extract(epoch from MIN(tfrom)) AS minfstamp,
                 extract(epoch from MAX(tfrom)) AS maxfstamp,
                 extract(epoch from MAX(tfrom + (seconds||' seconds')::INTERVAL)) AS maxtstamp,
                 MIN(seconds) AS minlength,
+                MAX(seconds) AS maxlength,
                 MIN(found) AS minfound,
                 MAX(found) AS maxfound,
-                MIN(stddev0) AS minstddev0,
-                MAX(stddev0) AS maxstddev0,
+                MIN(lowstddev) AS minstddev,
+                MAX(lowstddev) AS maxstddev,
                 MIN(processed) AS minprocessed,
                 MAX(processed) AS maxprocessed,
                 MIN(ignored) AS minignored,
                 MAX(ignored) AS maxignored,
                 MIN(loi) AS minloi,
                 MAX(loi) AS maxloi,
-                MIN(loi/(seconds*3600)) AS minloih,
-                MAX(loi/(seconds*3600)) AS maxloih,
+                MIN(loi::float/(seconds*3600)) AS minloih,
+                MAX(loi::float/(seconds*3600)) AS maxloih,
                 STDDEV(loi) AS stddevloi
             FROM timewindow
             WHERE id IN (?)", $wids);
@@ -378,8 +388,11 @@ class Tw extends Monda {
               AND twchild.seconds<twparent.seconds
               ORDER BY seconds
               LIMIT 1 )
-            WHERE twchild.id IN (?)
+            WHERE twchild.id IN (?) AND found>0
             ", $wids);
+        $uloi2= Monda::mquery("
+            UPDATE timewindow SET loi=0 WHERE found=0 OR found IS NULL
+                ");
         Monda::mcommit();
     }
 

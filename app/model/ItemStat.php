@@ -143,128 +143,124 @@ class ItemStat extends Monda {
         
         $windows=Tw::twGet($wids,true);
         $widstxt=join(",",$wids);
-        $casesql="CASE \n";
+        $ttable="mwtmp_".rand(1000,9999);
+        $crsql="CREATE TEMPORARY TABLE $ttable (s integer, e integer, id integer);";
+        Monda::zquery($crsql);
         foreach ($windows as $w) {
-            $casesql.=sprintf("WHEN clock BETWEEN %d AND %d THEN %d\n",$w->fstamp,$w->tstamp,$w->id);
+            $crsqli="INSERT INTO $ttable VALUES ($w->fstamp,$w->tstamp,$w->id);\n";
+            Monda::zquery($crsqli);
+            $crsql.=$crsqli;
         }
-        $casesql.="END\n";
         $wstats=Tw::twStats($opts);
-        CliDebug::warn("Computing item statistics for windows $widstxt (zabbix_id:$opts->zid,<$wstats->minfstamp-$wstats->maxtstamp>)\n");
+        CliDebug::warn("Computing item statistics (zabbix_id:$opts->zid,<$wstats->minfstamp-$wstats->maxtstamp,max ".($wstats->maxtstamp-$wstats->minfstamp)." seconds>),".count($wids)." windows\n");
         $items=self::isToIds($this->opts);
         if (count($items)>0) {
             $itemidsql=sprintf("AND itemid IN (%s)",join($items));
         } else {
             $itemidsql="";
         }
-        $rows=self::zcquery(
-            "SELECT $casesql AS wid,
-                itemid AS itemid,
-                    min(value) AS min,
-                    max(value) AS max,
-                    avg(value) AS avg,
-                    stddev(value) AS stddev,
-                    max(value)-min(value) AS delta,
+        $rows=self::zquery(
+            "SELECT w.id AS windowid,
+                 itemid AS itemid,
+                    min(value) AS min_,
+                    max(value) AS max_,
+                    avg(value) AS avg_,
+                    stddev(value) AS stddev_,
                     count(*) AS cnt
-                FROM ".$this->opts->zabbix_history_table."
-                WHERE clock>=? and clock<? $itemidsql
-                GROUP BY itemid,wid
-
-                UNION
-
-                SELECT $casesql AS wid,
-                    itemid AS itemid,
-                    min(value) AS min,
-                    max(value) AS max,
-                    avg(value) AS avg,
-                    stddev(value) AS stddev,
-                    max(value)-min(value) AS delta,
-                    count(*) AS cnt
-                FROM ".$this->opts->zabbix_history_uint_table."
-                WHERE clock>? and clock<? $itemidsql
-                
-                GROUP BY itemid,wid
-                ORDER BY wid,itemid
-                ",
+                 FROM
+                 (
+                  SELECT itemid,clock,value FROM ".$opts->zabbix_history_table."
+                  WHERE clock BETWEEN ? AND ?
+                  UNION ALL
+                  SELECT itemid,clock,value FROM ".$opts->zabbix_history_uint_table."
+                  WHERE clock BETWEEN ? AND ?
+                 ) AS h
+                 JOIN $ttable w ON (clock BETWEEN w.s AND w.e)
+                  $itemidsql
+                 GROUP BY windowid,itemid
+                 ORDER BY windowid,itemid",
                 $wstats->minfstamp,$wstats->maxtstamp,$wstats->minfstamp,$wstats->maxtstamp);
         self::mbegin();
-        if (count($rows)==0) {
-            $d=self::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
-            self::mquery("UPDATE timewindow
-                SET updated=?, found=0, processed=0, ignored=0, lowcnt=0, lowavg=0, stddev0=0 WHERE id IN (?)",
-                New DateTime(),
-                $wids);
-            self::mcommit();
-            return(false);
-        }
-        $hostids=Array();
-        $itemids=Array();
-        $rowscnt=0;
+        self::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
+        Monda::sreset();
         $wid=false;
-        foreach ($rows as $s) {
-            if ($wid!=$s->wid) {
-                if ($wid) {
-                    Monda::mquery("UPDATE timewindow
-                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, stddev0=? WHERE id=?",
-                    New DateTime(),
-                    Monda::sget("found"),
-                    Monda::sget("processed"),
-                    Monda::sget("ignored"),
-                    Monda::sget("lowcnt"),
-                    Monda::sget("lowavg"),
-                    Monda::sget("stddev0"),
-                    $wid);
-                }
-                Monda::sreset();
-                $wid=$s->wid;
-                $d=self::mquery("DELETE FROM itemstat WHERE windowid=?",$wid);
-            }
-            CliDebug::dbg(sprintf("Processing %d of %d items in window %d (id=%d,stddev=%.2f)\n",$rowscnt,count($rows),$wid,$s->itemid, $s->stddev));
+        while ($row=$rows->fetch()) {
             Monda::sadd("found");
-            $rowscnt++;
-            $itemids[]=$s->itemid;
-            if ($s->stddev == 0) {
+            if ($row->stddev_<=$opts->min_stddev) {
                 Monda::sadd("ignored");
-                Monda::sadd("stddev0");
+                Monda::sadd("lowstddev");
                 continue;
             }
-            if ($s->cnt < $this->opts->min_values_per_window) {
+            if ($row->cnt<$opts->min_values_per_window) {
                 Monda::sadd("ignored");
                 Monda::sadd("lowcnt");
                 continue;
             }
-            if ($s->avg < $this->opts->min_avg_for_cv) {
+            if ($row->avg_>$opts->min_avg_for_cv) {
+                $cv=$row->stddev_/$row->avg_;
+                if ($cv<=$opts->min_cv) {
+                    Monda::sadd("ignored");
+                    Monda::sadd("lowcv");
+                    continue;
+                }
+            } else {
                 Monda::sadd("ignored");
                 Monda::sadd("lowavg");
                 continue;
             }
-            Monda::sadd("processed"); 
-            $cv=$s->stddev/$s->avg;
-            
-            $r=self::mquery("INSERT INTO itemstat ",
-                    Array(
-                        "cnt" => $s->cnt,
-                        "itemid" => $s->itemid,
-                        "hostid" => null,
-                        "windowid" => $wid,
-                        "avg_" => $s->avg,
-                        "min_" => $s->min,
-                        "max_" => $s->max,
-                        "stddev_" => $s->stddev,
-                        "cv" => $cv
-                    )); 
-        }
-        Monda::mquery("UPDATE timewindow
-                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, stddev0=? WHERE id=?",
+            Monda::sadd("processed");
+            Monda::mquery("INSERT INTO itemstat "
+                    . "       (windowid,    itemid, min_,   max_,   avg_,   stddev_,    cnt,    cv) "
+                    . "VALUES (?       ,    ?,      ?,      ?,      ?,      ?,          ?,      ?)",
+                        $row->windowid,
+                        $row->itemid,
+                        $row->min_,
+                        $row->max_,
+                        $row->avg_,
+                        $row->stddev_,
+                        $row->cnt,
+                        $cv
+                    );
+            if ($wid!=$row->windowid) {
+                if ($wid) {
+                    Monda::mquery("UPDATE timewindow
+                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?
+                    WHERE id=?",
                     New DateTime(),
                     Monda::sget("found"),
                     Monda::sget("processed"),
                     Monda::sget("ignored"),
                     Monda::sget("lowcnt"),
                     Monda::sget("lowavg"),
-                    Monda::sget("stddev0"),
+                    Monda::sget("lowstddev"),
+                    Monda::sget("lowcv"),
                     $wid);
-        self::mcommit();
-        return(Monda::sget());
+                }
+                Monda::sreset();
+                $wid=$row->windowid;
+            }
+        }
+        if (Monda::sget("found")>0) {
+            Monda::mquery("UPDATE timewindow
+                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?
+                    WHERE id=?",
+                    New DateTime(),
+                    Monda::sget("found"),
+                    Monda::sget("processed"),
+                    Monda::sget("ignored"),
+                    Monda::sget("lowcnt"),
+                    Monda::sget("lowavg"),
+                    Monda::sget("lowstddev"),
+                    Monda::sget("lowcv"),
+                    $wid);
+            
+            $ret=Monda::sget();
+        } else {
+            $ret=false;
+        }
+        Monda::mcommit();
+        Monda::zquery("DROP TABLE $ttable");
+        return($ret);
     }
     
     public function IsMultiCompute($opts) {
@@ -272,8 +268,16 @@ class ItemStat extends Monda {
             $opts->empty=true;
         }
         $wids=Tw::twToIds($this->opts);
-        CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($wids),date("Y-m-d H:i",$opts->start),date("Y-m-d H:i",$opts->end)));
-        self::isCompute($opts,$wids);
+        if ($opts->max_windows_per_query && count($wids)>$opts->max_windows_per_query) {
+            foreach (array_chunk($wids,$opts->max_windows_per_query) as $subwids) {
+                self::isCompute($opts,$subwids);
+            }
+            CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($wids),date("Y-m-d H:i",$opts->start),date("Y-m-d H:i",$opts->end)));
+            
+        } else {
+            CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($wids),date("Y-m-d H:i",$opts->start),date("Y-m-d H:i",$opts->end)));
+            self::isCompute($opts,$wids);
+        }
     }
     
     public function IsDelete($opts) {

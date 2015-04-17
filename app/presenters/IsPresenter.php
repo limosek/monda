@@ -32,15 +32,29 @@ class IsPresenter extends BasePresenter
                 "min_values_per_window",
                 "Mvw","min_values_per_window",
                 "Minimum values for item per window to process",
-                10,
-                10
+                20,
+                20
                 );
         $ret=$this->parseOpt($ret,
                 "min_avg_for_cv",
                 "Mac","min_avg_for_cv",
                 "Minimum average for CV to process",
-                0.1,
-                0.1
+                0.01,
+                0.01
+                );
+        $ret=$this->parseOpt($ret,
+                "min_stddev",
+                "Msd","min_stddev",
+                "Minimum stddev of values to process. Only bigger stddev will be processed",
+                0,
+                0
+                );
+        $ret=$this->parseOpt($ret,
+                "min_cv",
+                "Mcv","min_cv",
+                "Minimum CV to process values.",
+                0.01,
+                0.01
                 );
         $ret=$this->parseOpt($ret,
                 "itemids",
@@ -48,6 +62,13 @@ class IsPresenter extends BasePresenter
                 "Itemids to get",
                 false,
                 "All"
+                );
+        $ret=$this->parseOpt($ret,
+                "max_windows_per_query",
+                false,"max_windows_per_query",
+                "Maximum number of windows per one sql query",
+                10,
+                10
                 );
         if ($ret->itemids) {
             $ret->itemids=preg_split("/,/",$ret->itemids);
