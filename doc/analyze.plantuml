@@ -1,0 +1,27 @@
+@startuml
+
+start
+
+Partition Preprocess {
+	if (timewindow does not exist) then
+		:Create timewindow|
+	endif
+	:Get info about hosts and hostgroups|
+	:Compute item statistics for timewindow and selected items|
+	:Update itemstat LOI based on item statistics|
+	:Update timewindow LOI based on item statistics|
+	:Update itemstat to match items to hosts|
+	:Compute host statistics|
+	:Updates host LOI|
+	:Update LOI based on events|
+}
+
+Partition Process {
+	:Find correlations between items in same timewindow|
+	:Find correlations between same items in different timewindows in same hour in day|
+	:Find correlations between same items in different timewindows in same day of week|
+}
+
+stop
+
+@enduml

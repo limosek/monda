@@ -81,7 +81,7 @@ class Tw extends Monda {
         if ($opts->empty) {
             $onlyemptysql = "(updated IS NULL OR COUNT(itemstat.itemid)=0) AND";
         } else {
-            $onlyemptysql = "(updated IS NOT NULL AND COUNT(itemstat.itemid)>0) AND";
+            $onlyemptysql = "true AND";
         }
         if (preg_match("#/#", $opts->wsort)) {
             List($sc, $so) = preg_split("#/#", $opts->wsort);

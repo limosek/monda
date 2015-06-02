@@ -1,0 +1,61 @@
+@startuml
+
+node "zabbix" {
+	database "Zabbix DB" {
+		folder "config" {
+			[item]
+			[host]
+			[hostgroup]
+		}
+		folder "history" {
+			[history]
+			[history_uint]
+			[events]
+		}
+	}
+	interface "JSON API" as ZAPI
+	interface "SQL" as ZSQL
+
+	ZAPI ..> item
+	ZAPI ..> host
+	ZAPI ..> hostgroup
+	ZAPI ..> events
+	ZSQL ..> history
+	ZSQL ..> history_uint
+}
+
+node "monda" {
+	database "Monda DB" {
+		folder "time based" {
+			[timewindow]
+			[windowcorr]
+		}
+		folder "item based" {
+			[itemstat]
+			[itemcorr]
+		}
+		folder "host based" {
+			[hoststat]
+			[hostcorr]
+		}
+		
+	}
+	
+	node "monda.php" as MCLI
+
+	interface "SQL" as MSQL
+
+	MSQL ..> timewindow
+	MSQL ..> windowcorr
+	MSQL ..> itemstat
+	MSQL ..> itemcorr
+	MSQL ..> hoststat
+	MSQL ..> hostcorr
+}
+
+
+MCLI --> ZAPI : Zabbix API call
+MCLI --> ZSQL : SQL query
+MCLI --> MSQL : SQL query
+
+@enduml

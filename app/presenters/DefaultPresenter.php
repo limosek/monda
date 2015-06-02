@@ -23,10 +23,12 @@ class DefaultPresenter extends BasePresenter
      hs             - HostStat operations
      ic             - Item Correlation operations
      ec             - Event Correlation operations
-     loi            - Level Of interrest calculations
+     
      cron           - Combining all operations from cron
-     hm             - Create HTML maps
-     gm             - Create Graphiz maps
+     
+     html           - Create HTML output
+     graphviz       - Create Graphiz output
+     zabbix         - Zabbix output
      
      Hint: Date formats: @timestamp, YYYY_MM_DD_hhmm, YYYYMMDDhhmm, now, '-1 day'
      Hint: Divide more ids by comma ( like 1,3,45)

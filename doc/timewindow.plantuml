@@ -1,0 +1,30 @@
+@startuml
+
+database "Monda DB" {
+	folder timewindow1 {
+		[itemstats1]
+		[hoststats1]
+		[itemcorrs1]
+		[hostcorrs1]
+	}
+	folder timewindow4 {
+		[itemstats4]
+		[hoststats4]
+		[itemcorrs4]
+		[hostcorrs4]
+		folder timewindow2 {
+			[itemstats2]
+			[hoststats2]
+			[itemcorrs2]
+			[hostcorrs3]
+		}
+		folder timewindow3 {
+			[itemstats3]
+			[hoststats3]
+			[itemcorrs3]
+			[hostcorrs3]
+		}
+	}
+}
+
+@enduml

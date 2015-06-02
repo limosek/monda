@@ -61,8 +61,6 @@ if (file_exists(getenv("MONDARC")) && !getenv("MONDA_PASS2")) {
             $p=$presenter;
             $a="Default";
         }
-        if ($p=="hm") $p="HtmlMap";
-        if ($p=="gm") $p="GraphvizMap";
         $presenter="$p:$a";
         $cmd=sprintf("'%s' '%s' %s --foo %s",$cmd,$presenter,$cfgargs,join(" ",$cmdargs));
         system($cmd,$ret);

@@ -7,7 +7,7 @@ use \Exception,
     App\Model,
     Nette\Utils\DateTime as DateTime;
 
-class GraphvizMapPresenter extends MapPresenter {
+class GraphvizPresenter extends MapPresenter {
 
     public function Help() {
         \App\Model\CliDebug::warn("

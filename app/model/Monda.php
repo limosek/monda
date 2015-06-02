@@ -2,7 +2,7 @@
 
 namespace App\Model;
 
-use \ZabbixApi,Nette,
+use ZabbixApi\ZabbixApi,Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
@@ -66,7 +66,7 @@ class Monda extends Nette\Object {
     }
     
     function apiCmd($cmd,$req) {
-        $ckey=$cmd.serialize($req);
+        $ckey=md5($cmd.serialize($req));
         $ret = $this->apicache->load($ckey);
         if ($ret === NULL) {
             if (!isset($this->api)) {
@@ -75,6 +75,7 @@ class Monda extends Nette\Object {
                     return(Array());
                 }
             }
+            if ($this->opts->progress) CliDebug::progress("A\r");
             CliDebug::dbg("Zabbix Api query ($cmd)\n");
             $ret = $this->api->$cmd($req);
             $this->apicache->save($ckey, $ret, array(
@@ -96,6 +97,7 @@ class Monda extends Nette\Object {
         $psql=new \Nette\Database\SqlPreprocessor($this->zq->connection);
         List($sql)=$psql->process($args);
         CliDebug::dbg("zquery(\n$sql\n)=\n");
+        if ($this->opts->progress) CliDebug::progress("Z\r");
         $ret=$this->zq->queryArgs(array_shift($args),$args);
         CliDebug::dbg(sprintf("%d\n",count($ret)));
         $this->lastsql=$sql;
@@ -104,7 +106,7 @@ class Monda extends Nette\Object {
     
     function zcquery($query) {
         $args = func_get_args();
-        $ckey=serialize($args);
+        $ckey=md5(serialize($args));
         $ret=$this->sqlcache->load($ckey);
         if ($ret===null) {
             $ret=self::zquery($args)->fetchAll();
@@ -116,6 +118,78 @@ class Monda extends Nette\Object {
                     );
         }
         return($ret);
+    }
+    
+    function zabbix2monda($query,$table,$columns=false,$tmp="TEMPORARY") {
+        if (is_string($query)) {
+            self::mbegin();
+            $zq=self::zquery($query);
+            if (!$zq) {
+                return(false);
+            }
+        } else {
+            $zq=$query;
+        }
+        $row=$zq->fetch();
+        $createsql="CREATE $tmp TABLE $table (\n";
+        $i=0;
+        $l=count($row);
+        foreach ($row as $c=>$v) {
+            if (is_array($columns) && array_key_exists($c,$columns)) {
+                $createsql .= "$c ".$columns[$c];
+            } else {
+                if (is_float($v)) {
+                    $createsql .= "$c double precision ";
+                } elseif (is_integer($v)) {
+                    $createsql .= "$c bigint ";
+                } else {
+                    $createsql .= "$c character varying(255) ";
+                }
+            }
+            $i++;
+            if ($i<$l) $createsql .= ",\n"; else $createsql .= "\n";
+        }
+        $createsql .= ")";
+        self::mquery($createsql);
+        while ($row=$zq->fetch()) {
+            self::mquery("INSERT INTO $table ?",$row);
+        }
+        self::mcommit();
+    }
+    
+    function monda2zabbix($query,$table,$columns=false,$tmp="TEMPORARY") {
+        if (is_string($query)) {
+            $mq=self::mquery($query);
+            if (!$mq) {
+                return(false);
+            }
+        } else {
+            $mq=$query;
+        }
+        $row=$mq->fetch();
+        $createsql="CREATE $tmp TABLE $table (\n";
+        $i=0;
+        $l=count($row);
+        foreach ($row as $c=>$v) {
+            if (is_array($columns) && array_key_exists($c,$columns)) {
+                $createsql .= "$c ".$columns[$c];
+            } else {
+                if (is_float($v)) {
+                    $createsql .= "$c double precision ";
+                } elseif (is_integer($v)) {
+                    $createsql .= "$c bigint ";
+                } else {
+                    $createsql .= "$c character varying(255) ";
+                }
+            }
+            $i++;
+            if ($i<$l) $createsql .= ",\n"; else $createsql .= "\n";
+        }
+        $createsql .= ")";
+        self::zquery($createsql);
+        while ($row=$mq->fetch()) {
+            self::zquery("INSERT INTO $table ?",$row);
+        }
     }
     
     function zlowpri() {
@@ -182,6 +256,7 @@ class Monda extends Nette\Object {
         $psql=new \Nette\Database\SqlPreprocessor($this->mq->connection);
         List($sql)=$psql->process($args);
         CliDebug::dbg("mquery(\n$sql\n)\n");
+        if ($this->opts->progress) CliDebug::progress("M\r");
         $ret=$this->mq->queryArgs(array_shift($args),$args);
         $this->lastsql=$sql;
         return($ret);
@@ -189,7 +264,7 @@ class Monda extends Nette\Object {
     
     function mcquery($query) {
         $args = func_get_args();
-        $ckey=serialize($args);
+        $ckey=md5(serialize($args));
         $ret=$this->sqlcache->load($ckey);
         if ($ret===null) {
             $ret=self::mquery($args)->fetchAll();

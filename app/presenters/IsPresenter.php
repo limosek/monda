@@ -18,6 +18,7 @@ class IsPresenter extends BasePresenter
      is:compute [common opts]
      is:delete [common opts]
      is:loi [common opts]
+     is:stats [common opts]
 
      [common opts]
     \n");
@@ -76,7 +77,7 @@ class IsPresenter extends BasePresenter
         $ret=$this->parseOpt($ret,
                 "items",
                 "Ik","items",
-                "Item keys to get",
+                "Item keys to get. Use host: to get all items of host. Use @HostGroup: to get all items of hostgroup.",
                 false,
                 "All"
                 );
@@ -99,7 +100,7 @@ class IsPresenter extends BasePresenter
                 );
         $ret=\App\Model\ItemStat::itemsToIds($ret);
         if (is_array($ret->itemids)) {
-            \App\Model\CliDebug::info(sprintf("Itemids selected: %s\n",join(",",$ret->itemids)));
+            \App\Model\CliDebug::dbg(sprintf("Itemids selected: %s\n",join(",",$ret->itemids)));
         }
         return($ret);
     }
@@ -132,6 +133,47 @@ class IsPresenter extends BasePresenter
                     $i++;
                     \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
                     $row["host"]=HsPresenter::expandHost($row->hostid);
+                    $row["key"]=self::expandItem($row->itemid);
+                    $this->exportdata[$i]=$row;
+                }
+            }
+            parent::renderShow($this->exportdata);
+        }
+        self::mexit();
+    }
+    
+    public function renderZabbixHistory() {
+        if (!$this->opts->wids) {
+            self::mexit(33,"No windows selected!\n");
+        }
+        $opts=\App\Model\ItemStat::itemsToIds($this->opts);
+        if (!$this->opts->itemids) {
+            self::mexit(33,"No items selected!\n");
+        }
+        $ckey=serialize($opts);
+        $ret=$this->sqlcache->load($ckey);
+        if ($ret===null) {
+            $ret=\App\Model\ItemStat::isZabbixGetHistory($opts);
+            $this->sqlcache->save($ckey,
+                    $ret,
+                    array(
+                        \Nette\Caching\Cache::EXPIRE => $this->opts->sqlcacheexpire,
+                        )
+                    );
+        }
+        parent::renderShow($ret);
+        self::mexit();
+    }
+    
+    public function renderStats() {
+        $rows=\App\Model\ItemStat::isStats($this->opts);
+        if ($rows) {
+            $this->exportdata=$rows->fetchAll();
+            if ($this->opts->outputverb=="expanded") {
+                $i=0;
+                foreach ($this->exportdata as $i=>$row) {
+                    $i++;
+                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
                     $row["key"]=self::expandItem($row->itemid);
                     $this->exportdata[$i]=$row;
                 }
