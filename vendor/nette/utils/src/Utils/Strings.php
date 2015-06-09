@@ -34,9 +34,6 @@ class Strings
 	 */
 	public static function checkEncoding($s)
 	{
-		if (func_num_args() > 1 && strcasecmp(func_get_arg(1), 'UTF-8')) {
-			trigger_error(__METHOD__ . ' supports only UTF-8 encoding.', E_USER_DEPRECATED);
-		}
 		return $s === self::fixEncoding($s);
 	}
 
@@ -48,9 +45,6 @@ class Strings
 	 */
 	public static function fixEncoding($s)
 	{
-		if (func_num_args() > 1 && strcasecmp(func_get_arg(1), 'UTF-8')) {
-			trigger_error(__METHOD__ . ' supports only UTF-8 encoding.', E_USER_DEPRECATED);
-		}
 		// removes xD800-xDFFF, x110000 and higher
 		if (PHP_VERSION_ID < 50400) {
 			return @iconv('UTF-16', 'UTF-8//IGNORE', iconv('UTF-8', 'UTF-16//IGNORE', $s)); // intentionally @
@@ -62,13 +56,14 @@ class Strings
 
 	/**
 	 * Returns a specific character in UTF-8.
-	 * @param  int     codepoint
+	 * @param  int     code point (0x0 to 0xD7FF or 0xE000 to 0x10FFFF)
 	 * @return string
+	 * @throws Nette\InvalidArgumentException if code point is not in valid range
 	 */
 	public static function chr($code)
 	{
-		if (func_num_args() > 1 && strcasecmp(func_get_arg(1), 'UTF-8')) {
-			trigger_error(__METHOD__ . ' supports only UTF-8 encoding.', E_USER_DEPRECATED);
+		if ($code < 0 || ($code >= 0xD800 && $code <= 0xDFFF) || $code > 0x10FFFF) {
+			throw new Nette\InvalidArgumentException('Code point must be in range 0x0 to 0xD7FF or 0xE000 to 0x10FFFF.');
 		}
 		return iconv('UTF-32BE', 'UTF-8//IGNORE', pack('N', $code));
 	}
@@ -113,17 +108,21 @@ class Strings
 	/**
 	 * Returns a part of UTF-8 string.
 	 * @param  string
-	 * @param  int
-	 * @param  int
+	 * @param  int in characters (code points)
+	 * @param  int in characters (code points)
 	 * @return string
 	 */
 	public static function substring($s, $start, $length = NULL)
 	{
-		if ($length === NULL) {
-			$length = self::length($s);
-		}
 		if (function_exists('mb_substr')) {
+			if ($length === NULL && PHP_VERSION_ID < 50408) {
+				$length = self::length($s);
+			}
 			return mb_substr($s, $start, $length, 'UTF-8'); // MB is much faster
+		} elseif ($length === NULL) {
+			$length = self::length($s);
+		} elseif ($start < 0 && $length < 0) {
+			$start += self::length($s); // unifies iconv_substr behavior with mb_substr
 		}
 		return iconv_substr($s, $start, $length, 'UTF-8');
 	}
@@ -131,7 +130,7 @@ class Strings
 
 	/**
 	 * Removes special controls characters and normalizes line endings and spaces.
-	 * @param  string  UTF-8 encoding or 8-bit
+	 * @param  string  UTF-8 encoding
 	 * @return string
 	 */
 	public static function normalize($s)
@@ -139,7 +138,7 @@ class Strings
 		$s = self::normalizeNewLines($s);
 
 		// remove control characters; leave \t + \n
-		$s = preg_replace('#[\x00-\x08\x0B-\x1F\x7F]+#', '', $s);
+		$s = preg_replace('#[\x00-\x08\x0B-\x1F\x7F-\x9F]+#u', '', $s);
 
 		// right trim
 		$s = preg_replace('#[\t ]+$#m', '', $s);
@@ -170,22 +169,32 @@ class Strings
 	public static function toAscii($s)
 	{
 		$s = preg_replace('#[^\x09\x0A\x0D\x20-\x7E\xA0-\x{2FF}\x{370}-\x{10FFFF}]#u', '', $s);
-		$s = strtr($s, '`\'"^~', "\x01\x02\x03\x04\x05");
-		$s = str_replace(array("\xE2\x80\x9E", "\xE2\x80\x9C", "\xE2\x80\x9D", "\xE2\x80\x9A",
-			"\xE2\x80\x98", "\xE2\x80\x99", "\xC2\xBB", "\xC2\xAB"),
-			array("\x03", "\x03", "\x03", "\x02", "\x02", "\x02", ">>", "<<"), $s);
+		$s = strtr($s, '`\'"^~?', "\x01\x02\x03\x04\x05\x06");
+		$s = str_replace(
+			array("\xE2\x80\x9E", "\xE2\x80\x9C", "\xE2\x80\x9D", "\xE2\x80\x9A", "\xE2\x80\x98", "\xE2\x80\x99", "\xC2\xB0"),
+			array("\x03", "\x03", "\x03", "\x02", "\x02", "\x02", "\x04"), $s
+		);
+		if (class_exists('Transliterator') && $transliterator = \Transliterator::create('Any-Latin; Latin-ASCII')) {
+			$s = $transliterator->transliterate($s);
+		}
 		if (ICONV_IMPL === 'glibc') {
-			$s = @iconv('UTF-8', 'WINDOWS-1250//TRANSLIT', $s); // intentionally @
+			$s = str_replace(
+				array("\xC2\xBB", "\xC2\xAB", "\xE2\x80\xA6", "\xE2\x84\xA2", "\xC2\xA9", "\xC2\xAE"),
+				array('>>', '<<', '...', 'TM', '(c)', '(R)'), $s
+			);
+			$s = @iconv('UTF-8', 'WINDOWS-1250//TRANSLIT//IGNORE', $s); // intentionally @
 			$s = strtr($s, "\xa5\xa3\xbc\x8c\xa7\x8a\xaa\x8d\x8f\x8e\xaf\xb9\xb3\xbe\x9c\x9a\xba\x9d\x9f\x9e"
 				. "\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3"
 				. "\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8"
-				. "\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf8\xf9\xfa\xfb\xfc\xfd\xfe\x96",
-				"ALLSSSSTZZZallssstzzzRAAAALCCCEEEEIIDDNNOOOOxRUUUUYTsraaaalccceeeeiiddnnooooruuuuyt-");
+				. "\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf8\xf9\xfa\xfb\xfc\xfd\xfe"
+				. "\x96\xa0\x8b\x97\x9b\xa6\xad\xb7",
+				"ALLSSSSTZZZallssstzzzRAAAALCCCEEEEIIDDNNOOOOxRUUUUYTsraaaalccceeeeiiddnnooooruuuuyt- <->|-.");
+			$s = preg_replace('#[^\x00-\x7F]++#', '', $s);
 		} else {
-			$s = @iconv('UTF-8', 'ASCII//TRANSLIT', $s); // intentionally @
+			$s = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s); // intentionally @
 		}
-		$s = str_replace(array('`', "'", '"', '^', '~'), '', $s);
-		return strtr($s, "\x01\x02\x03\x04\x05", '`\'"^~');
+		$s = str_replace(array('`', "'", '"', '^', '~', '?'), '', $s);
+		return strtr($s, "\x01\x02\x03\x04\x05\x06", '`\'"^~?');
 	}
 
 
@@ -261,6 +270,17 @@ class Strings
 
 
 	/**
+	 * Convert first character to lower case.
+	 * @param  string  UTF-8 encoding
+	 * @return string
+	 */
+	public static function firstLower($s)
+	{
+		return self::lower(self::substring($s, 0, 1)) . self::substring($s, 1);
+	}
+
+
+	/**
 	 * Convert to upper case.
 	 * @param  string  UTF-8 encoding
 	 * @return string
@@ -316,10 +336,9 @@ class Strings
 	/**
 	 * Finds the length of common prefix of strings.
 	 * @param  string|array
-	 * @param  string
 	 * @return string
 	 */
-	public static function findPrefix($strings, $second = NULL)
+	public static function findPrefix($strings)
 	{
 		if (!is_array($strings)) {
 			$strings = func_get_args();
@@ -340,13 +359,14 @@ class Strings
 
 
 	/**
-	 * Returns UTF-8 string length.
+	 * Returns number of characters (not bytes) in UTF-8 string.
+	 * That is the number of Unicode code points which may differ from the number of graphemes.
 	 * @param  string
 	 * @return int
 	 */
 	public static function length($s)
 	{
-		return strlen(utf8_decode($s)); // fastest way
+		return function_exists('mb_strlen') ? mb_strlen($s, 'UTF-8') : strlen(utf8_decode($s));
 	}
 
 
@@ -423,16 +443,7 @@ class Strings
 	 */
 	public static function split($subject, $pattern, $flags = 0)
 	{
-		set_error_handler(function($severity, $message) use ($pattern) { // preg_last_error does not return compile errors
-			restore_error_handler();
-			throw new RegexpException("$message in pattern: $pattern");
-		});
-		$res = preg_split($pattern, $subject, -1, $flags | PREG_SPLIT_DELIM_CAPTURE);
-		restore_error_handler();
-		if (preg_last_error()) { // run-time error
-			throw new RegexpException(NULL, preg_last_error(), $pattern);
-		}
-		return $res;
+		return self::pcre('preg_split', array($pattern, $subject, -1, $flags | PREG_SPLIT_DELIM_CAPTURE));
 	}
 
 
@@ -449,18 +460,9 @@ class Strings
 		if ($offset > strlen($subject)) {
 			return NULL;
 		}
-		set_error_handler(function($severity, $message) use ($pattern) { // preg_last_error does not return compile errors
-			restore_error_handler();
-			throw new RegexpException("$message in pattern: $pattern");
-		});
-		$res = preg_match($pattern, $subject, $m, $flags, $offset);
-		restore_error_handler();
-		if (preg_last_error()) { // run-time error
-			throw new RegexpException(NULL, preg_last_error(), $pattern);
-		}
-		if ($res) {
-			return $m;
-		}
+		return self::pcre('preg_match', array($pattern, $subject, & $m, $flags, $offset))
+			? $m
+			: NULL;
 	}
 
 
@@ -477,19 +479,11 @@ class Strings
 		if ($offset > strlen($subject)) {
 			return array();
 		}
-		set_error_handler(function($severity, $message) use ($pattern) { // preg_last_error does not return compile errors
-			restore_error_handler();
-			throw new RegexpException("$message in pattern: $pattern");
-		});
-		preg_match_all(
-			$pattern, $subject, $m,
+		self::pcre('preg_match_all', array(
+			$pattern, $subject, & $m,
 			($flags & PREG_PATTERN_ORDER) ? $flags : ($flags | PREG_SET_ORDER),
 			$offset
-		);
-		restore_error_handler();
-		if (preg_last_error()) { // run-time error
-			throw new RegexpException(NULL, preg_last_error(), $pattern);
-		}
+		));
 		return $m;
 	}
 
@@ -512,34 +506,37 @@ class Strings
 				throw new Nette\InvalidStateException("Callback '$textual' is not callable.");
 			}
 
-			set_error_handler(function($severity, $message) use (& $tmp) { // preg_last_error does not return compile errors
-				restore_error_handler();
-				throw new RegexpException("$message in pattern: $tmp");
-			});
-			foreach ((array) $pattern as $tmp) {
-				preg_match($tmp, '');
-			}
-			restore_error_handler();
-
-			$res = preg_replace_callback($pattern, $replacement, $subject, $limit);
-			if ($res === NULL && preg_last_error()) { // run-time error
-				throw new RegexpException(NULL, preg_last_error(), $pattern);
-			}
-			return $res;
+			return self::pcre('preg_replace_callback', array($pattern, $replacement, $subject, $limit));
 
 		} elseif ($replacement === NULL && is_array($pattern)) {
 			$replacement = array_values($pattern);
 			$pattern = array_keys($pattern);
 		}
 
-		set_error_handler(function($severity, $message) use ($pattern) { // preg_last_error does not return compile errors
-			restore_error_handler();
-			throw new RegexpException("$message in pattern: " . implode(' or ', (array) $pattern));
+		return self::pcre('preg_replace', array($pattern, $replacement, $subject, $limit));
+	}
+
+
+	/** @internal */
+	public static function pcre($func, $args)
+	{
+		static $messages = array(
+			PREG_INTERNAL_ERROR => 'Internal error',
+			PREG_BACKTRACK_LIMIT_ERROR => 'Backtrack limit was exhausted',
+			PREG_RECURSION_LIMIT_ERROR => 'Recursion limit was exhausted',
+			PREG_BAD_UTF8_ERROR => 'Malformed UTF-8 data',
+			5 => 'Offset didn\'t correspond to the begin of a valid UTF-8 code point', // PREG_BAD_UTF8_OFFSET_ERROR
+		);
+		$res = Callback::invokeSafe($func, $args, function($message) use ($args) {
+			// compile-time error, not detectable by preg_last_error
+			throw new RegexpException($message . ' in pattern: ' . implode(' or ', (array) $args[0]));
 		});
-		$res = preg_replace($pattern, $replacement, $subject, $limit);
-		restore_error_handler();
-		if (preg_last_error()) { // run-time error
-			throw new RegexpException(NULL, preg_last_error(), implode(' or ', (array) $pattern));
+
+		if (($code = preg_last_error()) // run-time error, but preg_last_error & return code are liars
+			&& ($res === NULL || !in_array($func, array('preg_filter', 'preg_replace_callback', 'preg_replace')))
+		) {
+			throw new RegexpException((isset($messages[$code]) ? $messages[$code] : 'Unknown error')
+				. ' (pattern: ' . implode(' or ', (array) $args[0]) . ')', $code);
 		}
 		return $res;
 	}
@@ -552,20 +549,4 @@ class Strings
  */
 class RegexpException extends \Exception
 {
-	static public $messages = array(
-		PREG_INTERNAL_ERROR => 'Internal error',
-		PREG_BACKTRACK_LIMIT_ERROR => 'Backtrack limit was exhausted',
-		PREG_RECURSION_LIMIT_ERROR => 'Recursion limit was exhausted',
-		PREG_BAD_UTF8_ERROR => 'Malformed UTF-8 data',
-		5 => 'Offset didn\'t correspond to the begin of a valid UTF-8 code point', // PREG_BAD_UTF8_OFFSET_ERROR
-	);
-
-	public function __construct($message, $code = NULL, $pattern = NULL)
-	{
-		if (!$message) {
-			$message = (isset(self::$messages[$code]) ? self::$messages[$code] : 'Unknown error') . ($pattern ? " (pattern: $pattern)" : '');
-		}
-		parent::__construct($message, $code);
-	}
-
 }

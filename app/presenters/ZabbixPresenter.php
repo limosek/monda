@@ -20,7 +20,7 @@ class ZabbixPresenter extends MapPresenter {
         self::helpOpts();
     }
     
-    public function getOpts($ret) {
+    public static function getOpts($ret) {
         $ret=parent::getOpts($ret);
         $ret=self::parseOpt($ret,
                 "rwhost",

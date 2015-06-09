@@ -1,0 +1,80 @@
+#!@php_bin@
+<?php
+
+// php2 --help
+// php2 -h
+// php2 -a -c /tmp -d foo=bar -H -s --rf test arg1 arg2
+
+require_once 'Console/GetoptPlus.php';
+
+$config = array(// /
+    'usage' => array(// /
+        '[options] [-f] <file> [--] [args...]',
+        '[options] -r <code> [--] [args...]',
+        '[options] [-B <begin_code>] -R <code> [-E <end_code>] [--] [args..]',
+        '[options] [-B <begin_code>] -F <file> [-E <end_code>] [--] [args..]',
+        '[options] -- [args...]',
+        '[options] -a',
+        ),
+    'options' => array(// /
+        array('short' => 'a', 'type' => 'noarg',
+            'desc' => array('Run interactively')),
+        array('short' => 'c', 'type' => 'mandatory',
+            'desc' => array('path>|file', 'Look for php.ini file in this directory')),
+        array('short' => 'n', 'type' => 'noarg',
+            'desc' => array('No php.ini file will be used')),
+        array('short' => 'd', 'type' => 'mandatory',
+            'desc' => array('foo[=bar]', "Define INI entry foo with value 'bar'")),
+        array('short' => 'e', 'type' => 'noarg',
+            'desc' => array('Generate extended information for', 'debugger/profiler')),
+        array('short' => 'f', 'type' => 'mandatory',
+            'desc' => array('file', 'Parse and execute <file>.')),
+        array('short' => 'i', 'type' => 'noarg',
+            'desc' => array('PHP information')),
+        array('short' => 'l', 'type' => 'noarg',
+            'desc' => array('Syntax check only (lint)')),
+        array('short' => 'm', 'type' => 'noarg',
+            'desc' => array('Show compiled in modules')),
+        array('short' => 'r', 'type' => 'mandatory',
+            'desc' => array('code', 'Run PHP <code> without using script tags <?..?>')),
+        array('short' => 'B', 'type' => 'mandatory',
+            'desc' => array('begin_code', 'Run PHP <begin_code> before processing', 'input lines')),
+        array('short' => 'R', 'type' => 'mandatory',
+            'desc' => array('code', 'Run PHP <code> for every input line')),
+        array('short' => 'F', 'type' => 'mandatory',
+            'desc' => array('file', 'Parse and execute <file> for every input line')),
+        array('short' => 'E', 'type' => 'mandatory',
+            'desc' => array('end_code', 'Run PHP <end_code> after processing', 'all input lines')),
+        array('short' => 'H', 'type' => 'noarg',
+            'desc' => array('Hide any passed arguments from external tools.')),
+        array('short' => 's', 'type' => 'noarg',
+            'desc' => array('Display colour syntax highlighted source.')),
+        array('short' => 'v', 'type' => 'noarg',
+            'desc' => array('Version number')),
+        array('short' => 'w', 'type' => 'noarg',
+            'desc' => array('Display source with stripped comments and', 'whitespace.')),
+        array('short' => 'z', 'type' => 'mandatory',
+            'desc' => array('file', 'Load Zend extension <file>.')),
+        array('long' => 'rf', 'type' => 'mandatory',
+            'desc' => array('name', 'Show information about function <name>.')),
+        array('long' => 'rc', 'type' => 'mandatory',
+            'desc' => array('name', 'Show information about class <name>.')),
+        array('long' => 're', 'type' => 'mandatory',
+            'desc' => array('name', 'Show information about extension <name>.')),
+        ),
+
+    'parameters' => array('args...',
+        'Arguments passed to script. Use -- args when first argument',
+        'starts with - or script is read from stdin'),
+    );
+
+try {
+    $options = Console_GetoptPlus::getoptplus($config, null, true);
+    print_r($options);
+}
+catch(Console_GetoptPlus_Exception $e) {
+    $error = array($e->getCode(), $e->getMessage());
+    print_r($error);
+}
+
+?>

@@ -19,23 +19,16 @@ class Template extends Object
 	/** @var Engine */
 	private $engine;
 
-	/** @var Engine */
+	/** @var string */
 	private $name;
 
 	/** @var array */
 	protected $params = array();
 
-	/** @var array run-time filters */
-	protected $filters = array(
-		NULL => array(), // dynamic
-	);
 
-
-	public function __construct(array $params, array & $filters, Engine $engine, $name)
+	public function __construct(array $params, Engine $engine, $name)
 	{
-		$params['template'] = $this;
 		$this->setParameters($params);
-		$this->filters = & $filters;
 		$this->engine = $engine;
 		$this->name = $name;
 	}
@@ -62,6 +55,7 @@ class Template extends Object
 	/**
 	 * Initializes block, global & local storage in template.
 	 * @return [\stdClass, \stdClass, \stdClass]
+	 * @internal
 	 */
 	public function initialize($templateId, $contentType)
 	{
@@ -91,6 +85,7 @@ class Template extends Object
 	/**
 	 * Renders template.
 	 * @return void
+	 * @internal
 	 */
 	public function renderChildTemplate($name, array $params = array())
 	{
@@ -107,21 +102,7 @@ class Template extends Object
 	 */
 	public function __call($name, $args)
 	{
-		$lname = strtolower($name);
-		if (!isset($this->filters[$lname])) {
-			$args2 = $args;
-			array_unshift($args2, $lname);
-			foreach ($this->filters[NULL] as $filter) {
-				$res = call_user_func_array(Helpers::checkCallback($filter), $args2);
-				if ($res !== NULL) {
-					return $res;
-				} elseif (isset($this->filters[$lname])) {
-					return call_user_func_array(Helpers::checkCallback($this->filters[$lname]), $args);
-				}
-			}
-			return parent::__call($name, $args);
-		}
-		return call_user_func_array(Helpers::checkCallback($this->filters[$lname]), $args);
+		return $this->engine->invokeFilter($name, $args);
 	}
 
 

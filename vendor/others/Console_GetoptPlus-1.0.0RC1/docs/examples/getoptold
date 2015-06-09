@@ -1,0 +1,25 @@
+#!@php_bin@
+<?php
+/**
+ * This is an example with Console_Getopt::getopt() which you must install
+ * separately as it does not come with Console_GetoptPlus.
+ *
+ * Examples to run on the command line:
+ * #getoptold --foo -b car -c
+ * #getoptold --bar car param1 param2
+ * run the following with the longoptions including "fool"
+ * #getoptold --foo -b car --fool
+ */
+
+require_once 'Console/Getopt.php';
+
+$shortOptions = 'b:c::';
+$longOptions = array('foo', 'bar=');
+// $longOptions = array('foo=', 'bar=', 'fool=='); // will return the "ambigous" error
+$args = Console_Getopt::readPHPArgv();
+$options = Console_Getopt::getopt($args, $shortOptions, $longOptions);
+PEAR::isError($options) and $options = $options->getMessage();
+
+print_r($options);
+
+?>

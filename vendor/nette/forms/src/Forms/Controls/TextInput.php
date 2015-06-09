@@ -7,8 +7,8 @@
 
 namespace Nette\Forms\Controls;
 
-use Nette,
-	Nette\Forms\Form;
+use Nette;
+use Nette\Forms\Form;
 
 
 /**
@@ -89,8 +89,10 @@ class TextInput extends TextBase
 			}
 		}
 
-		if ($input->type !== 'password') {
-			$input->value = $this->rawValue === '' ? $this->translate($this->emptyValue) : $this->rawValue;
+		if ($input->type !== 'password' && ($this->rawValue !== '' || $this->emptyValue !== '')) {
+			$input->value = $this->rawValue === ''
+				? $this->translate($this->emptyValue)
+				: $this->rawValue;
 		}
 		return $input;
 	}

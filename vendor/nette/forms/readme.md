@@ -2,7 +2,7 @@ Nette Forms: greatly facilitates web forms
 ==========================================
 
 [![Downloads this Month](https://img.shields.io/packagist/dm/nette/forms.svg)](https://packagist.org/packages/nette/forms)
-[![Build Status](https://travis-ci.org/nette/forms.svg?branch=v2.2)](https://travis-ci.org/nette/forms)
+[![Build Status](https://travis-ci.org/nette/forms.svg?branch=master)](https://travis-ci.org/nette/forms)
 
 Nette\Forms greatly facilitates creating and processing web forms. What it can really do?
 
@@ -40,7 +40,7 @@ $form->addText('name', 'Name:')
 	->setRequired('Please fill your name.');
 ```
 
-Try submitting a form without the name - you will se this very message until you meet the validation rules. All that is left for us is setting up JavaScript rules. Luckily it's an piece of cake. We only have to link `netteForms.js`, which is located at `/client-side/forms` in the distribution package.
+Try submitting a form without the name - you will keep seeing this message until you meet the validation rules. All that is left for us is setting up JavaScript rules. Luckily it's a piece of cake. We only have to link `netteForms.js`, which is located at `/client-side/forms` in the distribution package.
 
 ```html
 <script src="netteForms.js"></script>

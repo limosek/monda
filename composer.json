@@ -1,0 +1,20 @@
+{
+	"name": "monda",
+	"description": "Monitoring system data analysis",
+	"homepage": "https://code.google.com/p/monda/",
+	"type": "project",
+	"license": ["BSD-3-Clause", "GPL-2.0", "GPL-3.0"],
+	"authors": [
+		{
+			"name": "Lukas Macura"
+                }
+	],
+	"require": {
+		"php": ">= 5.3.7",
+		"nette/nette": "~2.3.2"
+	},
+	"require-dev": {
+		"nette/tester": "~1.0"
+	},
+	"minimum-stability": "stable"
+}

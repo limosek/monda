@@ -27,7 +27,7 @@ class HsPresenter extends BasePresenter
         self::helpOpts();
     }
     
-    public function getOpts($ret) {
+    static function getOpts($ret) {
         $ret=parent::getOpts($ret);
         $ret=TwPresenter::getOpts($ret);
         $ret=self::parseOpt($ret,
@@ -72,7 +72,7 @@ class HsPresenter extends BasePresenter
         self::mexit();
     }
     
-    function expandHost($hostid) {
+    static function expandHost($hostid) {
         $iq = Array(
                 "monitored" => true,
                 "output" => "extend",
@@ -86,7 +86,7 @@ class HsPresenter extends BasePresenter
         }
     }
 
-    public function renderShow() {
+    public function renderShow($var) {
         $rows=  \App\Model\HostStat::hsSearch($this->opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();

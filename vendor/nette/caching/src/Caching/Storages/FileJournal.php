@@ -381,12 +381,12 @@ class FileJournal extends Nette\Object implements IJournal
 			do {
 				$link = $data[$i];
 
-				if (!isset($node[$link])) {
+				if (isset($this->deletedLinks[$link])) {
+					continue;
+				} elseif (!isset($node[$link])) {
 					if (self::$debug) {
 						throw new Nette\InvalidStateException("Link with ID $searchLink is not in node $nodeId.");
 					}
-					continue;
-				} elseif (isset($this->deletedLinks[$link])) {
 					continue;
 				}
 
@@ -804,7 +804,7 @@ class FileJournal extends Nette\Object implements IJournal
 				$nodeId = $node[$search];
 			} else {
 				foreach ($node as $key => $childNode) {
-					if ($key > $search and $key !== self::INFO) {
+					if ($key > $search && $key !== self::INFO) {
 						$nodeId = $childNode;
 						continue 2;
 					}
@@ -1051,7 +1051,7 @@ class FileJournal extends Nette\Object implements IJournal
 
 	/**
 	 * Complete delete all nodes from file.
-	 * @throws \Nette\InvalidStateException
+	 * @throws Nette\InvalidStateException
 	 */
 	private function deleteAll()
 	{
@@ -1063,7 +1063,7 @@ class FileJournal extends Nette\Object implements IJournal
 
 	/**
 	 * Lock file for writing and reading and delete node cache when file has changed.
-	 * @throws \Nette\InvalidStateException
+	 * @throws Nette\InvalidStateException
 	 */
 	private function lock()
 	{
@@ -1088,7 +1088,7 @@ class FileJournal extends Nette\Object implements IJournal
 
 	/**
 	 * Open btfj.dat file (or create it if not exists) and load metainformation
-	 * @throws \Nette\InvalidStateException
+	 * @throws Nette\InvalidStateException
 	 */
 	private function prepare()
 	{
@@ -1152,7 +1152,7 @@ class FileJournal extends Nette\Object implements IJournal
 	 * @param  int $nodeId
 	 * @param  array $nodeData
 	 * @return int
-	 * @throws \Nette\InvalidStateException
+	 * @throws Nette\InvalidStateException
 	 */
 	private function findNextFreeKey($nodeId, array & $nodeData)
 	{

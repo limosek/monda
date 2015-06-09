@@ -34,7 +34,7 @@ class CronPresenter extends IsPresenter
         $this->helpOpts();
     }
     
-    public function getOpts($opts) {
+    static function getOpts($opts) {
         $ret=parent::getOpts($opts);
         $opts=TwPresenter::getOpts($opts);
         $opts=HsPresenter::getOpts($opts);

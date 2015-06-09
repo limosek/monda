@@ -14,7 +14,7 @@ use Nette,
  */
 class ItemStat extends Monda {
     
-    function itemSearch($key = false, $host = false, $hostgroup = false) {
+    static function itemSearch($key = false, $host = false, $hostgroup = false) {
         $iq = Array(
             "monitored" => true
         );
@@ -35,7 +35,7 @@ class ItemStat extends Monda {
         return($ret);
     }
     
-    function itemInfo($itemid) {
+    static function itemInfo($itemid) {
         $iq = Array(
             "monitored" => true,
             "output" => "extend",
@@ -45,12 +45,12 @@ class ItemStat extends Monda {
         return($item);
     }
     
-    function searchToIds($opts) {
+    static function searchToIds($opts) {
         $wids=Tw::searchToIds($opts);
         
     }
     
-    function itemsToIds($opts) {
+    static function itemsToIds($opts) {
         if (is_array($opts->items)) {
             if (!is_array($opts->itemids)) {
                 $opts->itemids=Array();
@@ -77,7 +77,7 @@ class ItemStat extends Monda {
         return($opts);
     }
     
-    function isSearch($opts) {
+    static function isSearch($opts) {
         if ($opts->itemids) {
             $itemidssql=sprintf("i.itemid IN (%s) AND",join(",",$opts->itemids));
         } else {
@@ -125,7 +125,7 @@ class ItemStat extends Monda {
         return($rows);
     }
     
-    function isToIds($opts,$pkey=false) {
+    static function isToIds($opts,$pkey=false) {
         $ids=self::isSearch($opts);
         if (!$ids) {
             return(false);
@@ -149,13 +149,13 @@ class ItemStat extends Monda {
         return($itemids);
     }
     
-    function isZabbixGetHistory($opts,$samples=false) {
-        $opts=$this->opts;
+    static function isZabbixGetHistory($opts,$samples=false) {
+        $opts=\App\Model\Monda::$opts;
         $w=Tw::twGet($opts->wids);
         $items=$opts->itemids;
         $ttable="mistmp_".rand(1000,9999);
         
-        if (!$samples) $samples=100;
+        if (!$samples) $samples=500;
         self::monda2zabbix(ItemStat::isSearch($opts),$ttable);
         if ($opts->max_items) {
             $limit="LIMIT ".$opts->max_items;
@@ -167,7 +167,8 @@ class ItemStat extends Monda {
             "SELECT
                 zh.itemid,((clock/$step)::bigint)*$step AS clock,
                     AVG(value),
-                    CASE WHEN (tt.max_-tt.min_)<>0 THEN AVG(value)/(tt.max_-tt.min_) ELSE NULL END AS value
+                    CASE WHEN (tt.max_-tt.min_)<>0 THEN AVG(value)/(tt.max_-tt.min_) ELSE 0 END AS value,
+                    COUNT(*) AS cnt
                   FROM ".$opts->zabbix_history_table." zh
                   JOIN $ttable tt ON (zh.itemid=tt.itemid)
                   WHERE clock BETWEEN ? AND ?
@@ -175,22 +176,46 @@ class ItemStat extends Monda {
                   UNION ALL
                   SELECT zhu.itemid,((clock/$step)::bigint)*$step AS clock,
                      AVG(value) AS value,
-                     CASE WHEN (tt.max_-tt.min_)<>0 THEN AVG(value)/(tt.max_-tt.min_) ELSE NULL END AS value
+                     CASE WHEN (tt.max_-tt.min_)<>0 THEN AVG(value)/(tt.max_-tt.min_) ELSE 0 END AS value,
+                     COUNT(*) AS cnt
                   FROM ".$opts->zabbix_history_uint_table." zhu
                   JOIN $ttable tt ON (zhu.itemid=tt.itemid)
                   WHERE clock BETWEEN ? AND ?
                   GROUP BY zhu.itemid,((clock/$step)::bigint)*$step,tt.max_,tt.min_
+                  ORDER BY clock
                   $limit
                  ",$w->fstamp,$w->tstamp,$w->fstamp,$w->tstamp);
-        $items=Array();
+        $oitems=Array();
+
+        $maxcnt=0;
+        $mincnt=1000;
+    
         while ($row=$rows->fetch()) {
-            $items[$row->clock]["time"]=date("Y/m/d H:i",$row->clock);
-            $items[$row->clock][$row->itemid]=$row->value;
+            $fitems[$row->itemid]=true;
+            $oitems[$row->clock]["time"]=date("Y/m/d H:i",$row->clock);
+            $oitems[$row->clock][$row->itemid]=$row->value;
+            $maxcnt=max($maxcnt,count($oitems[$row->clock]));
+            $mincnt=min($mincnt,count($oitems[$row->clock]));
         }
-        return($items);
+        /*if ($maxcnt<>$mincnt) {
+            foreach ($oitems as $k=>$oi) {
+                if (count($oi)<>($maxcnt-1)) {
+                    unset($oitems[$k]);
+                }
+            }
+        }*/
+        foreach ($oitems as $k=>$v) {
+            reset($items);
+            foreach ($items as $i) {
+                if (!array_key_exists($i,$v)) {
+                    $oitems[$k][$i]=0;
+                }
+            }
+        }
+        return($oitems);
     }
         
-    function isCompute($opts,$wids) {
+    static function isCompute($opts,$wids) {
         
         $windows=Tw::twGet($wids,true);
         $widstxt=join(",",$wids);
@@ -209,17 +234,6 @@ class ItemStat extends Monda {
         } else {
             $itemidsql="";
         }
-        /*
-        $mitems=self::mquery("SELECT DISTINCT itemid FROM itemstat WHERE windowid IN ($widstxt)");
-        $mitemids=Array();
-        while ($row=$mitems->fetch()) {
-            $mitemids[]=$row->itemid;
-        }
-        if (count($mitemids)>0) {
-            $mitemidsql=sprintf("AND itemid NOT IN (%s)",join(",",$mitemids));
-        } else {
-            $mitemidsql="AND true";
-        }*/
         $rows=self::zquery(
             "SELECT w.id AS windowid,
                  itemid AS itemid,
@@ -324,7 +338,7 @@ class ItemStat extends Monda {
         return($ret);
     }
     
-    public function IsMultiCompute($opts) {
+    static public function IsMultiCompute($opts) {
         $wids=Tw::twToIds($this->opts);
         if ($opts->max_windows_per_query && count($wids)>$opts->max_windows_per_query) {
             foreach (array_chunk($wids,$opts->max_windows_per_query) as $subwids) {
@@ -338,7 +352,7 @@ class ItemStat extends Monda {
         }
     }
     
-    public function IsDelete($opts) {
+    static public function IsDelete($opts) {
         $items=self::IsToIds($opts);
         $windowids=Tw::TwtoIds($opts);
         CliDebug::warn(sprintf("Will delete %d itemstat entries (%d windows).\n",count($items),count($windowids)));
@@ -350,7 +364,7 @@ class ItemStat extends Monda {
         }
     }
     
-    public function IsStats($opts) {
+    static function IsStats($opts) {
         $windowids=Tw::TwToIds($opts);
         $itemids=self::IsToIds($opts);
         $stats=self::mquery("
@@ -359,6 +373,7 @@ class ItemStat extends Monda {
                 MIN(itemstat.loi) AS minloi, MAX(itemstat.loi) AS maxloi, AVG(itemstat.loi) AS avgloi, SUM(itemstat.loi) AS sumloi,
                 MIN(cv) AS mincv, AVG(cv) AS avgcv, MAX(cv) AS maxcv,
                 MIN(cnt) AS mincnt, AVG(cnt) AS avgcnt, MAX(cnt) AS maxcnt,
+                MIN(itemstat.loi) AS minloi, AVG(itemstat.loi) AS avgloi, MAX(itemstat.loi) AS maxloi,
                 COUNT(*) AS cnt
             FROM itemstat
             JOIN timewindow ON (id=windowid)
@@ -369,7 +384,7 @@ class ItemStat extends Monda {
         return($stats);
     }
     
-    public function IsLoi($opts) {
+    static function IsLoi($opts) {
         $wids=Tw::twToIds($opts);
         CliDebug::warn(sprintf("Need to compute itemstat loi for %d windows.\n",count($wids)));
         if (count($wids)>0) {

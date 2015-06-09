@@ -1,0 +1,26 @@
+#!@php_bin@
+<?php
+/**
+ * This is an example with Console_Getoptplus::getopt()
+ *
+ * Examples to run on the command line:
+ * #getopt --foo -b car -c
+ * #getopt --bar car param1 param2
+ */
+
+require_once 'Console/GetoptPlus.php';
+
+try {
+    $shortOptions = 'b:c::';
+    $longOptions = array('foo', 'bar=');
+
+    $args = Console_Getoptplus::readPHPArgv();
+    $options = Console_Getoptplus::getopt($args, $shortOptions, $longOptions);
+    print_r($options);
+}
+catch(Console_GetoptPlus_Exception $e) {
+    $error = array($e->getCode(), $e->getMessage());
+    print_r($error);
+}
+
+?>

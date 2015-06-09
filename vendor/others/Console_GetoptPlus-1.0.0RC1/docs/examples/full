@@ -1,0 +1,39 @@
+#!@php_bin@
+<?php
+/**
+ * This is an example with Console_Getoptplus::getoptplus() including a header,
+ * the usage, and a footer.
+ *
+ * Examples to run on the command line:
+ * #full --help
+ * #full -h
+ */
+
+require_once 'Console/GetoptPlus.php';
+
+try {
+    $config = array(// /
+        'header' => array('The getoptplus command with default settings behaves like getopt.',
+            'Note that the header is optional.'),
+        'usage' => array('--foo', '--bar <arg> -c [arg]'),
+        'options' => array(// /
+            array('long' => 'foo', 'type' => 'noarg',
+                'desc' => array('An option without argument with only the long', 'name defined.')),
+            array('long' => 'bar', 'type' => 'mandatory', 'short' => 'b',
+                'desc' => array('arg', 'A mandatory option with both the long and', 'the short names defined.')),
+            array('short' => 'c', 'type' => 'optional',
+                'desc' => array('arg', 'An option with an optional argument with only', 'the short name defined.'))),
+        'parameters' => array('[param1] [param2]', 'Some additional parameters.'),
+        'footer' => array('Some additional information. Note that the footer is optional.',
+            'Also, the usage has a default if it is absent from the configuration.'),
+        );
+
+    $options = Console_Getoptplus::getoptplus($config);
+    print_r($options);
+}
+catch(Console_GetoptPlus_Exception $e) {
+    $error = array($e->getCode(), $e->getMessage());
+    print_r($error);
+}
+
+?>

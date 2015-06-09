@@ -1,0 +1,39 @@
+#!@php_bin@
+<?php
+/**
+ * This is an example with Console_Getoptplus::getoptplus() set to accept
+ * shortcut option names
+ *
+ * Examples to run on the command line:
+ * #shortcuts --he
+ * #shortcuts -h
+ * #shortcuts --f -b car -c
+ * #shortcuts --b car param1 param2
+ * #shortcuts -cparam1 param2
+ * #shortcuts -c param1 param2
+ * #shortcuts --b=param1 param2
+ */
+
+require_once 'Console/GetoptPlus.php';
+
+try {
+    $config = array(// /
+        'options' => array(// /
+            array('long' => 'foo', 'type' => 'noarg',
+                'desc' => array('An option without argument with only the long', 'name defined.')),
+            array('long' => 'bar', 'type' => 'mandatory', 'short' => 'b',
+                'desc' => array('arg', 'A mandatory option with both the long and', 'the short names defined.')),
+            array('short' => 'c', 'type' => 'optional',
+                'desc' => array('arg', 'An option with an optional argument with only', 'the short name defined.'))),
+        'parameters' => array('[param1] [param2]', 'Some additional parameters.'),
+        );
+
+    $options = Console_Getoptplus::getoptplus($config, 'short2long', true, 'shortcuts');
+    print_r($options);
+}
+catch(Console_GetoptPlus_Exception $e) {
+    $error = array($e->getCode(), $e->getMessage());
+    print_r($error);
+}
+
+?>

@@ -24,7 +24,7 @@ class IcPresenter extends BasePresenter
         self::helpOpts();
     }
     
-    public function getOpts($ret) {
+    static function getOpts($ret) {
         $ret=parent::getOpts($ret);
         $ret=TwPresenter::getOpts($ret);
         $ret=HsPresenter::getOpts($ret);
@@ -88,7 +88,7 @@ class IcPresenter extends BasePresenter
         self::mexit();
     }
 
-    public function renderShow() {
+    public function renderShow($var) {
         $opts=$this->opts;
         $opts->empty=false;
         $opts->icempty=false;

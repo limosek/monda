@@ -1,0 +1,116 @@
+@startuml
+
+class Zabbix {
+    -zabbixId
+    -url
+    -dsn
+    -sqluser
+    -sqlpass
+    -apiuser
+    -apipass
+    -apiurl
+    -api: **ZabbixApi**
+
+    +__construct()
+    +searchHosts(groupname) = **HostGroup**
+    +searchItems(hostGroup: **HostGroup**, key) = **ItemList**
+    +getHistory(itemGroup: **ItemList**, from:**DateTime**, to:**DateTime**, stats:bool, data:bool) = **History**
+}
+
+class History {
+    -zabbix: **Zabbix**
+    -startTime: **DateTime**
+    -endTime: **DateTime**
+    -items: **ItemList**
+    +data[]
+    +stats[] **ItemStats**
+}
+
+class Monda {
+    -dsn
+    -sqluser
+    -sqlpass
+    -url
+    -zabbix: **Zabbix**
+
+    +__construct()
+    +searchHosts(timeWindow:: **TimeWindow**) = **HostGroup**
+    +searchItems(timeWindow:: **TimeWindow**) = **ItemList**
+    +searchTimeWindows(start: **DateTime**, end: **DateTime**) = **TimeWindowList**
+    +createTimeWindows(start: **DateTime**, end: **DateTime**,seconds) = **TimeWindowList**
+}
+
+class Item {
+    -zabbix: **Zabbix**
+    -itemid
+    -host
+    -name
+    -key
+    -historydays
+    -updateinterval
+
+    +expand()
+}
+
+class ItemList {
+    -items[]: **Item**
+
+    +add(item **Item**)
+    +get() = **ItemGroup**
+}
+
+class ItemStat {
+    -item **Item**
+    -timeWindow: **TimeWindow**
+    -min
+    -max
+    -avg
+    -delta
+    -stddev
+    -cv
+}
+
+class ItemStatList {
+    -itemStat[]: **ItemStat**
+
+    +add(itemstat:**ItemStat**)
+    +get(item: **Item**)
+}
+
+class TimeWindow {
+    -startTime: **DateTime**
+    -endTime: **DateTime**
+    -zabbix: **Zabbix**
+    -name
+    -description
+    -itemGroup: **ItemList**
+    -hostGroup: **HostGroup**
+
+    stats()
+}
+
+class TimeWindowList {
+    -startTime: **DateTime**
+    -endTime: **DateTime**
+    -name
+    -timewindow[]: **TimeWindow**
+
+    stats()
+}
+
+class Host {
+    -zabbix **Zabbix**
+    -name
+    -itemGroup: **ItemList**
+}
+
+class HostGroup {
+    -zabbix: **Zabbix**
+    -name
+    -hosts[]: **Host**
+
+    get(host **Host**)
+}
+
+
+@enduml

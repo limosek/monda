@@ -43,7 +43,7 @@ class Greeting
 So we create test file named `greeting.test.phpt`:
 
 ```php
-require 'Tester/bootstrap.php';
+require 'src/bootstrap.php';
 
 use Tester\Assert;
 
@@ -61,9 +61,9 @@ Now we run tests from command-line using the `tester` command:
 > tester
  _____ ___  ___ _____ ___  ___
 |_   _/ __)( __/_   _/ __)| _ )
-  |_| \___ /___) |_| \___ |_|_\  v1.2.0
+  |_| \___ /___) |_| \___ |_|_\  v1.4.0
 
-PHP 5.3.16 | "php-cgi" -n | 33 threads
+PHP 5.3.16 | "php-cgi" -n | 8 threads
 .
 OK (1 tests, 0 skipped, 0.0 seconds)
 ```
@@ -126,7 +126,7 @@ with code and automatically re-run tests whenever code is changed:
 tester -w /my/source/codes
 ```
 
-Running tests in parallel is very much faster and Nette Tester uses 33 threads as default.
+Running tests in parallel is very much faster and Nette Tester uses 8 threads as default.
 If you wish to run the tests in series use:
 
 ```
@@ -178,19 +178,19 @@ Usage:
     tester.php [options] [<test file> | <directory>]...
 
 Options:
-    -p <path>              Specify PHP executable to run (default: php-cgi).
-    -c <path>              Look for php.ini file (or look in directory) <path>.
-    -l | --log <path>      Write log to file <path>.
-    -d <key=value>...      Define INI entry 'key' with value 'val'.
-    -s                     Show information about skipped tests.
-    --stop-on-fail         Stop execution upon the first failure.
-    --tap                  Generate Test Anything Protocol.
-    -j <num>               Run <num> jobs in parallel (default: 33).
-    -w | --watch <path>    Watch directory.
-    -i | --info            Show tests environment info and exit.
-    --setup <path>         Script for runner setup.
-    --colors [1|0]         Enable or disable colors.
-    --coverage <path>      Generate code coverage report to file.
-    --coverage-src <path>  Path to source code.
-    -h | --help            This help.
+    -p <path>                    Specify PHP executable to run (default: php-cgi).
+    -c <path>                    Look for php.ini file (or look in directory) <path>.
+    -l | --log <path>            Write log to file <path>.
+    -d <key=value>...            Define INI entry 'key' with value 'val'.
+    -s                           Show information about skipped tests.
+    --stop-on-fail               Stop execution upon the first failure.
+    -j <num>                     Run <num> jobs in parallel (default: 8).
+    -o <console|tap|junit|none>  Specify output format.
+    -w | --watch <path>          Watch directory.
+    -i | --info                  Show tests environment info and exit.
+    --setup <path>               Script for runner setup.
+    --colors [1|0]               Enable or disable colors.
+    --coverage <path>            Generate code coverage report to file.
+    --coverage-src <path>        Path to source code.
+    -h | --help                  This help.
 ```

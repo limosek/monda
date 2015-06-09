@@ -25,46 +25,46 @@ class IsPresenter extends BasePresenter
         self::helpOpts();
     }
     
-    public function getOpts($ret) {
+    static function getOpts($ret) {
         $ret=BasePresenter::getOpts($ret);
         $ret=TwPresenter::getOpts($ret);
         $ret=HsPresenter::getOpts($ret);
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "min_values_per_window",
                 "Mvw","min_values_per_window",
                 "Minimum values for item per window to process",
                 20,
                 20
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "min_avg_for_cv",
                 "Mac","min_avg_for_cv",
                 "Minimum average for CV to process",
                 0.01,
                 0.01
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "min_stddev",
                 "Msd","min_stddev",
                 "Minimum stddev of values to process. Only bigger stddev will be processed",
                 0,
                 0
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "min_cv",
                 "Mcv","min_cv",
                 "Minimum CV to process values.",
                 0.01,
                 0.01
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "itemids",
                 "Ii","itemids",
                 "Itemids to get",
                 false,
                 "All"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "max_windows_per_query",
                 false,"max_windows_per_query",
                 "Maximum number of windows per one sql query",
@@ -74,7 +74,7 @@ class IsPresenter extends BasePresenter
         if ($ret->itemids) {
             $ret->itemids=preg_split("/,/",$ret->itemids);
         }
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "items",
                 "Ik","items",
                 "Item keys to get. Use host: to get all items of host. Use @HostGroup: to get all items of hostgroup.",
@@ -84,14 +84,14 @@ class IsPresenter extends BasePresenter
         if ($ret->items) {
             $ret->items=preg_split("/,/",$ret->items);
         }
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "max_items",
                 "Im","max_items",
                 "Maximum number of items to get (LIMIT for SELECT)",
                 false,
                 "All"
                 );
-        $ret=$this->parseOpt($ret,
+        $ret=self::parseOpt($ret,
                 "isloionly",
                 "ISL","itemstat_with_loi",
                 "Search only items with loi>0",
@@ -110,7 +110,7 @@ class IsPresenter extends BasePresenter
         self::mexit();
     }
     
-    public function expandItem($itemid,$withhost=false) {
+    static public function expandItem($itemid,$withhost=false) {
         $ii=\App\Model\ItemStat::itemInfo($itemid);
         if (count($ii)>0) {
             if ($withhost) {
@@ -123,11 +123,11 @@ class IsPresenter extends BasePresenter
         }
     }
 
-    public function renderShow() {
-        $rows=\App\Model\ItemStat::isSearch($this->opts);
+    public function renderShow($var) {
+        $rows=\App\Model\ItemStat::isSearch(\App\Model\Monda::$opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
-            if ($this->opts->outputverb=="expanded") {
+            if (\App\Model\Monda::$opts->outputverb=="expanded") {
                 $i=0;
                 foreach ($this->exportdata as $i=>$row) {
                     $i++;
@@ -143,21 +143,21 @@ class IsPresenter extends BasePresenter
     }
     
     public function renderZabbixHistory() {
-        if (!$this->opts->wids) {
+        if (!\App\Model\Monda::$opts->wids) {
             self::mexit(33,"No windows selected!\n");
         }
-        $opts=\App\Model\ItemStat::itemsToIds($this->opts);
-        if (!$this->opts->itemids) {
+        $opts=\App\Model\ItemStat::itemsToIds(\App\Model\Monda::$opts);
+        if (!\App\Model\Monda::$opts->itemids) {
             self::mexit(33,"No items selected!\n");
         }
         $ckey=serialize($opts);
-        $ret=$this->sqlcache->load($ckey);
+            $ret=\App\Model\Monda::$sqlcache->load($ckey);
         if ($ret===null) {
             $ret=\App\Model\ItemStat::isZabbixGetHistory($opts);
-            $this->sqlcache->save($ckey,
+            \App\Model\Monda::$sqlcache->save($ckey,
                     $ret,
                     array(
-                        \Nette\Caching\Cache::EXPIRE => $this->opts->sqlcacheexpire,
+                        \Nette\Caching\Cache::EXPIRE => \App\Model\Monda::$opts->sqlcacheexpire,
                         )
                     );
         }
@@ -166,10 +166,10 @@ class IsPresenter extends BasePresenter
     }
     
     public function renderStats() {
-        $rows=\App\Model\ItemStat::isStats($this->opts);
+        $rows=\App\Model\ItemStat::isStats(\App\Model\Monda::$opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
-            if ($this->opts->outputverb=="expanded") {
+            if (\App\Model\Monda::$opts->outputverb=="expanded") {
                 $i=0;
                 foreach ($this->exportdata as $i=>$row) {
                     $i++;
@@ -184,17 +184,17 @@ class IsPresenter extends BasePresenter
     }
     
     public function renderLoi() {
-        \App\Model\ItemStat::IsLoi($this->opts);
+        \App\Model\ItemStat::IsLoi(\App\Model\Monda::$opts);
         self::mexit();
     }
     
     public function renderCompute() {
-        \App\Model\ItemStat::IsMultiCompute($this->opts);
+        \App\Model\ItemStat::IsMultiCompute(\App\Model\Monda::$opts);
         self::mexit(0,"Done\n");
     }
     
     public function renderDelete() {
-        \App\Model\ItemStat::IsDelete($this->opts);
+        \App\Model\ItemStat::IsDelete(\App\Model\Monda::$opts);
         self::mexit(0,"Done\n");
     }
 }

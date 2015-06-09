@@ -4,6 +4,7 @@ namespace App\Presenters;
 
 use \Exception,Nette,
 	App\Model,
+        \Tracy\Debugger,
         Nette\Utils\DateTime as DateTime;
 
 /**
@@ -11,32 +12,13 @@ use \Exception,Nette,
  */
 abstract class BasePresenter extends Nette\Application\UI\Presenter
 {
-    public $getopts=Array();
+    static $getopts=Array();
     public $exportdata;
+    static $parameters;
+    
     const TW_STEP=300;
-    public $cache; // Cache
-    public $apicache; // Cache for zabbix api
-    public $sqlcache;
-    public $api;   // ZabbixApi class
-    public $zq;    // Zabbix query link id
-    public $mq;    // Monda query link id
-    public $dbg;    // Cli debugger
-    public $zabbix_url;
-    public $zabbix_user;
-    public $zabbix_pw;
-    public $zabbix_db_type;
-    public $stats=Array();
-    public $lastns=false;
-    public $opts;
-    public $cpustats;
-    public $cpustatsstamp;
-    public $childpids=Array();
-    public $childs;
-    public $debuglevel="warning";
-    public $lastsql;
-    public $jobstats;
 
-    public function roundTime($tme) {
+    static function roundTime($tme) {
         return(round($tme/self::TW_STEP)*self::TW_STEP);
     }
     
@@ -53,7 +35,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             if ($code!=0) {
                 throw New Exception("Error #$code: $msg");
             } else {
-                exit;
+            $this->terminate();
             }
         } else {
             exit($code);
@@ -68,7 +50,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         parent::__call($name, $args);
     }
     
-    function timetoseconds($t) {
+    static function timetoseconds($t) {
         if ($t[0] == "@") {
             return(substr($t, 1));
         } elseif (is_numeric($t)) {
@@ -98,15 +80,16 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     function startup() {
         global $container;
         
-        if (!isset($this->opts)) {
-            $this->opts=New \stdClass();
+        if (!isset(Model\Monda::$opts)) {
+            Model\Monda::$opts=New \stdClass();
         }
-        $this->opts=$this->getOpts($this->opts);
-        if ($this->opts->help) {
-            $this->opts->zapi=false;
+        Model\Monda::$opts=$this->getOpts(Model\Monda::$opts);
+        if (Model\Monda::$opts->help) {
+            Model\Monda::$opts->zapi=false;
             $this->forward($this->getName().":default");
         }
         parent::startup();
+        
         return($this);
     }
     
@@ -114,24 +97,30 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         global $container;
         
         $c = $container;
-        $this->dbg=New Model\CliDebug();
-        $this->apicache = New Nette\Caching\Cache(
+        Model\Monda::$apicache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_APICACHEDIR")));
-        $this->sqlcache = New Nette\Caching\Cache(
+        Model\Monda::$sqlcache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")));
-        $this->cache = New Nette\Caching\Cache(
+        Model\Monda::$cache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_CACHEDIR")));
     }
   
-    function parseOpt($obj,$key,$short,$long,$desc,$default=null,$defaulthelp=false,$choices=false,$params=false) {
+    static function parseOpt($obj,$key,$short,$long,$desc,$default=null,$defaulthelp=false,$choices=false,$params=false) {
+        global $container;
+        
+        echo "\t'$key' => Array (
+                '$short',\t\t'$long',\t\t'$default'\t\t,\t'$defaulthelp'\t\t,'$choices',
+                    \t'$desc'
+                ),\n\n";
         if (!$params) {
             if (count($_GET)>0) {
                 $params=$_GET;
             } else {
-                $params=$this->params;
+                //dump($container->getService("application")->getRequests());
+                $params=$container->getService("application")->getRequests()[0]->getParameters();
             }
         }
-        $this->getopts[$key]=Array(
+        self::$getopts[$key]=Array(
             "short" => $short,
             "long" => $long,
             "description" => $desc,
@@ -157,8 +146,8 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 self::mexit(14,sprintf("Bad option %s for parameter %s(%s). Possible values: {%s}\n",$value,$short,$long,join($choices,"|")));
             }
         }
-        if (is_object($this->dbg) && isset($obj->$key)) {
-            Model\CliDebug::dbg("Setting option $long($desc) to ".  strtr(\Nette\Diagnostics\Debugger::dump($obj->$key,true),"\n"," ")."\n");
+        if (isset($obj->$key)) {
+            Model\CliDebug::dbg("Setting option $long($desc) to ".  strtr(Debugger::dump($obj->$key,true),"\n"," ")."\n");
         }
         return($obj);
     }
@@ -168,17 +157,17 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
     
     function isOptDefault($key) {
-        if (array_search($key,$this->opts->defaults)===false) {
+        if (array_search($key,Model\Monda::$opts->defaults)===false) {
             return(false);
         } else {
             return(true);
         }
     }
     
-    function helpOpts() {
+    public function helpOpts() {
         Model\CliDebug::warn(sprintf("[Common options for %s]:\n",$this->getName()));
-        $opts=$this->getopts;
-        if (!$this->opts->xhelp) {
+        $opts=self::$getopts;
+        if (!Model\Monda::$opts->xhelp) {
             return;
         }
         foreach ($opts as $key=>$opt) {
@@ -193,12 +182,12 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             if (self::isOptDefault($key)) {
                 $avalue="Default";
             } else {
-                if (is_array($this->opts->$key)) {
-                    $avalue=join(",",$this->opts->$key);
-                } elseif (is_bool($this->opts->$key)) {
-                    $avalue=sprintf("%b",$this->opts->$key);    
+                if (is_array(Model\Monda::$opts->$key)) {
+                    $avalue=join(",",Model\Monda::$opts->$key);
+                } elseif (is_bool(Model\Monda::$opts->$key)) {
+                    $avalue=sprintf("%b",Model\Monda::$opts->$key);    
                 } else {
-                    $avalue=$this->opts->$key;
+                    $avalue=Model\Monda::$opts->$key;
                 }
             }
             Model\CliDebug::warn(sprintf("-%s|--%s 'value':\n   %s\n   Default: <%s>\n   Actual value: %s\n   %s\n",
@@ -206,7 +195,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         }
     }
     
-    function getOpts($ret) {
+     static function getOpts($ret) {
         $ret=self::parseOpt($ret,
                 "help",
                 "h","help",
@@ -225,7 +214,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Debug level (debug,info,warning,error,critical)",
                 "info"
                 );
-        $this->dbg=New Model\CliDebug($ret->debug);
+        New Model\CliDebug($ret->debug);
         $ret=self::parseOpt($ret,
                 "progress",
                 "P","progress",
@@ -439,8 +428,8 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
     
     function beforeRender() {
-        if ($this->opts->configinfo) {
-            dump($this->opts);
+        if (Model\Monda::$opts->configinfo) {
+            dump(Model\Monda::$opts);
             self::mexit();
         }
     }
@@ -465,7 +454,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         $httpResponse = $container->getByType('Nette\Http\Response');
         $httpResponse->setContentType('text/csv', 'UTF-8');
         
-        $opts=$this->opts;
+        $opts=Model\Monda::$opts;
         $i = 0;
         
         foreach ((array) $this->exportdata as $id => $row) {
@@ -486,7 +475,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 if ($j!=$cnt) {
                     echo sprintf('%s%s%s%s',$opts->csvenc,$v,$opts->csvenc,$opts->csvdelim);
                 } else {
-                    echo sprintf('%s%s%s%s',$opts->csvenc,$v,$opts->csvenc);
+                    echo sprintf('%s%s%s',$opts->csvenc,$v,$opts->csvenc);
                 }
                 $j++;
             }
@@ -503,7 +492,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     
     function renderShow($var) {
         $this->exportdata=$var;
-        switch ($this->opts->outputmode) {
+        switch (Model\Monda::$opts->outputmode) {
             case "cli":
                 self::renderCli();
                 break;

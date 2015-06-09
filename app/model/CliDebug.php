@@ -4,7 +4,7 @@ namespace App\Model;
 use Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
-    Nette\Diagnostics\Debugger,
+    Tracy\Debugger,
     Nette\Database\Context,
     \ZabbixApi;
 
@@ -26,10 +26,18 @@ class CliDebug {
     
     static function comparelevel($l1,$l2) {
         if (!is_numeric($l1)) {
-            $l1=self::$levels[$l1];
+            if (array_key_exists($l1,self::$levels)) {
+                $l1=self::$levels[$l1];
+            } else {
+                $l1=1;
+            }
         }
         if (!is_numeric($l2)) {
-            $l2=self::$levels[$l2];
+            if (array_key_exists($l2,self::$levels)) {
+                $l2=self::$levels[$l2];
+            } else {
+                $l2=1;
+            }
         }
         return($l1>=$l2);
     }
@@ -59,7 +67,7 @@ class CliDebug {
         }
     }
     
-    public function getLevel() {
+    static function getLevel() {
         return(self::$level);
     }
             

@@ -52,6 +52,6 @@ if (!file_exists($apicachedir)) {
 
 $container = require __DIR__ . '/../app/bootstrap.php';
 
-Nette\Diagnostics\Debugger::$strictMode = false;
+Nette\Diagnostics\Debugger::$strictMode = true;
 
 $container->getService('application')->run();

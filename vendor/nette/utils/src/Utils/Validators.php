@@ -11,7 +11,7 @@ use Nette;
 
 
 /**
- * Validation utilites.
+ * Validation utilities.
  *
  * @author     David Grudl
  */
@@ -37,6 +37,7 @@ class Validators extends Nette\Object
 		'null' => 'is_null',
 		'email' => array(__CLASS__, 'isEmail'),
 		'url' => array(__CLASS__, 'isUrl'),
+		'uri' => array(__CLASS__, 'isUri'),
 		'none' => array(__CLASS__, 'isNone'),
 		'type' => array(__CLASS__, 'isType'),
 		'identifier' => array(__CLASS__, 'isPhpIdentifier'),
@@ -95,6 +96,7 @@ class Validators extends Nette\Object
 	 * @param  array
 	 * @param  string  item
 	 * @param  string  expected types separated by pipe
+	 * @param  string
 	 * @return void
 	 */
 	public static function assertField($arr, $field, $expected = NULL, $label = "item '%' in array")
@@ -246,16 +248,29 @@ class Validators extends Nette\Object
 
 
 	/**
-	 * Finds whether a string is a valid URL.
+	 * Finds whether a string is a valid http(s) URL.
 	 * @param  string
 	 * @return bool
 	 */
 	public static function isUrl($value)
 	{
 		$alpha = "a-z\x80-\xFF";
+		$subDomain = "[-_0-9$alpha]";
 		$domain = "[0-9$alpha](?:[-0-9$alpha]{0,61}[0-9$alpha])?";
 		$topDomain = "[$alpha](?:[-0-9$alpha]{0,17}[$alpha])?";
-		return (bool) preg_match("(^https?://(?:(?:$domain\\.)*$topDomain|\\d{1,3}\.\\d{1,3}\.\\d{1,3}\.\\d{1,3}|\[[0-9a-f:]{3,39}\])(:\\d{1,5})?(/\\S*)?\\z)i", $value);
+		$domainName = "(?:(?:$subDomain+\\.)*?$domain\\.)?$topDomain";
+		return (bool) preg_match("(^https?://(?:$domainName|\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|\[[0-9a-f:]{3,39}\])(:\\d{1,5})?(/\\S*)?\\z)i", $value);
+	}
+
+
+	/**
+	 * Finds whether a string is a valid URI according to RFC 1738.
+	 * @param  string
+	 * @return bool
+	 */
+	public static function isUri($value)
+	{
+		return (bool) preg_match('#^[a-z\d+\.-]+:\S+\z#i', $value);
 	}
 
 

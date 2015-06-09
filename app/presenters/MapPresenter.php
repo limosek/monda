@@ -11,7 +11,8 @@ use Nette\Application\Responses\TextResponse,
 class MapPresenter extends BasePresenter
 {
     
-    public function getOpts($ret) {
+    static function getOpts($ret) {
+        $ret=New \stdClass();
         $ret=parent::getOpts($ret);
         $ret=TwPresenter::getOpts($ret);
         $ret=HsPresenter::getOpts($ret);
@@ -73,90 +74,6 @@ class MapPresenter extends BasePresenter
         $step=$range/$steps;
         $ret=min(1+round($steps*($num/$max)),$steps);
         return($ret);
-    }
-    
-    function renderTw() {
-        $opts=$this->opts;
-        if (!$opts->wids || count($opts->wids)>1) {
-            self::mexit(2,"Bad window ids!\n");
-        }
-        $map=self::createMap($opts->mapname);
-        $items= \App\Model\ItemStat::IsSearch($opts);
-        if (!$items) {
-            self::mexit(2,"No items!\n");
-        }
-        $w=\App\Model\Tw::twGet($opts->wids);
-        $map->w=$w;
-        $this->template->wid=$w->id;
-        $items=$items->fetchAll();
-        $maxcv=0;
-        $maxloi=0;
-        $maxstddev=0;
-        $mincv=0;
-        $minloi=0;
-        $minstddev=0;
-        $mincnt=0;
-        $maxcnt=0;
-
-        foreach ($items as $item) {
-            $maxcv=max($maxcv,$item->cv);
-            $mincv=min($mincv,$item->cv);
-            $minstddev=min($minstddev,$item->stddev_);
-            $maxstddev=max($maxstddev,$item->stddev_);
-            $minloi=min($minloi,$item->loi);
-            $maxloi=max($maxloi,$item->loi);
-            $mincnt=min($mincnt,$item->cnt);
-            $maxcnt=max($maxcnt,$item->cnt);
-        }
-        $objects=0;
-        $map->items=Array();
-        foreach ($items as $item) {
-            $objects++;
-            if ($objects>$opts->maxmapobjects) continue;
-            $props=New \StdClass();
-            $props->cv=$item->cv;
-            $props->loi=$item->loi;
-            $props->stddev=$item->stddev_;
-            $props->min=$item->min_;
-            $props->max=$item->max_;
-            $props->avg=$item->avg_;
-            $props->cnt=$item->cnt;
-            $props->gurl1=sprintf("%s/chart.php?itemids[]=%d&period=%d&stime=%d&width=200&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
-            $props->gurl2=sprintf("%s/chart.php?itemids[]=%d&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
-            if ($opts->outputverb=="expanded") {
-                $props->description= HsPresenter::expandHost($item->hostid).":".IsPresenter::expandItem($item->itemid);
-                $map->items[]=$props->description;
-            } else {
-                $props->description=$item->itemid;
-                $map->items[]=$item->itemid;
-            }
-            
-            $props->height=round(50*($item->loi/$maxloi));
-            $props->width=100;
-            $props->class=Array();
-            $props->class[]="loi".self::numtostep($item->loi,$minloi,$maxloi,10);
-            $props->class[]="cv".self::numtostep($item->cv,$mincv,$maxcv,10);
-            $props->class[]="stddev".self::numtostep($item->stddev_,$minstddev,$maxstddev,10);
-            $props->class[]="cnt".self::numtostep($item->cnt,$mincnt,$maxcnt,10);
-           
-            $child=New Node($item->itemid);
-            $child->setValue($props);
-            $map->addChild($child);
-        }
-        $this->template->map=$map;
-        $i=1;
-        $zitemids="";
-        $t10i=Array();
-        foreach ($items as $item) {
-            $zitemids.="itemids[]=$item->itemid&";
-            $t10i[]=$item->itemid;
-            $i++;
-            if ($i>10) break;
-        }
-        $this->template->top10items=$t10i;
-        $top10itemsjs=join(",",$t10i);
-        $this->template->top10csv="$opts->zaburl/monda/is/zabbixhistory?w=$w->id&Ii=$top10itemsjs&csv_enclosure=&csv_delimiter=,";
-        $this->template->top10graph=sprintf("%s/chart.php?%s&&graphtype=0&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$zitemids,$w->seconds,$w->fstamp,time());
     }
     
     function TwTreeMap($tree,$twids,$stats,$zstats,$id=false) {

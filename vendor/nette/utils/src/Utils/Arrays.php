@@ -29,7 +29,11 @@ class Arrays
 
 	/**
 	 * Returns item from array or $default if item is not set.
+	 * @param  array
+	 * @param  string|int|array one or more keys
+	 * @param  mixed
 	 * @return mixed
+	 * @throws Nette\InvalidArgumentException if item does not exist and default value is not provided
 	 */
 	public static function get(array $arr, $key, $default = NULL)
 	{
@@ -48,8 +52,11 @@ class Arrays
 
 
 	/**
-	 * Returns reference to array item or $default if item is not set.
+	 * Returns reference to array item.
+	 * @param  array
+	 * @param  string|int|array one or more keys
 	 * @return mixed
+	 * @throws Nette\InvalidArgumentException if traversed item is not an array
 	 */
 	public static function & getRef(& $arr, $key)
 	{
@@ -82,7 +89,7 @@ class Arrays
 
 	/**
 	 * Searches the array for a given key and returns the offset if successful.
-	 * @return int    offset if it is found, FALSE otherwise
+	 * @return int|FALSE offset if it is found, FALSE otherwise
 	 */
 	public static function searchKey($arr, $key)
 	{
@@ -135,16 +142,7 @@ class Arrays
 	 */
 	public static function grep(array $arr, $pattern, $flags = 0)
 	{
-		set_error_handler(function($severity, $message) use ($pattern) { // preg_last_error does not return compile errors
-			restore_error_handler();
-			throw new RegexpException("$message in pattern: $pattern");
-		});
-		$res = preg_grep($pattern, $arr, $flags);
-		restore_error_handler();
-		if (preg_last_error()) { // run-time error
-			throw new RegexpException(NULL, preg_last_error(), $pattern);
-		}
-		return $res;
+		return Strings::pcre('preg_grep', array($pattern, $arr, $flags));
 	}
 
 
@@ -175,7 +173,7 @@ class Arrays
 
 	/**
 	 * Reformats table to associative tree. Path looks like 'field|field[]field->field=field'.
-	 * @return array|stdClass
+	 * @return array|\stdClass
 	 */
 	public static function associate(array $arr, $path)
 	{
@@ -221,6 +219,20 @@ class Arrays
 			}
 		}
 
+		return $res;
+	}
+
+
+	/**
+	 * Normalizes to associative array.
+	 * @return array
+	 */
+	public static function normalize(array $arr, $filling = NULL)
+	{
+		$res = array();
+		foreach ($arr as $k => $v) {
+			$res[is_int($k) ? $v : $k] = is_int($k) ? $filling : $v;
+		}
 		return $res;
 	}
 

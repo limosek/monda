@@ -15,7 +15,7 @@ class TwPresenter extends BasePresenter
         self::mexit();
     }
     
-    public function getOpts($ret) {
+    static function getOpts($ret) {
         $ret=parent::getOpts($ret);
         $ret=self::parseOpt($ret,
                 "start",
@@ -32,7 +32,7 @@ class TwPresenter extends BasePresenter
                 "end",
                 "e","end",
                 "End time of analysis.",
-                $this->roundtime(time()-3600),
+                self::roundtime(time()-3600),
                 "-1 hour"
                 );
         $ret->end=self::timetoseconds($ret->end);
@@ -126,7 +126,7 @@ class TwPresenter extends BasePresenter
         return($ret);
     }
     
-    public function Help() {
+    static function Help() {
         \App\Model\CliDebug::warn("
      Time Window operations
      
@@ -169,7 +169,7 @@ class TwPresenter extends BasePresenter
         return($wstr);
     }
     
-    public function renderShow() {
+    public function renderShow($var) {
         $windows=Tw::twSearch($this->opts);
         $this->exportdata=$windows->fetchAll();
         parent::renderShow($this->exportdata);

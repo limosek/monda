@@ -15,7 +15,7 @@ use Nette,
  */
 class HostStat extends Monda {
     
-    function hostGroupsToIds($hostgroups) {
+    static function hostGroupsToIds($hostgroups) {
         $hq=Array(
             "selectHosts" => "refer",
             "output" => "extend",
@@ -37,7 +37,7 @@ class HostStat extends Monda {
         return($hostids);
     }
     
-    function hostsToIds($opts) {
+    static function hostsToIds($opts) {
         if (!is_array($opts->hostids)) {
             $opts->hostids=Array();
         }
@@ -61,7 +61,7 @@ class HostStat extends Monda {
         return($opts);
     }
     
-    function hostids2itemids($hostids) {
+    static function hostids2itemids($hostids) {
         $itemids=Array();
         $c=1;
         $hostcount=count($hostids);
@@ -82,7 +82,7 @@ class HostStat extends Monda {
         return($itemids);
     }
     
-    function hosts2ids($hosts) {
+    static function hosts2ids($hosts) {
         $iq = Array(
                 "monitored" => true,
                 "filter" => Array(
@@ -97,12 +97,12 @@ class HostStat extends Monda {
         return($ret);
     }
     
-    function host2id($host) {
+    static function host2id($host) {
         $h=self::hosts2ids(Array($host));
         return($h[$host]);
     }
     
-    function hsSearch($opts) {
+    static function hsSearch($opts) {
         $wids=Tw::twToIds($opts);
         if (count($wids)==0) {
             return(false);
@@ -124,7 +124,7 @@ class HostStat extends Monda {
         return($ids);
     }
     
-    function hsToIds($opts,$pkey=false) {
+    static function hsToIds($opts,$pkey=false) {
         $ids=self::hsSearch($opts);
         if (!$ids) {
             return(false);
@@ -144,7 +144,7 @@ class HostStat extends Monda {
         return($hostids);
     }
     
-    function hsUpdate($opts) {
+    static function hsUpdate($opts) {
         $hostids=$this->opts->hostids;
         $itemids=self::hostids2itemids($hostids);
         $wids=Tw::twToIds($opts);
@@ -167,7 +167,7 @@ class HostStat extends Monda {
         self::mcommit();
     }
     
-    function hsDelete($opts) {
+    static function hsDelete($opts) {
         $ids=self::hsToIds($opts,true);
         self::mbegin();
         foreach ($ids as $id) {
@@ -176,7 +176,7 @@ class HostStat extends Monda {
         self::mcommit();
     }
     
-    function hsMultiCompute($opts) {
+    static function hsMultiCompute($opts) {
         $wids=Tw::twToIds($opts);
         CliDebug::warn(sprintf("Need to compute HostStat for %d windows.\n",count($wids)));
         if (count($wids)==0 || count($opts->hostids)==0) {
@@ -218,7 +218,7 @@ class HostStat extends Monda {
         }
     }
     
-    function hsLoi($opts) {
+    static function hsLoi($opts) {
         $wids=Tw::twToIds($opts);
         CliDebug::warn(sprintf("Need to compute HostStat Loi on %d windows.\n",count($wids)));
         if (count($wids)==0) {

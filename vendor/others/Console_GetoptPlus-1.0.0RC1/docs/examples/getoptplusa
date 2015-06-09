@@ -1,0 +1,41 @@
+#!@php_bin@
+<?php
+/**
+ * This is an example with Console_Getoptplus::getoptplus() set to return
+ * an associative array with option names converted to their long names if possible.
+ *
+ * Examples to run on the command line:
+ * #getoptplusa --help
+ * #getoptplusa -h
+ * #getoptplusa --foo -b car -c
+ * #getoptplusa --foo -b car -c param1
+ * #getoptplusa --foo -b car -cbus param1
+ * #getoptplusa --foo -b car -c=bus param1
+ * #getoptplusa --bar car param1 param2
+ * #getoptplusa --bar car -- param1 param2
+ * #getoptplusa --bar=car param1 param2
+ */
+
+require_once 'Console/GetoptPlus.php';
+
+try {
+    $config = array(// /
+        'options' => array(// /
+            array('long' => 'foo', 'type' => 'noarg',
+                'desc' => array('An option without argument with only the long', 'name defined.')),
+            array('long' => 'bar', 'type' => 'mandatory', 'short' => 'b',
+                'desc' => array('arg', 'A mandatory option with both the long and', 'the short names defined.')),
+            array('short' => 'c', 'type' => 'optional',
+                'desc' => array('arg', 'An option with an optional argument with only', 'the short name defined.'))),
+        'parameters' => array('[param1] [param2]', 'Some additional parameters.'),
+        );
+
+    $options = Console_Getoptplus::getoptplus($config, 'short2long', true);
+    print_r($options);
+}
+catch(Console_GetoptPlus_Exception $e) {
+    $error = array($e->getCode(), $e->getMessage());
+    print_r($error);
+}
+
+?>

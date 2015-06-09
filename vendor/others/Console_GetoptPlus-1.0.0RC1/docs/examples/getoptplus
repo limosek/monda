@@ -1,0 +1,42 @@
+#!@php_bin@
+<?php
+/**
+ * This is an example with Console_Getoptplus::getoptplus()
+ *
+ * Examples to run on the command line:
+ * #getoptplus --help
+ * #getoptplus -h
+ * #getoptplus --foo -b car -c
+ * #getoptplus --foo -b car -c param1
+ * #getoptplus --foo -b car -cbus param1
+ * #getoptplus --foo -b car -c=bus param1
+ * #getoptplus --bar car param1 param2
+ * #getoptplus --bar car -- param1 param2
+ * #getoptplus --bar=car param1 param2
+ */
+
+require_once 'Console/GetoptPlus.php';
+
+try {
+    $config = array(// /
+        'options' => array(// /
+            array('long' => 'foo', 'type' => 'noarg',
+                'desc' => array('An option without argument with only the long', 'name defined.')),
+            array('long' => 'bar', 'type' => 'mandatory', 'short' => 'b',
+                'desc' => array('arg', 'A mandatory option with both the long and', 'the short names defined.')),
+            array('short' => 'c', 'type' => 'optional',
+                'desc' => array('arg', 'An option with an optional argument with only', 'the short name defined.'))),
+        'parameters' => array('[param1] [param2]', 'Some additional parameters.'),
+        );
+    // "--help" exits and displays the usage
+    $options = Console_Getoptplus::getoptplus($config);
+    // "-help" is returned as an array
+    // $options = Console_Getoptplus::getoptplus($config, null, true, null, false);
+    print_r($options);
+}
+catch(Console_GetoptPlus_Exception $e) {
+    $error = array($e->getCode(), $e->getMessage());
+    print_r($error);
+}
+
+?>

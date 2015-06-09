@@ -22,7 +22,7 @@ class EcPresenter extends BasePresenter
         self::helpOpts();
     }
     
-    public function getOpts($ret) {
+    public static function getOpts($ret) {
         $ret=parent::getOpts($ret);
         $ret=TwPresenter::getOpts($ret);
         $ret=HsPresenter::getOpts($ret);

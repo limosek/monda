@@ -6,7 +6,7 @@
 
 
 if (@!include __DIR__ . '/../vendor/autoload.php') {
-	die('Install packages using `composer update --dev`');
+	die('Install packages using `composer install`');
 }
 
 use Nette\Forms\Form,
@@ -62,7 +62,6 @@ class DateInput extends Nette\Forms\Controls\BaseControl
 	 */
 	public function getControl()
 	{
-		$this->setOption('rendered', TRUE);
 		$name = $this->getHtmlName();
 		return Html::el()
 			->add(Html::el('input')->name($name . '[day]')->id($this->getHtmlId())->value($this->day))

@@ -17,13 +17,10 @@ use Nette;
  */
 class MsSqlDriver extends Nette\Object implements Nette\Database\ISupplementalDriver
 {
-	/** @var Nette\Database\Connection */
-	private $connection;
 
-
-	public function __construct(Nette\Database\Connection $connection, array $options)
+	public function convertException(\PDOException $e)
 	{
-		$this->connection = $connection;
+		return Nette\Database\DriverException::from($e);
 	}
 
 
@@ -55,6 +52,15 @@ class MsSqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 	public function formatDateTime(/*\DateTimeInterface*/ $value)
 	{
 		return $value->format("'Y-m-d H:i:s'");
+	}
+
+
+	/**
+	 * Formats date-time interval for use in a SQL statement.
+	 */
+	public function formatDateInterval(\DateInterval $value)
+	{
+		throw new Nette\NotSupportedException;
 	}
 
 

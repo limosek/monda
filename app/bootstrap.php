@@ -5,14 +5,6 @@ require __DIR__ . '/../vendor/autoload.php';
 $configurator = new Nette\Configurator;
 $configurator->setTempDirectory(getenv("MONDA_TMP"));
 
-if (!getenv("MONDA_CLI")) {
-    $configurator->setDebugMode(Array('127.0.0.1'));
-    if (getenv("MONDA_LOG")) {
-        $configurator->enableDebugger(getenv("MONDA_LOG"));
-    }
-} else {
-    $configurator->setDebugMode(true); 
-}
 
 $configurator->createRobotLoader()
 	->addDirectory(__DIR__)
@@ -22,6 +14,21 @@ $configurator->createRobotLoader()
 $configurator->addConfig(__DIR__ . '/config/config.neon');
 
 $container = $configurator->createContainer();
+
+use Tracy\Debugger;
+
+if (getenv("MONDA_LOG")) {
+    $logdir=getenv("MONDA_LOG");
+} else {
+    $logdir=false;
+}
+if (!getenv("MONDA_CLI")) {
+    Debugger::enable(Array('127.0.0.1'),$logdir);
+} else {
+    Debugger::enable(Debugger::DETECT,$logdir);
+    Debugger::$productionMode=false;
+    Debugger::setLogger(New \App\Model\CliLogger());
+}
 
 define("TCHARS"," \t\n\r\0\x0B'\"");
 define("WCHARS"," -\t\n\r\0\x0B'\"");
