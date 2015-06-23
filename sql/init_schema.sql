@@ -1,202 +1,396 @@
 
-CREATE SEQUENCE s_timewindowid
-  INCREMENT 1
-  MINVALUE 1
-  MAXVALUE 9223372036854775807
-  START 100
-  CACHE 1;
-ALTER TABLE s_timewindowid
-  OWNER TO monda;
+CREATE SEQUENCE public.host_group_id_seq;
 
-CREATE TABLE timewindow
-(
-  id integer NOT NULL DEFAULT nextval('s_timewindowid'::regclass),
-  parentid integer DEFAULT NULL,
-  serverid integer DEFAULT 1,
-  description character varying(255) DEFAULT NULL::character varying,
-  tfrom timestamp with time zone NOT NULL,
-  seconds bigint NOT NULL,
-  created timestamp with time zone NOT NULL,
-  updated timestamp with time zone DEFAULT NULL,
-  found bigint DEFAULT NULL,
-  processed bigint DEFAULT NULL,
-  ignored bigint DEFAULT NULL,
-  stddev0 bigint DEFAULT NULL,
-  lowavg bigint DEFAULT NULL,
-  lowcnt bigint DEFAULT NULL,
-  loi integer DEFAULT 0,
-  CONSTRAINT "p_timewindow" PRIMARY KEY (id)
-)
-WITH (
-  OIDS=TRUE
+CREATE TABLE public.host_group (
+                host_group_id INTEGER NOT NULL DEFAULT nextval('public.host_group_id_seq'),
+                name VARCHAR NOT NULL,
+                CONSTRAINT p_hostgroup PRIMARY KEY (host_group_id)
 );
-ALTER TABLE timewindow
-  OWNER TO monda;
-CREATE INDEX i_id
-  ON timewindow
-  USING btree
-  (id);
-CREATE INDEX i_parentid
-  ON timewindow
-  USING btree
-  (parentid);
-CREATE UNIQUE INDEX i_times
-  ON timewindow
-  USING btree
-  (serverid,tfrom,seconds);
-CREATE INDEX i_loi
-  ON timewindow
-  USING btree
-  (loi);
-CREATE INDEX i_desc
-  ON timewindow
-  USING btree
-  (description COLLATE pg_catalog."default");
 
 
-CREATE TABLE itemstat
-(
-  itemid bigint NOT NULL,
-  hostid bigint,
-  windowid integer NOT NULL,
-  avg_ double precision NOT NULL DEFAULT 0.0000,
-  min_ double precision NOT NULL DEFAULT 0.0000,
-  max_ double precision NOT NULL DEFAULT 0.0000,
-  stddev_ double precision NOT NULL DEFAULT 0.0000,
-  cv double precision NOT NULL DEFAULT 0.0000,
-  cnt bigint DEFAULT 0,
-  loi integer DEFAULT 0,
-  CONSTRAINT "p_itemstat" PRIMARY KEY (windowid,itemid)
-)
-WITH (
-  OIDS=TRUE
+ALTER SEQUENCE public.host_group_id_seq OWNED BY public.host_group.host_group_id;
+
+CREATE SEQUENCE public.item_group_id_seq;
+
+CREATE TABLE public.item_group (
+                item_group_id INTEGER NOT NULL DEFAULT nextval('public.item_group_id_seq'),
+                name VARCHAR NOT NULL,
+                CONSTRAINT p_itemgroup PRIMARY KEY (item_group_id)
 );
-ALTER TABLE itemstat
-  OWNER TO monda;
+
+
+ALTER SEQUENCE public.item_group_id_seq OWNED BY public.item_group.item_group_id;
+
+CREATE SEQUENCE public.zabbix_server_zabbix_server_id_seq;
+
+CREATE TABLE public.zabbix_server (
+                zabbix_server_id INTEGER NOT NULL DEFAULT nextval('public.zabbix_server_zabbix_server_id_seq'),
+                description VARCHAR NOT NULL,
+                sqluser VARCHAR NOT NULL,
+                sqlpassword VARCHAR NOT NULL,
+                apiuser VARCHAR NOT NULL,
+                apipassword VARCHAR NOT NULL,
+                url VARCHAR NOT NULL,
+                apiurl VARCHAR NOT NULL,
+                CONSTRAINT p_zabbix_server_id PRIMARY KEY (zabbix_server_id)
+);
+
+
+ALTER SEQUENCE public.zabbix_server_zabbix_server_id_seq OWNED BY public.zabbix_server.zabbix_server_id;
+
+CREATE SEQUENCE public.host_host_id_seq;
+
+CREATE TABLE public.host (
+                host_id INTEGER NOT NULL DEFAULT nextval('public.host_host_id_seq'),
+                item_group_id INTEGER NOT NULL,
+                zabbix_server_id INTEGER NOT NULL,
+                zabbix_hostid BIGINT NOT NULL,
+                name VARCHAR NOT NULL,
+                CONSTRAINT p_host PRIMARY KEY (host_id)
+);
+
+
+ALTER SEQUENCE public.host_host_id_seq OWNED BY public.host.host_id;
+
+CREATE UNIQUE INDEX zabbix_host_idx
+ ON public.host
+ ( zabbix_server_id, zabbix_hostid );
+
+CREATE TABLE public.host_group_list (
+                host_group_id INTEGER NOT NULL,
+                host_id INTEGER NOT NULL,
+                CONSTRAINT p_hostgrouplist PRIMARY KEY (host_group_id)
+);
+
+
+CREATE TABLE public.item (
+                item_id INTEGER NOT NULL,
+                zabbix_server_id INTEGER NOT NULL,
+                zabbix_itemid BIGINT NOT NULL,
+                name VARCHAR NOT NULL,
+                CONSTRAINT p_item PRIMARY KEY (item_id)
+);
+
+
+CREATE UNIQUE INDEX item_idx
+ ON public.item
+ ( zabbix_server_id, zabbix_itemid );
+
+CREATE TABLE public.item_group_list (
+                item_group_id INTEGER NOT NULL,
+                item_id INTEGER NOT NULL,
+                CONSTRAINT p_itemgrouplist PRIMARY KEY (item_group_id, item_id)
+);
+
+
+CREATE SEQUENCE public.item_stat_item_stat_id_seq;
+
+CREATE TABLE public.item_stat (
+                item_stat_id BIGINT NOT NULL DEFAULT nextval('public.item_stat_item_stat_id_seq'),
+                avg_ NUMERIC(14,2) NOT NULL,
+                min_ NUMERIC(14,2) NOT NULL,
+                max_ NUMERIC(14,2) NOT NULL,
+                stddev_ NUMERIC(14,2) NOT NULL,
+                cv NUMERIC(14,2) NOT NULL,
+                cnt BIGINT DEFAULT 0,
+                CONSTRAINT p_item_stat PRIMARY KEY (item_stat_id)
+);
+
+
+ALTER SEQUENCE public.item_stat_item_stat_id_seq OWNED BY public.item_stat.item_stat_id;
+
 CREATE UNIQUE INDEX i_windowitem
-  ON itemstat
-  USING btree
-  (windowid,itemid);
-CREATE INDEX i_hostid
-  ON itemstat
-  USING btree
-  (hostid);
-CREATE INDEX loi
-  ON itemstat
-  USING btree
-  (loi);
-ALTER TABLE itemstat
-  ADD CONSTRAINT fi_windowid FOREIGN KEY (windowid) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
+ ON public.item_stat USING BTREE
+ ( item_stat_id );
 
-CREATE TABLE hoststat
-(
-  hostid bigint NOT NULL,
-  windowid integer NOT NULL,
-  cnt bigint DEFAULT 0,
-  loi integer DEFAULT 0,
-  updated timestamp with time zone,
-  CONSTRAINT p_hoststat PRIMARY KEY (hostid, windowid)
-)
-WITH (
-  OIDS=TRUE
+CREATE SEQUENCE public.tw_tw_id_seq;
+
+CREATE TABLE public.tw (
+                tw_id BIGINT NOT NULL DEFAULT nextval('public.tw_tw_id_seq'),
+                zabbix_server_id INTEGER NOT NULL,
+                description VARCHAR(255) DEFAULT NULL::character varying,
+                tfrom TIMESTAMP NOT NULL,
+                seconds BIGINT NOT NULL,
+                created TIMESTAMP NOT NULL,
+                updated TIMESTAMP,
+                found INTEGER NOT NULL,
+                lowstddev INTEGER NOT NULL,
+                lowavg INTEGER NOT NULL,
+                lowcnt INTEGER NOT NULL,
+                loi INTEGER DEFAULT 0,
+                ignored INTEGER NOT NULL,
+                processed INTEGER NOT NULL,
+                parentid BIGINT,
+                lowcv INTEGER NOT NULL,
+                CONSTRAINT p_tw PRIMARY KEY (tw_id)
 );
-ALTER TABLE hoststat
-  OWNER TO monda;
+COMMENT ON TABLE public.tw IS 'Contains all informations about time windows. 
+All statistics are window based.';
+
+
+ALTER SEQUENCE public.tw_tw_id_seq OWNED BY public.tw.tw_id;
+
+CREATE UNIQUE INDEX i_times
+ ON public.tw USING BTREE
+ ( zabbix_server_id, tfrom, seconds );
+
+CREATE INDEX i_desc
+ ON public.tw USING BTREE
+ ( description );
+
+CREATE INDEX i_id
+ ON public.tw USING BTREE
+ ( tw_id );
+
+CREATE INDEX i_loi
+ ON public.tw USING BTREE
+ ( loi );
+
+CREATE INDEX i_parentid
+ ON public.tw USING BTREE
+ ( parentid );
+
+CREATE TABLE public.item_corr (
+                tw1_id BIGINT NOT NULL,
+                tw2_id BIGINT NOT NULL,
+                item1_id INTEGER NOT NULL,
+                item2_id INTEGER NOT NULL,
+                corr NUMERIC(3,2) NOT NULL,
+                cnt INTEGER NOT NULL,
+                loi INTEGER NOT NULL,
+                CONSTRAINT p_item_corr PRIMARY KEY (tw1_id, tw2_id, item1_id, item2_id)
+);
+
+
+CREATE INDEX item_corr_idx
+ ON public.item_corr
+ ( corr );
+
+CREATE TABLE public.tw_corr (
+                tw1_id BIGINT NOT NULL,
+                tw2_id BIGINT NOT NULL,
+                loi INTEGER DEFAULT 0 NOT NULL,
+                corr NUMERIC(3,2) NOT NULL,
+                CONSTRAINT p_tw_corr PRIMARY KEY (tw1_id, tw2_id)
+);
+COMMENT ON TABLE public.tw_corr IS 'Informations about correlations between timewindows.';
+
+
+CREATE INDEX iwc_loi
+ ON public.tw_corr USING BTREE
+ ( loi );
+
+CREATE INDEX iwc_window
+ ON public.tw_corr USING BTREE
+ ( tw1_id, tw2_id );
+
+CREATE TABLE public.host_stat (
+                host_id INTEGER NOT NULL,
+                tw_id BIGINT NOT NULL,
+                cnt INTEGER NOT NULL,
+                item_group_id INTEGER NOT NULL,
+                loi INTEGER DEFAULT 0 NOT NULL,
+                CONSTRAINT p_host_stat PRIMARY KEY (host_id, tw_id)
+);
+
 
 CREATE UNIQUE INDEX i_windowhost
-  ON hoststat
-  USING btree
-  (windowid, hostid);
-
+ ON public.host_stat USING BTREE
+ ( tw_id, host_id );
 
 CREATE INDEX ih_loi
-  ON hoststat
-  USING btree
-  (loi);
+ ON public.host_stat USING BTREE
+ ( loi );
 
-CREATE TABLE itemcorr
-(
-  windowid1 integer NOT NULL,
-  windowid2 integer NOT NULL,
-  itemid1 bigint NOT NULL,
-  itemid2 bigint NOT NULL,
-  corr double precision NOT NULL,
-  cnt bigint,
-  loi integer DEFAULT 0,
-  CONSTRAINT "p_itemcorr" PRIMARY KEY (windowid1, windowid2, itemid1, itemid2)
-)
-WITH (
-  OIDS=TRUE
+CREATE TABLE public.host_corr (
+                tw1_id BIGINT NOT NULL,
+                tw2_id BIGINT NOT NULL,
+                host1_id INTEGER NOT NULL,
+                host2_id INTEGER NOT NULL,
+                cnt INTEGER NOT NULL,
+                corr NUMERIC(3,2) NOT NULL,
+                loi INTEGER DEFAULT 0,
+                CONSTRAINT p_hostcorr PRIMARY KEY (tw1_id, tw2_id, host1_id, host2_id)
 );
-ALTER TABLE itemcorr
-  OWNER TO monda;
-CREATE INDEX ic_windowitem
-  ON itemcorr
-  USING btree
-  (windowid1, windowid2, itemid1, itemid2);
-CREATE INDEX ic_loi
-  ON itemcorr
-  USING btree
-  (loi);
-ALTER TABLE itemcorr
-  ADD CONSTRAINT fi_windowid1 FOREIGN KEY (windowid1) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
-ALTER TABLE itemcorr
-  ADD CONSTRAINT fi_windowid2 FOREIGN KEY (windowid2) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
 
-CREATE TABLE hostcorr
-(
-  windowid1 bigint NOT NULL,
-  windowid2 bigint NOT NULL,
-  hostid1 bigint NOT NULL,
-  hostid2 bigint NOT NULL,
-  cnt bigint,
-  corr double precision,
-  loi integer DEFAULT 0, 
-  CONSTRAINT "primary" PRIMARY KEY (windowid1, windowid2, hostid1, hostid2)
-)
-WITH (
-  OIDS=FALSE
-);
-ALTER TABLE hostcorr
-  OWNER TO monda;
+
 CREATE INDEX i_window
-  ON hostcorr
-  USING btree
-  (windowid1,windowid2,hostid1,hostid2);
-CREATE INDEX ihc_loi 
-ON hostcorr
-USING btree
- (loi);
-ALTER TABLE hostcorr
-  ADD CONSTRAINT fi_windowid1 FOREIGN KEY (windowid1) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
-ALTER TABLE hostcorr
-  ADD CONSTRAINT fi_windowid2 FOREIGN KEY (windowid2) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
+ ON public.host_corr USING BTREE
+ ( tw1_id, tw2_id, host1_id, host2_id );
 
-CREATE TABLE windowcorr
-(
-  windowid1 bigint NOT NULL,
-  windowid2 bigint NOT NULL,
-  loi integer DEFAULT 0,
-  CONSTRAINT "p_windowcorr" PRIMARY KEY (windowid1, windowid2)
-)
-WITH (
-  OIDS=FALSE
+CREATE INDEX ihc_loi
+ ON public.host_corr USING BTREE
+ ( loi );
+
+CREATE INDEX host_corr_idx
+ ON public.host_corr
+ ( loi );
+
+CREATE TABLE public.tw_item (
+                item_id INTEGER NOT NULL,
+                tw_id BIGINT NOT NULL,
+                item_stat_id BIGINT NOT NULL,
+                CONSTRAINT p_tw_item PRIMARY KEY (item_id, tw_id)
 );
-ALTER TABLE windowcorr
-  OWNER TO monda;
-CREATE INDEX iwc_window
-  ON windowcorr
-  USING btree
-  (windowid1, windowid2);
-CREATE INDEX iwc_loi
-  ON windowcorr
-  USING btree
-  (loi);
 
 
+ALTER TABLE public.host_group_list ADD CONSTRAINT host_group_host_group_list_fk
+FOREIGN KEY (host_group_id)
+REFERENCES public.host_group (host_group_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
 
+ALTER TABLE public.item_group_list ADD CONSTRAINT item_group_item_group_list_fk
+FOREIGN KEY (item_group_id)
+REFERENCES public.item_group (item_group_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.host ADD CONSTRAINT item_group_host_fk
+FOREIGN KEY (item_group_id)
+REFERENCES public.item_group (item_group_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.tw ADD CONSTRAINT zabbix_server_tw_fk
+FOREIGN KEY (zabbix_server_id)
+REFERENCES public.zabbix_server (zabbix_server_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.host ADD CONSTRAINT zabbix_server_host_fk
+FOREIGN KEY (zabbix_server_id)
+REFERENCES public.zabbix_server (zabbix_server_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.item ADD CONSTRAINT zabbix_server_item_fk
+FOREIGN KEY (zabbix_server_id)
+REFERENCES public.zabbix_server (zabbix_server_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.host_corr ADD CONSTRAINT host_hostcorr_fk
+FOREIGN KEY (host1_id)
+REFERENCES public.host (host_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.host_stat ADD CONSTRAINT host_hoststat_fk
+FOREIGN KEY (host_id)
+REFERENCES public.host (host_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.host_corr ADD CONSTRAINT host_host_corr_fk
+FOREIGN KEY (host2_id)
+REFERENCES public.host (host_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.host_group_list ADD CONSTRAINT host_host_group_list_fk
+FOREIGN KEY (host_id)
+REFERENCES public.host (host_id)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
+
+ALTER TABLE public.tw_item ADD CONSTRAINT item_timewindowitem_fk
+FOREIGN KEY (item_id)
+REFERENCES public.item (item_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.item_corr ADD CONSTRAINT item_item_corr_fk
+FOREIGN KEY (item1_id)
+REFERENCES public.item (item_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.item_corr ADD CONSTRAINT item_item_corr_fk1
+FOREIGN KEY (item2_id)
+REFERENCES public.item (item_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.item_group_list ADD CONSTRAINT item_item_group_list_fk
+FOREIGN KEY (item_id)
+REFERENCES public.item (item_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.tw_item ADD CONSTRAINT itemstat_timewindowitem_fk
+FOREIGN KEY (item_stat_id)
+REFERENCES public.item_stat (item_stat_id)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
+
+ALTER TABLE public.tw_item ADD CONSTRAINT timewindow_timewindowitem_fk
+FOREIGN KEY (tw_id)
+REFERENCES public.tw (tw_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.host_corr ADD CONSTRAINT timewindow_hostcorr_fk
+FOREIGN KEY (tw1_id)
+REFERENCES public.tw (tw_id)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
+
+ALTER TABLE public.host_corr ADD CONSTRAINT timewindow_hostcorr_fk1
+FOREIGN KEY (tw2_id)
+REFERENCES public.tw (tw_id)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
+
+ALTER TABLE public.host_stat ADD CONSTRAINT timewindow_hoststat_fk
+FOREIGN KEY (tw_id)
+REFERENCES public.tw (tw_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.tw_corr ADD CONSTRAINT timewindow_windowcorr_fk
+FOREIGN KEY (tw1_id)
+REFERENCES public.tw (tw_id)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
+
+ALTER TABLE public.item_corr ADD CONSTRAINT timewindow_itemcorr_fk
+FOREIGN KEY (tw1_id)
+REFERENCES public.tw (tw_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.item_corr ADD CONSTRAINT timewindow_itemcorr_fk1
+FOREIGN KEY (tw2_id)
+REFERENCES public.tw (tw_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+NOT DEFERRABLE;
+
+ALTER TABLE public.tw_corr ADD CONSTRAINT timewindow_timewindowcorr_fk
+FOREIGN KEY (tw2_id)
+REFERENCES public.tw (tw_id)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;

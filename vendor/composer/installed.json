@@ -1048,64 +1048,6 @@
         "homepage": "http://nette.org"
     },
     {
-        "name": "nette/deprecated",
-        "version": "v2.3.0",
-        "version_normalized": "2.3.0.0",
-        "source": {
-            "type": "git",
-            "url": "https://github.com/nette/deprecated.git",
-            "reference": "147bc67d7e3de7aecefb8995245c20b2bd8404b9"
-        },
-        "dist": {
-            "type": "zip",
-            "url": "https://api.github.com/repos/nette/deprecated/zipball/147bc67d7e3de7aecefb8995245c20b2bd8404b9",
-            "reference": "147bc67d7e3de7aecefb8995245c20b2bd8404b9",
-            "shasum": ""
-        },
-        "require-dev": {
-            "latte/latte": "~2.2",
-            "nette/application": "~2.2",
-            "nette/bootstrap": "~2.2, >=2.2.1",
-            "nette/caching": "~2.2",
-            "nette/forms": "~2.2",
-            "nette/mail": "~2.2",
-            "nette/robot-loader": "~2.2",
-            "nette/safe-stream": "~2.2",
-            "nette/tester": "~1.1",
-            "nette/utils": "~2.2",
-            "tracy/tracy": "~2.2"
-        },
-        "time": "2015-03-23 22:54:37",
-        "type": "library",
-        "installation-source": "dist",
-        "autoload": {
-            "classmap": [
-                "src/"
-            ],
-            "files": [
-                "src/loader.php"
-            ]
-        },
-        "notification-url": "https://packagist.org/downloads/",
-        "license": [
-            "BSD-3-Clause",
-            "GPL-2.0",
-            "GPL-3.0"
-        ],
-        "authors": [
-            {
-                "name": "David Grudl",
-                "homepage": "http://davidgrudl.com"
-            },
-            {
-                "name": "Nette Community",
-                "homepage": "http://nette.org/contributors"
-            }
-        ],
-        "description": "APIs and features removed from Nette Framework",
-        "homepage": "http://nette.org"
-    },
-    {
         "name": "nette/database",
         "version": "v2.3.2",
         "version_normalized": "2.3.2.0",
@@ -1389,5 +1331,128 @@
             "mvc",
             "templating"
         ]
+    },
+    {
+        "name": "dibi/dibi",
+        "version": "v2.3.2",
+        "version_normalized": "2.3.2.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/dg/dibi.git",
+            "reference": "7762da1bbbcbffc97515cff47b118be63244834c"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/dg/dibi/zipball/7762da1bbbcbffc97515cff47b118be63244834c",
+            "reference": "7762da1bbbcbffc97515cff47b118be63244834c",
+            "shasum": ""
+        },
+        "require": {
+            "php": ">=5.2.0"
+        },
+        "replace": {
+            "dg/dibi": "self.version"
+        },
+        "require-dev": {
+            "nette/tester": "~1.3",
+            "tracy/tracy": "~2.2"
+        },
+        "time": "2015-04-18 14:26:53",
+        "type": "library",
+        "extra": {
+            "branch-alias": {
+                "dev-master": "2.3-dev"
+            }
+        },
+        "installation-source": "dist",
+        "autoload": {
+            "classmap": [
+                "dibi/"
+            ]
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "BSD-3-Clause",
+            "GPL-2.0",
+            "GPL-3.0"
+        ],
+        "authors": [
+            {
+                "name": "David Grudl",
+                "homepage": "http://davidgrudl.com"
+            }
+        ],
+        "description": "Dibi is Database Abstraction Library for PHP",
+        "homepage": "http://dibiphp.com",
+        "keywords": [
+            "access",
+            "database",
+            "dbal",
+            "mssql",
+            "mysql",
+            "odbc",
+            "oracle",
+            "pdo",
+            "postgresql",
+            "sqlite"
+        ]
+    },
+    {
+        "name": "nette/deprecated",
+        "version": "v2.3.0",
+        "version_normalized": "2.3.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/nette/deprecated.git",
+            "reference": "147bc67d7e3de7aecefb8995245c20b2bd8404b9"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/nette/deprecated/zipball/147bc67d7e3de7aecefb8995245c20b2bd8404b9",
+            "reference": "147bc67d7e3de7aecefb8995245c20b2bd8404b9",
+            "shasum": ""
+        },
+        "require-dev": {
+            "latte/latte": "~2.2",
+            "nette/application": "~2.2",
+            "nette/bootstrap": "~2.2, >=2.2.1",
+            "nette/caching": "~2.2",
+            "nette/forms": "~2.2",
+            "nette/mail": "~2.2",
+            "nette/robot-loader": "~2.2",
+            "nette/safe-stream": "~2.2",
+            "nette/tester": "~1.1",
+            "nette/utils": "~2.2",
+            "tracy/tracy": "~2.2"
+        },
+        "time": "2015-03-23 22:54:37",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "classmap": [
+                "src/"
+            ],
+            "files": [
+                "src/loader.php"
+            ]
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "BSD-3-Clause",
+            "GPL-2.0",
+            "GPL-3.0"
+        ],
+        "authors": [
+            {
+                "name": "David Grudl",
+                "homepage": "http://davidgrudl.com"
+            },
+            {
+                "name": "Nette Community",
+                "homepage": "http://nette.org/contributors"
+            }
+        ],
+        "description": "APIs and features removed from Nette Framework",
+        "homepage": "http://nette.org"
     }
 ]

@@ -82,15 +82,15 @@ EOF
 
 First you have to create MondaDB. According to your setup, you have to feed sql/init.sql into your 
 SQL command. You have to be postgresql admin user to run scripts. There are three scripts.
-- init_db.sql to create role and DB It will use default password for role monda!
-- init_schema.sql to create tables and objects inside monda DB
+- init_db.sql to create role and DB It will use default password for role monda! You must be postgres admin!
+- init_schema.sql to create tables and objects inside monda DB. You have to be monda user!
 - drop.sql to drop database, tables and roles (if you want to start from scratch again)
-- db.sh {init|drop} will try to do all
 
 ```
-# cd ~/monda
+# cd ~/monda/sql
 # su postgres
-$ ./misc/db.sh init
+$ psql [your connection parameters] <init_db.sql
+$ psql -Umonda [your connection parameters] <init_schema.sql
 ```
 
 ### Configuring
