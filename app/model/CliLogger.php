@@ -23,6 +23,14 @@ class CliLogger extends \Tracy\Logger implements \Tracy\ILogger {
     static $wwwlogger;
 
     public function __construct($directory, $email = NULL, BlueScreen $blueScreen = NULL) {
+        parent::__construct($directory, $email, $blueScreen);
+        self::__init();
+    }
+    
+    public function __init($directory = NULL, $email = NULL, BlueScreen $blueScreen = NULL) {
+        if (!$directory) {
+            $directory = __DIR__."/../log/";
+        }
         if (getenv("MONDA_DEBUG")) {
             if (array_key_exists(getenv("MONDA_DEBUG"), self::$levels)) {
                 self::$loglevel = self::$levels[getenv("MONDA_DEBUG")];
@@ -52,7 +60,7 @@ class CliLogger extends \Tracy\Logger implements \Tracy\ILogger {
 
     public function log($message, $priority = self::INFO) {
         if (!isset(self::$loglevel)) {
-            self::__construct();
+            self::__init();
         }
         if (PHP_SAPI=="cli") {
             if (array_key_exists($priority,self::$levels)) {

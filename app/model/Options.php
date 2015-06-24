@@ -1,281 +1,185 @@
 <?php
+
 namespace App\Model;
 
 use Nette,
-        Tracy\Debugger;
+    \App\Presenters\BasePresenter,
+    Tracy\Debugger;
 
 /**
  * ItemStat global class
  */
 class Options extends Nette\Object {
-    
-   private static $opts;
-   private static $getopts=Array();
-   private static $params;
-   private static $defaults;
-   private static $confparams = Array(
-        //key,               short,  long,              default,    defaulthelp,    choices.
+
+    private static $opts;   // Options values parsed from inputs
+    const TCHARS="\t\n\r\0\x0B'\"";
+
+    private static $copts = Array();            // Options informations
+    private static $defaults = Array();         // Options which are defaults
+    private static $paramsrc = Array();         // Param source (file, cli, env)
+    private static $confparams = Array(         // Parameters for module
+        //key,               short,  default,    defaulthelp,    choices
         //description
-       'debug' => Array(
-            'D', 'debug', 'warning', '', '',
+        'debug' => Array(
+            'D', 'warning', '', Array("debug", "info", "warning", "error", "critical"),
             'Debug level (debug,info,warning,error,critical)'
         ),
-       'logfile' => Array(
-            'Lf', 'logfile', 'php://stderr', '', '',
+        'conffile' => Array(
+            false, ((PHP_SAPI == "cli") ? '~/.mondarc' : __DIR__ . '/../config/monda.rc'), '', '',
+            'Config file location'
+        ),
+        'prio' => Array(
+            'N', 'low', '', Array('low', 'std', 'high'),
+            'Set monda process priority'
+        ),
+        'logfile' => Array(
+            false, 'php://stderr', '', '',
             'Log file'
         ),
         'help' => Array(
-            'h', 'help', '', '', '',
+            'h', '', '', '',
             'Help. If used with module, help will be module specific'
         ),
         'xhelp' => Array(
-            'xh', 'advanced_help', '', '', '',
+            'xh', '', '', '',
             'Advanced help for all options'
         ),
         'progress' => Array(
-            'P', 'progress', '', '', '',
+            'P', '', '', '',
             'Progress informations on stderr'
         ),
         'configinfo' => Array(
-            'C', 'config_info', '', '', '',
+            'C', '', '', '',
             'Configuration information'
         ),
         'dry' => Array(
-            'R', 'dry_run', '', 'no', '',
+            'R', '', 'no', '',
             'Only show what would be done. Do not touch db.'
         ),
-        'fork' => Array(
-            'F', 'fork_level', '', 'no fork', '',
-            'Fork level (how many processes to run simultanously)'
-        ),
-        'maxload' => Array(
-            'Ml', 'max_load', '10', '', '',
-            'Run jobs only if OS loadavg is lower than value'
-        ),
-        'maxcpuwait' => Array(
-            'Mw', 'max_cpuwait', '20', '', '',
-            'Run jobs only if CPU wait time lower than value[%%]'
-        ),
-        'zapi' => Array(
-            'za', 'zabbix_api', '', 'API disabled', '',
-            'Use Zabbix API to retrieve objects. If this is false, cache is used. If object is not in cache, return empty values.'
-        ),
         'outputmode' => Array(
-            'Om', 'output_mode', 'cli', 'cli', '',
+            'Om', 'cli', 'cli', '',
             'Use this output mode {cli|csv|dump}'
         ),
         'outputverb' => Array(
-            'Ov', 'output_verbosity', 'ids', 'ids', '',
+            'Ov', 'ids', 'ids', '',
             'Use this output verbosity {id,expanded}'
         ),
-        'zdsn' => Array(
-            'Zd', 'zabbix_dsn', 'pgsql:host=127.0.0.1;port=5432;dbname=zabbix', 'pgsql:host=127.0.0.1;port=5432;dbname=zabbix', '',
-            'Use this zabbix Database settings'
-        ),
-        'zdbuser' => Array(
-            'Zu', 'zabbix_db_user', 'zabbix', 'zabbix', '',
-            'Use this zabbix Database user'
-        ),
-        'zdbpw' => Array(
-            'Zp', 'zabbix_db_pw', '', '', '',
-            'Use this zabbix Database password'
-        ),
-        'zid' => Array(
-            'Zi', 'zabbix_id', '1', '1', '',
-            'Use this zabbix server ID'
-        ),
-        'mdsn' => Array(
-            'Md', 'monda_dsn', 'pgsql:host=127.0.0.1;port=5432;dbname=monda', 'pgsql:host=127.0.0.1;port=5432;dbname=monda', '',
+        'dsn' => Array(
+            false, 'pgsql:host=127.0.0.1;port=5432;dbname=monda', 'pgsql:host=127.0.0.1;port=5432;dbname=monda', '',
             'Use this monda Database settings'
         ),
-        'mdbuser' => Array(
-            'Mu', 'monda_db_user', 'monda', 'monda', '',
+        'dbuser' => Array(
+            false, 'monda', 'monda', '',
             'Use this monda Database user'
         ),
-        'mdbpw' => Array(
-            'Mp', 'monda_db_pw', 'M0nda', 'M0nda', '',
+        'dbpw' => Array(
+            false, 'M0nda', 'M0nda', '',
             'Use this monda Database password'
         ),
-        'zaburl' => Array(
-            'ZU', 'zabbix_url', 'http://localhost/zabbix', 'http://localhost/zabbix', '',
-            'Base of zabbix urls'
-        ),
-        'zapiurl' => Array(
-            'Za', 'zabbix_api_url', 'http://localhost/zabbix/api_jsonrpc.php', 'http://localhost/zabbix/api_jsonrpc.php', '',
-            'Use this zabbix API url'
-        ),
-        'zapiuser' => Array(
-            'Zau', 'zabbix_api_user', 'monda', 'monda', '',
-            'Use this zabbix API user'
-        ),
-        'zapipw' => Array(
-            'Zap', 'zabbix_api_pw', '', '', '',
-            'Use this zabbix API password'
-        ),
-        'csvdelim' => Array(
-            '', 'csv_delimiter', ';', ';', '',
-            'Use this delimiter for CSV output'
-        ),
-        'csvenc' => Array(
-            '', 'csv_enclosure', '"', '"', '',
-            'Use this enclosure for CSV output'
-        ),
-        'zabbix_history_table' => Array(
-            'Zht', 'zabbix_history_table', 'history', 'history', '',
-            'Zabbix history table to work on'
-        ),
-        'zabbix_history_uint_table' => Array(
-            'Zhut', 'zabbix_history_uint_table', 'history_uint', 'history_uint', '',
-            'Zabbix history_uint table to work on'
-        ),
-        'apicacheexpire' => Array(
-            'Ace', 'api_cache_expire', '24 hours', '24 hours', '',
-            'Maximum time to cache api requests. Use 0 to not cache.'
-        ),
-        'sqlcacheexpire' => Array(
-            'Sce', 'sql_cache_expire', '1 hour', '1 hour', '',
-            'Maximum time to cache sql requests. Use 0 to not cache.'
-        ),
-        'nocache' => Array(
-            'nc', 'nocache', '', 'no', '',
-            'Disable both SQL and API cache'
-        ),
         'sow' => Array(
-            'sw', 'sow', 'Monday', 'Monday', '',
+            'sw', 'monday', 'monday', Array('monday', 'sunday'),
             'Star day of week'
         ),
         // Time window parameters
         'start' => Array(
-            's', 'start', '1420063200', '2015-01-01 00:00', '',
+            's', 'january 1', 'january 1', '',
             'Start time of analysis.'
         ),
         'end' => Array(
-            'e', 'end', '1433837100', '-1 hour', '',
+            'e', '-1 hour', '-1 hour', '',
             'End time of analysis.'
         ),
         'description' => Array(
-            'd', 'window-description', '', '', '',
+            'd', '', '', '',
             'Window description.'
         ),
         'length' => Array(
-            'l', 'window_length', '', 'All', '',
+            'l', '', 'All', '',
             'Window length. Leave empty to get all lengths.'
         ),
         'wsort' => Array(
-            'ws', 'windows_sort', 'loi/-', 'loi/-', '',
+            'ws', 'loi/-', 'loi/-', '',
             'Sort order of windows to select ({random|start|length|loi|loih|updated}/{+|-}'
         ),
         'empty' => Array(
-            'm', 'only_empty_results', '', 'no', '',
+            'm', '', 'no', '',
             'Work only on results which are empty (skip already computed objects)'
         ),
         'loionly' => Array(
-            'L', 'only_with_loi', '', 'no', '',
+            'L', '', 'no', '',
             'Select only objects which have loi>0'
         ),
         'createdonly' => Array(
-            'c', 'only_just_created_windows', '', 'no', '',
+            'c', '', 'no', '',
             'Select only windows which were just created and contains no data'
         ),
         'updated' => Array(
-            'u', 'windows_updated_before', '', 'no care', '',
+            'u', '', 'no care', '',
             'Select only windows which were updated less than datetime'
         ),
         'wids' => Array(
-            'w', 'window_ids', '', 'no care', '',
+            'w', '', 'no care', '',
             'Select only windows with this ids'
         ),
         'chgloi' => Array(
-            'Cl', 'change_loi', '', 'None', '',
+            'Cl', '', 'None', '',
             'Change loi of selected windows. Can be number, +number or -number'
         ),
         'rename' => Array(
-            'Rn', 'rename', '', 'None', '',
+            'Rn', '', 'None', '',
             'Rename selected window(s). Can contain macros %Y, %M, %d, %H, %i, %l, %F'
         ),
         'max_windows' => Array(
-            'Wm', 'max_windows', '', 'All', '',
+            'Wm', '', 'All', '',
             'Maximum number of windows to fetch (LIMIT SELECT)'
         )
     );
 
-    private static function parseOne($key,$short,$long,$desc,$default=null,$defaulthelp=false,$choices=false) {
-        
-        self::$getopts[$key]=Array(
-            "short" => $short,
-            "long" => $long,
-            "description" => $desc,
-            "default" => $default,
-            "defaulthelp" => $defaulthelp,
-            "choices" => $choices
-        );
-        if ($short && array_key_exists($short,self::$params)) {
-            $value=stripslashes(self::$params[$short]);
-        } elseif (array_key_exists($long,self::$params)) {
-            $value=stripslashes(self::$params[$long]);
-        } elseif (array_key_exists("_$short",self::$params)) {
-            $value=!self::$params["_$short"];
-        } elseif (array_key_exists("_$long",self::$params)) {
-            $value=!self::$params["_$long"];
-        } else {
-            $value=$default;
-            self::$defaults[]=$key;
-        }
-        
-        self::$opts->$key=$value;
-        if ($key=="debug" || $key=="logfile") {
-            Debugger::setLogger(New \App\Model\CliLogger());            
-        }
-
-        if ($choices) {
-            if (array_search($value,$choices)===false) {
-                self::mexit(14,sprintf("Bad option %s for parameter %s(%s). Possible values: {%s}\n",$value,$short,$long,join($choices,"|")));
-            }
-        }
-        if (isset(self::$opts->$key)) {
-            Debugger::log("Setting option $long($desc) to ".  strtr(Debugger::dump(self::$opts->$key,true),"\n"," ")."\n",Debugger::INFO);
-        }
-    }
-    
     static function isDefault($key) {
-        if (array_search($key,self::$opts->defaults)===false) {
-            return(false);
+        if (array_key_exists($key, self::$defaults)) {
+            return(self::$defaults[$key]);
         } else {
-            return(true);
+            return(false);
         }
     }
-    
-    public function help($name=false) {
-        Debugger::log(sprintf("[Common options for %s]:\n",$name),Debugger::WARNING);
-        if (!self::get("xhelp")) {
-            return;
-        }
-        foreach (self::$getopts as $key=>$opt) {
-            if (!$opt["defaulthelp"]) {
-                $opt["defaulthelp"]=$opt["default"];
+
+    public function help($name = false) {
+        foreach (self::$copts as $key => $opt) {
+            if ($name) {
+                if (!preg_match("/^$name\./", $key))
+                    continue;
             }
-            if (array_key_exists("choices",$opt) && is_array($opt["choices"])) {
-                $choicesstr="Choices: {".join("|",$opt["choices"])."}\n";
+            if (!$opt["defaulthelp"]) {
+                $opt["defaulthelp"] = $opt["default"];
+            }
+            if (array_key_exists("choices", $opt) && is_array($opt["choices"])) {
+                $choicesstr = "Choices: {" . join("|", $opt["choices"]) . "}\n";
             } else {
-                $choicesstr="";
+                $choicesstr = "";
             }
             if (self::isDefault($key)) {
-                $avalue="Default";
+                $avalue = "Default";
             } else {
                 if (is_array(self::$opts->$key)) {
-                    $avalue=join(",",self::$opts->$key);
+                    $avalue = join(",", self::$opts->$key);
                 } elseif (is_bool(self::$opts->$key)) {
-                    $avalue=sprintf("%b",self::$opts->$key);    
+                    $avalue = sprintf("%b", self::$opts->$key);
                 } else {
-                    $avalue=self::$opts->$key;
+                    $avalue = self::$opts->$key;
                 }
             }
-            Debugger::log(sprintf("-%s|--%s 'value':\n   %s\n   Default: <%s>\n   Actual value: %s\n   %s\n",
-                    $opt["short"],$opt["long"],     $opt["description"],    $opt["defaulthelp"], $avalue, $choicesstr),Debugger::WARNING);
+            if ($opt["short"]) {
+                Debugger::log(sprintf("-%s|--%s 'value':\n   %s\n   Default: <%s>\n   Actual value: %s\n   %s\n", $opt["short"], $opt["long"], $opt["description"], $opt["defaulthelp"], $avalue, $choicesstr), Debugger::WARNING);
+            } else {
+                Debugger::log(sprintf("--%s 'value':\n   %s\n   Default: <%s>\n   Actual value: %s\n   %s\n", $opt["long"], $opt["description"], $opt["defaulthelp"], $avalue, $choicesstr), Debugger::WARNING);
+            }
         }
     }
-    
-    static function get($name) {
+
+    static function get($name, $domain = false) {
+        if ($name && $domain) {
+            $name = "$domain.$name";
+        }
         if ($name) {
             if (isset(self::$opts->$name)) {
                 return(self::$opts->$name);
@@ -283,37 +187,156 @@ class Options extends Nette\Object {
                 return(false);
             }
         } else {
-            return(self::$opts);
+            if ($domain) {
+                $opts = Array();
+                foreach (self::$opts as $key => $opt) {
+                    if (preg_match("/^$domain\./", $key)) {
+                        $opts[$key] = $opt;
+                    }
+                }
+                return($opts);
+            } else {
+                return(self::$opts);
+            }
         }
     }
 
-    public static function read($params) {
-   
-        self::$params=$params;
-        foreach (self::$confparams as $parm=>$arr) {
-            self::parseOne($parm,$arr[0],$arr[1],$arr[5],$arr[2],$arr[3],$arr[4]);
+    public static function info($param=false) {
+        if (!$param) {
+            $ret=Array();
+            foreach (self::$copts as $key=>$opt) {
+                $ret["$key"]=self::info($key);
+            }
+            return($ret);
         }
-        foreach ($params as $param=>$value) {
-            if ($param=="action") continue;
-            if ($param=="foo") continue;
-            $found=false;
-            foreach (self::$confparams as $cparam) {
-                if ($param==$cparam[0] || $param==$cparam[1]) {
-                    $found=true;
+        return(Array(
+            "key" => $param,
+            "value" => self::get($param),
+            "default" => self::isDefault($param),
+            "setfrom" => self::$paramsrc[$param],
+            "copt" => self::$copts[$param]
+        ));
+    }
+
+    public static function readFile($filename) {
+        $params=Array();
+        $f = fopen($filename, "r");
+        while ($line = fgets($f)) {
+            if (preg_match("#^-#", $line)) {
+                if (preg_match("#^(-[a-zA-Z0-9_\-]*) {1,4}(.*)$#", $line, $regs)) {
+                    $option = trim($regs[1], self::TCHARS);
+                    $value = trim($regs[2], self::TCHARS);
+                    if (substr($option,0,2)=="--") {
+                        $option=substr($option,2);
+                    }
+                    if (substr($option,0,1)=="-") {
+                        $option=substr($option,1);
+                    }
+                    $params[$option]=$value;
+                } else {
+                    $params[$option]=true;
+                }
+            }
+        }
+        fclose($f);
+        self::read($params,$filename);
+    }
+    
+    public static function readEnv() {
+        $params=Array();
+        foreach (self::$confparams as $key=>$cparam) {
+            $envkey="MONDA_".strtr($key,".","_");
+            if (getenv($envkey)) {
+                $params[$key]=addslashes(getenv($envkey));
+            }
+        }
+        self::read($params,"env");
+    }
+    
+    private static function parseOne($params, $key, $short, $long, $desc, $default = null, $defaulthelp = false, $choices = false, $from = false) {
+
+        self::$copts[$key] = Array(
+            "short" => $short,
+            "long" => $long,
+            "description" => $desc,
+            "default" => $default,
+            "defaulthelp" => $defaulthelp,
+            "choices" => $choices
+        );
+        $fromdefault=false;
+        if ($short && array_key_exists($short, $params)) {
+            $value = stripslashes($params[$short]);
+        } elseif (array_key_exists($long, $params)) {
+            $value = stripslashes($params[$long]);
+        } elseif (array_key_exists("_$short", $params)) {
+            $value = !$params["_$short"];
+        } elseif (array_key_exists("_$long", $params)) {
+            $value = !$params["_$long"];
+        } else {
+            $value = $default;
+            $fromdefault=true;
+        }
+        
+        if ($choices) {
+            if (array_search($value, $choices) === false) {
+                BasePresenter::mexit(14, sprintf("Bad option %s for parameter %s(%s). Possible values: {%s}\n", $value, $short, $long, join($choices, "|")));
+            }
+        }
+        $objkey=$key;
+        if (isset(self::$opts->$objkey)) {
+            if (!$fromdefault) {
+                self::$paramsrc[$key] = $from;
+                self::$opts->$objkey = $value;
+                if (!self::isDefault($key) && $value!=self::$opts->$objkey) {
+                    CliLogger::log("Overwriting option $key from $from.\n",Debugger::WARNING);
+                }
+                self::$defaults[$key]=false;
+            }
+        } else {
+            self::$opts->$objkey = $value;
+            self::$paramsrc[$key] = $from;
+            self::$defaults[$key]=$fromdefault;
+            if ($long="debug") CliLogger::__init();
+            if ($fromdefault) {
+                CliLogger::log("Default option $key($desc) to " . strtr(Debugger::dump(self::$opts->$objkey, true), "\n", " ") . "\n", Debugger::INFO);
+            } else {
+                CliLogger::log("Setting option $key($desc) (from $from) to " . strtr(Debugger::dump(self::$opts->$objkey, true), "\n", " ") . "\n", Debugger::WARNING);
+            }
+        }
+    }
+
+    static function extend($domain, $opts) {
+        foreach ($opts as $key => $opt) {
+            $idx = "$domain.$key";
+            self::$confparams[$idx] = Array(
+                false, $opt[0], $opt[1], $opt[2],$opt[3]
+            );
+        }
+    }
+
+    public static function read($params=Array(),$from=PHP_SAPI) {
+        foreach (self::$confparams as $parm => $arr) {
+            self::parseOne($params, $parm, $arr[0], $parm, $arr[4], $arr[1], $arr[2], $arr[3], $from);
+        }
+        foreach ($params as $param => $value) {
+            if ($param == "action")
+                continue;
+            if ($param == "error")
+                continue;
+            $found = false;
+            foreach (self::$confparams as $key => $cparam) {
+                if ($param == $key || $param == $cparam[0]) {
+                    $found = true;
                     continue;
                 }
             }
             if (!$found) {
-                Debugger::log("Unknown parameter $param!\n",Debugger::WARNING);
+                Debugger::log("Unknown parameter $param!\n", Debugger::WARNING);
             }
         }
-        if (isset(self::$opts->nocache)) {
-            self::$opts->sql_cache_expire=0;
-            self::$opts->api_cache_expire=0;
-        }
-        self::$opts->start= TimeUtils::timetoseconds(self::$opts->start);
-        if (self::$opts->start<631148400) {
-            self::mexit(4,sprintf("Bad start time (%d)?!\n",date("Y-m-d",self::$opts->start)));
+        self::$opts->start = TimeUtils::timetoseconds(self::$opts->start);
+        if (self::$opts->start < 631148400) {
+            BasePresenter::mexit(4, sprintf("Bad start time (%d)?!\n", date("Y-m-d", self::$opts->start)));
         }
     }
 

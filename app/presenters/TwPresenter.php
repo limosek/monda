@@ -10,10 +10,10 @@ use \Exception,Nette,
         App\Model\Options,
         Nette\Utils\DateTime as DateTime;
 
-class Tw2Presenter extends BasePresenter2
+class TwPresenter extends BasePresenter
 {
     
-    public function renderTw2() {
+    public function renderTw() {
         self::Help();
         self::mexit();
     }
@@ -28,7 +28,7 @@ class Tw2Presenter extends BasePresenter2
      tw:delete [common opts]
         Remove windows and dependent data from this range
      
-    tw:empty [common opts]
+     tw:empty [common opts]
         Empty windows data but leave windows created
         
      tw:show
