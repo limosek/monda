@@ -2,77 +2,58 @@
 
 namespace App\Presenters;
 
-use \Exception,
-    Nette,
-    App\Model,
-    Nette\Utils\DateTime as DateTime;
+use \Exception,Nette,
+        \Tracy\Debugger,
+	App\Model,
+        App\Model\CliLogger,
+        App\Model\Tw,
+        App\Model\Options,
+        Nette\Utils\DateTime as DateTime;
 
-class ZabbixPresenter extends MapPresenter {
-
-    public function Help() {
-        \App\Model\CliDebug::warn("
-     Zabbix Map operations
-
-     zabbix:twgraph  - Create zabbix 
- 
-     [common opts]
-    \n");
-        self::helpOpts();
+class Tw2Presenter extends BasePresenter2
+{
+    
+    public function renderTw2() {
+        self::Help();
+        self::mexit();
     }
     
-    public static function getOpts($ret) {
-        $ret=parent::getOpts($ret);
-        $ret=self::parseOpt($ret,
-                "rwhost",
-                false,"rwhost",
-                "Host in Zabbix with readwrite access to create objects.",
-                "monda",
-                "monda"
-                );
-        return($ret);
-    }
-    
-    function renderTwGraph() {
+    static function Help() {
+       Debugger::log("
+     Time Window operations
+     
+     tw:create [common opts]
+        Create window(s) for specified period and length
+
+     tw:delete [common opts]
+        Remove windows and dependent data from this range
+     
+    tw:empty [common opts]
+        Empty windows data but leave windows created
         
-        parent::renderTw();
-        $this->template->title = "Timewindow ".$this->opts->wids[0];
-        $colors=Array(
-            1 => "001100",
-            2 => "002200",
-            3 => "003300",
-            4 => "004400",
-            5 => "005500",
-            6 => "006600",
-            7 => "007700",
-            8 => "008800",
-            9 => "009900",
-            10 => "00aa00"
-        );
-        $color=1;
-        $gs=  \App\Model\Monda::apiCmd("graphGet",Array(
-            "itemids" => $this->template->top10items
-        ));
-        $gid=false;
-        foreach ($gs as $g) {
-            if ($g->name=="monda_test") $gid=$g->graphid;
-        }
-        if ($gid) {
-            \App\Model\Monda::apiCmd("graphDelete",Array($gid));
-        }
-        foreach ($this->template->top10items as $i) {
-            $gitems[] = Array(
-                    "itemid" => $i,
-                    "color" => $colors[$color++]
-                );
-        }
-        $r=  \App\Model\Monda::apiCmd("graphCreate",
-                Array(
-                    "name" => "monda_test",
-                    "width" => 800,
-                    "height" => 600,
-                    "gitems" => $gitems
-                ));
-        dump($r);exit;
+     tw:show
+        Show informations about timewindows in db
+        
+     tw:stats
+        Show statistics about timewindows in db
+    
+    tw:zstats
+        Show statistics about zabbix data at timewindows
+    
+    tw:modify
+        Modify or rename window(s)
+        
+     tw:loi
+        Recompute Level of Interest for windows
+     
+     Date formats: @timestamp, YYYYMMDDhhmm, now, '1 day ago', '00:00 1 day ago'
+     TimeWindow formats: Date_format/length, Date_format-Date_format/length, id
+     If no start and end date given, all data will be affected.
+     
+    [common opts]
+     \n",Debugger::ERROR);
+       Options::help();
+       exit;
     }
-
+   
 }
