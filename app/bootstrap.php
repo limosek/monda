@@ -63,6 +63,7 @@ if (file_exists(getenv("MONDARC")) && !getenv("MONDA_PASS2")) {
         }
         $presenter="$p:$a";
         $cmd=sprintf("'%s' '%s' %s --foo %s",$cmd,$presenter,$cfgargs,join(" ",$cmdargs));
+        //echo $cmd;
         system($cmd,$ret);
         exit($ret);
     } else {
