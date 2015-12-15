@@ -40,7 +40,6 @@ class BlockMacros extends MacroSet
 		$me->addMacro('snippet', array($me, 'macroBlock'), array($me, 'macroBlockEnd'));
 		$me->addMacro('snippetArea', array($me, 'macroBlock'), array($me, 'macroBlockEnd'));
 		$me->addMacro('ifset', array($me, 'macroIfset'), '}');
-		$me->addMacro('elseifset', array($me, 'macroIfset'), '}');
 	}
 
 
@@ -123,7 +122,7 @@ class BlockMacros extends MacroSet
 		if (isset($this->namedBlocks[$destination]) && !$parent) {
 			$cmd = "call_user_func(reset(\$_b->blocks[$name]), \$_b, %node.array? + get_defined_vars())";
 		} else {
-			$cmd = 'Latte\Macros\BlockMacrosRuntime::callBlock' . ($parent ? 'Parent' : '') . "(\$_b, $name, %node.array? + " . ($parent ? 'get_defined_vars' : '$template->getParameters') . '())';
+			$cmd = 'Latte\Macros\BlockMacros::callBlock' . ($parent ? 'Parent' : '') . "(\$_b, $name, %node.array? + " . ($parent ? 'get_defined_vars' : '$template->getParameters') . '())';
 		}
 
 		if ($node->modifiers) {
@@ -139,7 +138,7 @@ class BlockMacros extends MacroSet
 	 */
 	public function macroIncludeBlock(MacroNode $node, PhpWriter $writer)
 	{
-		return $writer->write('ob_start(); $_b->templates[%var]->renderChildTemplate(%node.word, %node.array? + get_defined_vars()); echo rtrim(ob_get_clean())',
+		return $writer->write('$_b->templates[%var]->renderChildTemplate(%node.word, %node.array? + get_defined_vars())',
 			$this->getCompiler()->getTemplateId());
 	}
 
@@ -302,21 +301,48 @@ class BlockMacros extends MacroSet
 
 	/**
 	 * {ifset #block}
-	 * {elseifset #block}
 	 */
 	public function macroIfset(MacroNode $node, PhpWriter $writer)
 	{
-		if (!preg_match('~#|[\w-]+\z~A', $node->args)) {
+		if (strpos($node->args, '#') === FALSE) {
 			return FALSE;
 		}
 		$list = array();
 		while (($name = $node->tokenizer->fetchWord()) !== FALSE) {
-			$list[] = preg_match('~#|[\w-]+\z~A', $name)
-				? '$_b->blocks["' . ltrim($name, '#') . '"]'
-				: $writer->formatArgs(new Latte\MacroTokens($name));
+			$list[] = $name[0] === '#' ? '$_b->blocks["' . substr($name, 1) . '"]' : $name;
 		}
-		return ($node->name === 'elseifset' ? '} else' : '')
-			. 'if (isset(' . implode(', ', $list) . ')) {';
+		return 'if (isset(' . implode(', ', $list) . ')) {';
+	}
+
+
+	/********************* run-time helpers ****************d*g**/
+
+
+	/**
+	 * Calls block.
+	 * @return void
+	 */
+	public static function callBlock(\stdClass $context, $name, array $params)
+	{
+		if (empty($context->blocks[$name])) {
+			throw new RuntimeException("Cannot include undefined block '$name'.");
+		}
+		$block = reset($context->blocks[$name]);
+		$block($context, $params);
+	}
+
+
+	/**
+	 * Calls parent block.
+	 * @return void
+	 */
+	public static function callBlockParent(\stdClass $context, $name, array $params)
+	{
+		if (empty($context->blocks[$name]) || ($block = next($context->blocks[$name])) === FALSE) {
+			throw new RuntimeException("Cannot include undefined parent block '$name'.");
+		}
+		$block($context, $params);
+		prev($context->blocks[$name]);
 	}
 
 }

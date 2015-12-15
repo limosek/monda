@@ -14,6 +14,8 @@ use Nette;
  * Configurator compiling extension.
  *
  * @author     David Grudl
+ * @property-read array $config
+ * @property-read ContainerBuilder $containerBuilder
  */
 abstract class CompilerExtension extends Nette\Object
 {
@@ -22,9 +24,6 @@ abstract class CompilerExtension extends Nette\Object
 
 	/** @var string */
 	protected $name;
-
-	/** @var array */
-	protected $config = array();
 
 
 	public function setCompiler(Compiler $compiler, $name)
@@ -35,42 +34,17 @@ abstract class CompilerExtension extends Nette\Object
 	}
 
 
-	public function setConfig(array $config)
-	{
-		$this->config = $config;
-		return $this;
-	}
-
-
 	/**
 	 * Returns extension configuration.
+	 * @param  array default unexpanded values.
 	 * @return array
 	 */
-	public function getConfig()
+	public function getConfig(array $defaults = NULL)
 	{
-		if (func_num_args()) { // deprecated
-			return Config\Helpers::merge($this->config, $this->getContainerBuilder()->expand(func_get_arg(0)));
-		}
-		return $this->config;
-	}
-
-
-	/**
-	 * Checks whether $config contains only $expected items and returns combined array.
-	 * @return array
-	 * @throws Nette\InvalidStateException
-	 */
-	public function validateConfig(array $expected, array $config = NULL, $name = NULL)
-	{
-		if (func_num_args() === 1) {
-			return $this->config = $this->validateConfig($expected, $this->config);
-		}
-		if ($extra = array_diff_key((array) $config, $expected)) {
-			$name = $name ?: $this->name;
-			$extra = implode(", $name.", array_keys($extra));
-			throw new Nette\InvalidStateException("Unknown configuration option $name.$extra.");
-		}
-		return Config\Helpers::merge($config, $expected);
+		$config = $this->compiler->getConfig();
+		$config = isset($config[$this->name]) ? $config[$this->name] : array();
+		unset($config['services'], $config['factories']);
+		return Config\Helpers::merge($config, $this->compiler->getContainerBuilder()->expand($defaults));
 	}
 
 
@@ -92,7 +66,10 @@ abstract class CompilerExtension extends Nette\Object
 	{
 		$loader = new Config\Loader;
 		$res = $loader->load($file);
-		$this->compiler->addDependencies($loader->getDependencies());
+		$container = $this->compiler->getContainerBuilder();
+		foreach ($loader->getDependencies() as $file) {
+			$container->addDependency($file);
+		}
 		return $res;
 	}
 

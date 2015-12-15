@@ -18,7 +18,6 @@ use Nette;
 class Neon
 {
 	const BLOCK = Encoder::BLOCK;
-	const CHAIN = '!!chain';
 
 
 	/**

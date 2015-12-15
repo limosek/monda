@@ -49,6 +49,7 @@ class ObjectMixin
 	{
 		$class = get_class($_this);
 		$isProp = self::hasProperty($class, $name);
+		$methods = & self::getMethods($class);
 
 		if ($name === '') {
 			throw new MemberAccessException("Call to class '$class' method without name.");
@@ -65,7 +66,7 @@ class ObjectMixin
 				throw new Nette\UnexpectedValueException("Property $class::$$name must be array or NULL, " . gettype($_this->$name) ." given.");
 			}
 
-		} elseif (($methods = & self::getMethods($class)) && isset($methods[$name]) && is_array($methods[$name])) { // magic @methods
+		} elseif (isset($methods[$name]) && is_array($methods[$name])) { // magic @methods
 			list($op, $rp, $type) = $methods[$name];
 			if (count($args) !== ($op === 'get' ? 0 : 1)) {
 				throw new Nette\InvalidArgumentException("$class::$name() expects " . ($op === 'get' ? 'no' : '1') . ' argument, ' . count($args) . ' given.');
@@ -141,7 +142,12 @@ class ObjectMixin
 			}
 
 		} elseif (isset($methods[$name])) { // public method as closure getter
-			$val = Callback::closure($_this, $name);
+			if (PHP_VERSION_ID >= 50400) {
+				$rm = new \ReflectionMethod($class, $name);
+				$val = $rm->getClosure($_this);
+			} else {
+				$val = Callback::closure($_this, $name);
+			}
 			return $val;
 
 		} else { // strict class
@@ -224,7 +230,7 @@ class ObjectMixin
 			try {
 				$rp = new \ReflectionProperty($class, $name);
 				if ($rp->isPublic() && !$rp->isStatic()) {
-					$prop = $name >= 'onA' && $name < 'on_' ? 'event' : TRUE;
+					$prop = preg_match('#^on[A-Z]#', $name) ? 'event' : TRUE;
 				}
 			} catch (\ReflectionException $e) {}
 		}
@@ -287,7 +293,6 @@ class ObjectMixin
 	/**
 	 * Finds whether a variable is of expected type and do non-data-loss conversion.
 	 * @return bool
-	 * @internal
 	 */
 	public static function checkType(& $val, $type)
 	{
@@ -361,7 +366,7 @@ class ObjectMixin
 	public static function setExtensionMethod($class, $name, $callback)
 	{
 		$name = strtolower($name);
-		self::$extMethods[$name][$class] = Callback::check($callback);
+		self::$extMethods[$name][$class] = Callback::closure($callback);
 		self::$extMethods[$name][''] = NULL;
 	}
 

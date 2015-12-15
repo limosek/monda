@@ -10,8 +10,7 @@ namespace Nette\Bridges\ApplicationTracy;
 use Nette,
 	Nette\Application\Routers,
 	Nette\Application\UI\Presenter,
-	Tracy,
-	Tracy\Dumper;
+	Tracy;
 
 
 /**
@@ -36,7 +35,7 @@ class RoutingPanel extends Nette\Object implements Tracy\IBarPanel
 	/** @var Nette\Application\Request */
 	private $request;
 
-	/** @var \ReflectionClass|\ReflectionMethod */
+	/** @var ReflectionClass|ReflectionMethod */
 	private $source;
 
 
@@ -45,8 +44,8 @@ class RoutingPanel extends Nette\Object implements Tracy\IBarPanel
 		Tracy\Debugger::getBlueScreen()->addPanel(function($e) use ($application) {
 			return $e ? NULL : array(
 				'tab' => 'Nette Application',
-				'panel' => '<h3>Requests</h3>' . Dumper::toHtml($application->getRequests(), array(Dumper::LIVE => TRUE))
-					. '<h3>Presenter</h3>' . Dumper::toHtml($application->getPresenter(), array(Dumper::LIVE => TRUE))
+				'panel' => '<h3>Requests</h3>' . Tracy\Dumper::toHtml($application->getRequests())
+					. '<h3>Presenter</h3>' . Tracy\Dumper::toHtml($application->getPresenter())
 			);
 		});
 	}
@@ -68,7 +67,6 @@ class RoutingPanel extends Nette\Object implements Tracy\IBarPanel
 	{
 		$this->analyse($this->router);
 		ob_start();
-		$request = $this->request;
 		require __DIR__ . '/templates/RoutingPanel.tab.phtml';
 		return ob_get_clean();
 	}
@@ -81,10 +79,6 @@ class RoutingPanel extends Nette\Object implements Tracy\IBarPanel
 	public function getPanel()
 	{
 		ob_start();
-		$request = $this->request;
-		$routers = $this->routers;
-		$source = $this->source;
-		$url = $this->httpRequest->getUrl();
 		require __DIR__ . '/templates/RoutingPanel.panel.phtml';
 		return ob_get_clean();
 	}
@@ -136,7 +130,7 @@ class RoutingPanel extends Nette\Object implements Tracy\IBarPanel
 		} catch (Nette\Application\InvalidPresenterException $e) {
 			return;
 		}
-		$rc = new \ReflectionClass($class);
+		$rc = Nette\Reflection\ClassType::from($class);
 
 		if ($rc->isSubclassOf('Nette\Application\UI\Presenter')) {
 			if (isset($request->parameters[Presenter::SIGNAL_KEY])) {

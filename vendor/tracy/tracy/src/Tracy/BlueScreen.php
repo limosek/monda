@@ -24,15 +24,7 @@ class BlueScreen
 	private $panels = array();
 
 	/** @var string[] paths to be collapsed in stack trace (e.g. core libraries) */
-	public $collapsePaths = array();
-
-
-	public function __construct()
-	{
-		$this->collapsePaths[] = preg_match('#(.+/vendor)/tracy/tracy/src/Tracy$#', strtr(__DIR__, '\\', '/'), $m)
-			? $m[1]
-			: __DIR__;
-	}
+	public $collapsePaths = array(__DIR__);
 
 
 	/**
@@ -58,16 +50,7 @@ class BlueScreen
 	{
 		$panels = $this->panels;
 		$info = array_filter($this->info);
-		$source = Helpers::getSource();
-		$sourceIsUrl = preg_match('#^https?://#', $source);
-		$title = $exception instanceof \ErrorException
-			? Helpers::errorTypeToString($exception->getSeverity())
-			: get_class($exception);
-		$skipError = $sourceIsUrl && $exception instanceof \ErrorException && !empty($exception->skippable)
-			? $source . (strpos($source, '?') ? '&' : '?') . '_tracy_skip_error'
-			: NULL;
-
-		require __DIR__ . '/assets/BlueScreen/bluescreen.phtml';
+		require __DIR__ . '/templates/bluescreen.phtml';
 	}
 
 
@@ -84,7 +67,7 @@ class BlueScreen
 		if ($source) {
 			$source = static::highlightPhp($source, $line, $lines, $vars);
 			if ($editor = Helpers::editorUri($file, $line)) {
-				$source = substr_replace($source, ' data-tracy-href="' . htmlspecialchars($editor, ENT_QUOTES, 'UTF-8') . '"', 4, 0);
+				$source = substr_replace($source, ' data-tracy-href="' . htmlspecialchars($editor) . '"', 4, 0);
 			}
 			return $source;
 		}
@@ -117,14 +100,11 @@ class BlueScreen
 		if ($vars) {
 			$out = preg_replace_callback('#">\$(\w+)(&nbsp;)?</span>#', function($m) use ($vars) {
 				return array_key_exists($m[1], $vars)
-					? '" title="'
-						. str_replace('"', '&quot;', trim(strip_tags(Dumper::toHtml($vars[$m[1]], array(Dumper::DEPTH => 1)))))
-						. $m[0]
+					? '" title="' . str_replace('"', '&quot;', trim(strip_tags(Dumper::toHtml($vars[$m[1]])))) . $m[0]
 					: $m[0];
 			}, $out);
 		}
 
-		$out = str_replace('&nbsp;', ' ', $out);
 		return "<pre class='php'><div>$out</div></pre>";
 	}
 

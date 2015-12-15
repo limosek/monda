@@ -98,9 +98,7 @@ class Cache extends Nette\Object implements \ArrayAccess
 	{
 		$data = $this->storage->read($this->generateKey($key));
 		if ($data === NULL && $fallback) {
-			return $this->save($key, function(& $dependencies) use ($fallback) {
-				return call_user_func_array($fallback, array(& $dependencies));
-			});
+			return $this->save($key, Callback::closure($fallback));
 		}
 		return $data;
 	}
@@ -125,7 +123,7 @@ class Cache extends Nette\Object implements \ArrayAccess
 	 */
 	public function save($key, $data, array $dependencies = NULL)
 	{
-		$this->key = $this->data = NULL;
+		$this->release();
 		$key = $this->generateKey($key);
 
 		if ($data instanceof Nette\Callback || $data instanceof \Closure) {
@@ -151,6 +149,7 @@ class Cache extends Nette\Object implements \ArrayAccess
 
 		// convert FILES into CALLBACKS
 		if (isset($dp[self::FILES])) {
+			//clearstatcache();
 			foreach (array_unique((array) $dp[self::FILES]) as $item) {
 				$dp[self::CALLBACKS][] = array(array(__CLASS__, 'checkFile'), $item, @filemtime($item)); // @ - stat may fail
 			}
@@ -198,7 +197,7 @@ class Cache extends Nette\Object implements \ArrayAccess
 	 */
 	public function clean(array $conditions = NULL)
 	{
-		$this->key = $this->data = NULL;
+		$this->release();
 		$this->storage->clean((array) $conditions);
 	}
 
@@ -211,9 +210,7 @@ class Cache extends Nette\Object implements \ArrayAccess
 	public function call($function)
 	{
 		$key = func_get_args();
-		if (is_array($function) && is_object($function[0])) {
-			$key[0][0] = get_class($function[0]);
-		}
+		$key[0] = Callback::toReflection($function);
 		return $this->load($key, function() use ($function, $key) {
 			return Callback::invokeArgs($function, array_slice($key, 1));
 		});
@@ -224,16 +221,13 @@ class Cache extends Nette\Object implements \ArrayAccess
 	 * Caches results of function/method calls.
 	 * @param  mixed
 	 * @param  array  dependencies
-	 * @return \Closure
+	 * @return Closure
 	 */
 	public function wrap($function, array $dependencies = NULL)
 	{
 		$cache = $this;
 		return function() use ($cache, $function, $dependencies) {
-			$key = array($function, func_get_args());
-			if (is_array($function) && is_object($function[0])) {
-				$key[0][0] = get_class($function[0]);
-			}
+			$key = array(Callback::toReflection($function), func_get_args());
 			$data = $cache->load($key);
 			if ($data === NULL) {
 				$data = $cache->save($key, Callback::invokeArgs($function, $key[1]), $dependencies);
@@ -274,21 +268,26 @@ class Cache extends Nette\Object implements \ArrayAccess
 
 
 	/**
-	 * @deprecated
+	 * Inserts (replaces) item into the cache (\ArrayAccess implementation).
+	 * @param  mixed key
+	 * @param  mixed
+	 * @return void
+	 * @throws Nette\InvalidArgumentException
 	 */
 	public function offsetSet($key, $data)
 	{
-		trigger_error('Using [] is deprecated; use Cache::save(key, data) instead.', E_USER_DEPRECATED);
 		$this->save($key, $data);
 	}
 
 
 	/**
-	 * @deprecated
+	 * Retrieves the specified item from the cache or NULL if the key is not found (\ArrayAccess implementation).
+	 * @param  mixed key
+	 * @return mixed|NULL
+	 * @throws Nette\InvalidArgumentException
 	 */
 	public function offsetGet($key)
 	{
-		trigger_error('Using [] is deprecated; use Cache::load(key) instead.', E_USER_DEPRECATED);
 		$key = is_scalar($key) ? (string) $key : serialize($key);
 		if ($this->key !== $key) {
 			$this->key = $key;
@@ -299,32 +298,36 @@ class Cache extends Nette\Object implements \ArrayAccess
 
 
 	/**
-	 * @deprecated
+	 * Exists item in cache? (\ArrayAccess implementation).
+	 * @param  mixed key
+	 * @return bool
+	 * @throws Nette\InvalidArgumentException
 	 */
 	public function offsetExists($key)
 	{
-		trigger_error('Using [] is deprecated; use Cache::load(key) !== NULL instead.', E_USER_DEPRECATED);
-		$this->key = $this->data = NULL;
+		$this->release();
 		return $this->offsetGet($key) !== NULL;
 	}
 
 
 	/**
-	 * @deprecated
+	 * Removes the specified item from the cache.
+	 * @param  mixed key
+	 * @return void
+	 * @throws Nette\InvalidArgumentException
 	 */
 	public function offsetUnset($key)
 	{
-		trigger_error('Using [] is deprecated; use Cache::remove(key) instead.', E_USER_DEPRECATED);
 		$this->save($key, NULL);
 	}
 
 
 	/**
-	 * @deprecated
+	 * Discards the internal cache used by ArrayAccess.
+	 * @return void
 	 */
 	public function release()
 	{
-		trigger_error(__METHOD__ . '() is deprecated.', E_USER_DEPRECATED);
 		$this->key = $this->data = NULL;
 	}
 

@@ -24,7 +24,7 @@ use Nette;
  */
 class Container extends Nette\ComponentModel\Container implements \ArrayAccess
 {
-	/** @var callable[]  function(Container $sender); Occurs when the form is validated */
+	/** @var array of function(Container $sender); Occurs when the form is validated */
 	public $onValidate;
 
 	/** @var ControlGroup */
@@ -120,9 +120,6 @@ class Container extends Nette\ComponentModel\Container implements \ArrayAccess
 	public function isValid()
 	{
 		if (!$this->validated) {
-			if ($this->getErrors()) {
-				return FALSE;
-			}
 			$this->validate();
 		}
 		return !$this->getErrors();
@@ -136,14 +133,10 @@ class Container extends Nette\ComponentModel\Container implements \ArrayAccess
 	 */
 	public function validate(array $controls = NULL)
 	{
-		foreach ($controls === NULL ? $this->getComponents() : $controls as $control) {
+		foreach ($controls === NULL ? $this->getControls() : $controls as $control) {
 			$control->validate();
 		}
-		foreach ($this->onValidate ?: array() as $handler) {
-			$params = Nette\Utils\Callback::toReflection($handler)->getParameters();
-			$values = isset($params[1]) ? $this->getValues($params[1]->isArray()) : NULL;
-			Nette\Utils\Callback::invoke($handler, $this, $values);
-		}
+		$this->onValidate($this);
 		$this->validated = TRUE;
 	}
 
@@ -187,7 +180,7 @@ class Container extends Nette\ComponentModel\Container implements \ArrayAccess
 
 	/**
 	 * Adds the specified component to the IContainer.
-	 * @param  Nette\ComponentModel\IComponent
+	 * @param  IComponent
 	 * @param  string
 	 * @param  string
 	 * @return self
@@ -285,18 +278,6 @@ class Container extends Nette\ComponentModel\Container implements \ArrayAccess
 	public function addUpload($name, $label = NULL, $multiple = FALSE)
 	{
 		return $this[$name] = new Controls\UploadControl($label, $multiple);
-	}
-
-
-	/**
-	 * Adds control that allows the user to upload multiple files.
-	 * @param  string  control name
-	 * @param  string  label
-	 * @return Nette\Forms\Controls\UploadControl
-	 */
-	public function addMultiUpload($name, $label = NULL)
-	{
-		return $this[$name] = new Controls\UploadControl($label, TRUE);
 	}
 
 

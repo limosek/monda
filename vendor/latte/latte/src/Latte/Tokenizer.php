@@ -9,7 +9,7 @@ namespace Latte;
 
 
 /**
- * Simple lexical analyser.
+ * Simple lexical analyser. Internal class.
  *
  * @author     David Grudl
  * @internal
@@ -39,7 +39,7 @@ class Tokenizer extends Object
 
 
 	/**
-	 * Tokenizes string.
+	 * Tokenize string.
 	 * @param  string
 	 * @return array
 	 */
@@ -47,7 +47,7 @@ class Tokenizer extends Object
 	{
 		preg_match_all($this->re, $input, $tokens, PREG_SET_ORDER);
 		if (preg_last_error()) {
-			throw new RegexpException(NULL, preg_last_error());
+			throw new Latte\RegexpException(NULL, preg_last_error());
 		}
 		$len = 0;
 		$count = count($this->types);
@@ -74,9 +74,8 @@ class Tokenizer extends Object
 
 	/**
 	 * Returns position of token in input string.
-	 * @param  string
-	 * @param  int
-	 * @return array of [line, column]
+	 * @param  int token number
+	 * @return array [line, column]
 	 */
 	public static function getCoordinates($text, $offset)
 	{

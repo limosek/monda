@@ -129,6 +129,7 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 	{
 		if ($this->form !== $form) {
 			$this->form = $form;
+			$this->init();
 		}
 
 		$s = '';
@@ -148,6 +149,27 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 			$s .= $this->renderEnd();
 		}
 		return $s;
+	}
+
+
+	/**
+	 * Initializes form.
+	 * @return void
+	 */
+	protected function init()
+	{
+		// TODO: only for back compatiblity - remove?
+		$wrapper = & $this->wrappers['control'];
+		foreach ($this->form->getControls() as $control) {
+			if ($control->isRequired() && isset($wrapper['.required'])) {
+				$control->getLabelPrototype()->class($wrapper['.required'], TRUE);
+			}
+
+			$el = $control->getControlPrototype();
+			if ($el->getName() === 'input' && isset($wrapper['.' . $el->type])) {
+				$el->class($wrapper['.' . $el->type], TRUE);
+			}
+		}
 	}
 
 
@@ -253,11 +275,6 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 			$container = $group->getOption('container', $defaultContainer);
 			$container = $container instanceof Html ? clone $container : Html::el($container);
 
-			$id = $group->getOption('id');
-			if ($id) {
-				$container->id = $id;
-			}
-
 			$s .= "\n" . $container->startTag();
 
 			$text = $group->getOption('label');
@@ -301,13 +318,13 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 
 	/**
 	 * Renders group of controls.
-	 * @param  Nette\Forms\Container|Nette\Forms\ControlGroup
+	 * @param  Nette\Forms\Container|FormGroup
 	 * @return string
 	 */
 	public function renderControls($parent)
 	{
 		if (!($parent instanceof Nette\Forms\Container || $parent instanceof Nette\Forms\ControlGroup)) {
-			throw new Nette\InvalidArgumentException('Argument must be Nette\Forms\Container or Nette\Forms\ControlGroup instance.');
+			throw new Nette\InvalidArgumentException('Argument must be FormContainer or FormGroup instance.');
 		}
 
 		$container = $this->getWrapper('controls container');
@@ -364,7 +381,7 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 
 	/**
 	 * Renders single visual row of multiple controls.
-	 * @param  Nette\Forms\IControl[]
+	 * @param  IFormControl[]
 	 * @return string
 	 */
 	public function renderPairMulti(array $controls)
@@ -372,7 +389,7 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 		$s = array();
 		foreach ($controls as $control) {
 			if (!$control instanceof Nette\Forms\IControl) {
-				throw new Nette\InvalidArgumentException('Argument must be array of Nette\Forms\IControl instances.');
+				throw new Nette\InvalidArgumentException('Argument must be array of IFormControl instances.');
 			}
 			$description = $control->getOption('description');
 			if ($description instanceof Html) {
@@ -385,12 +402,7 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 				$description = '';
 			}
 
-			$control->setOption('rendered', TRUE);
-			$el = $control->getControl();
-			if ($el instanceof Html && $el->getName() === 'input') {
-				$el->class($this->getValue("control .$el->type"), TRUE);
-			}
-			$s[] = $el . $description;
+			$s[] = $control->getControl() . $description;
 		}
 		$pair = $this->getWrapper('pair container');
 		$pair->add($this->renderLabel($control));
@@ -409,9 +421,6 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 		$label = $control->getLabel();
 		if ($label instanceof Html) {
 			$label->add($suffix);
-			if ($control->isRequired()) {
-				$label->class($this->getValue('control .required'), TRUE);
-			}
 		} elseif ($label != NULL) { // @intentionally ==
 			$label .= $suffix;
 		}
@@ -445,18 +454,14 @@ class DefaultFormRenderer extends Nette\Object implements Nette\Forms\IFormRende
 			$description = $this->getValue('control requiredsuffix') . $description;
 		}
 
-		$control->setOption('rendered', TRUE);
 		$el = $control->getControl();
-		if ($el instanceof Html && $el->getName() === 'input') {
-			$el->class($this->getValue("control .$el->type"), TRUE);
-		}
 		return $body->setHtml($el . $description . $this->renderErrors($control));
 	}
 
 
 	/**
 	 * @param  string
-	 * @return Html
+	 * @return Nette\Utils\Html
 	 */
 	protected function getWrapper($name)
 	{

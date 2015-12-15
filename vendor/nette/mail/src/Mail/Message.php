@@ -213,30 +213,29 @@ class Message extends MimePart
 
 	/**
 	 * Sets HTML body.
-	 * @param  string
-	 * @param  mixed base-path
+	 * @param  string|Nette\Templating\ITemplate
+	 * @param  mixed base-path or FALSE to disable parsing
 	 * @return self
 	 */
 	public function setHtmlBody($html, $basePath = NULL)
 	{
-		if ($basePath === NULL && ($html instanceof Nette\Templating\IFileTemplate || $html instanceof Nette\Application\UI\ITemplate)) {
-			$basePath = dirname($html->getFile());
-			$bc = TRUE;
+		if ($html instanceof Nette\Templating\ITemplate || $html instanceof Nette\Application\UI\ITemplate) {
+			$html->mail = $this;
+			if ($basePath === NULL && ($html instanceof Nette\Templating\IFileTemplate || $html instanceof Nette\Application\UI\ITemplate)) {
+				$basePath = dirname($html->getFile());
+			}
+			$html = $html->__toString(TRUE);
 		}
-		$html = (string) $html;
 
-		if ($basePath) {
+		if ($basePath !== FALSE) {
 			$cids = array();
 			$matches = Strings::matchAll(
 				$html,
 				'#(src\s*=\s*|background\s*=\s*|url\()(["\']?)(?![a-z]+:|[/\\#])([^"\')\s]+)#i',
 				PREG_OFFSET_CAPTURE
 			);
-			if ($matches && isset($bc)) {
-				trigger_error(__METHOD__ . '() missing second argument with image base path.', E_USER_WARNING);
-			}
 			foreach (array_reverse($matches) as $m) {
-				$file = rtrim($basePath, '/\\') . '/' . urldecode($m[3][0]);
+				$file = rtrim($basePath, '/\\') . '/' . $m[3][0];
 				if (!isset($cids[$file])) {
 					$cids[$file] = substr($this->addEmbeddedFile($file)->getHeader('Content-ID'), 1, -1);
 				}
@@ -246,20 +245,15 @@ class Message extends MimePart
 				);
 			}
 		}
+		$this->html = $html;
 
-		if ($this->getSubject() == NULL) { // intentionally ==
-			$html = Strings::replace($html, '#<title>(.+?)</title>#is', function($m) use (& $title) {
-				$title = $m[1];
-			});
-			$this->setSubject(html_entity_decode($title, ENT_QUOTES, 'UTF-8'));
+		if ($this->getSubject() == NULL && $matches = Strings::match($html, '#<title>(.+?)</title>#is')) { // intentionally ==
+			$this->setSubject(html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8'));
 		}
-
-		$this->html = ltrim(str_replace("\r", '', $html), "\n");
 
 		if ($this->getBody() == NULL && $html != NULL) { // intentionally ==
 			$this->setBody($this->buildText($html));
 		}
-
 		return $this;
 	}
 
@@ -367,7 +361,7 @@ class Message extends MimePart
 				}
 			}
 			$alt->setContentType('text/html', 'UTF-8')
-				->setEncoding(preg_match('#[^\n]{990}#', $mail->html)
+				->setEncoding(preg_match('#\S{990}#', $mail->html)
 					? self::ENCODING_QUOTED_PRINTABLE
 					: (preg_match('#[\x80-\xFF]#', $mail->html) ? self::ENCODING_8BIT : self::ENCODING_7BIT))
 				->setBody($mail->html);
@@ -376,7 +370,7 @@ class Message extends MimePart
 		$text = $mail->getBody();
 		$mail->setBody(NULL);
 		$cursor->setContentType('text/plain', 'UTF-8')
-			->setEncoding(preg_match('#[^\n]{990}#', $text)
+			->setEncoding(preg_match('#\S{990}#', $text)
 				? self::ENCODING_QUOTED_PRINTABLE
 				: (preg_match('#[\x80-\xFF]#', $text) ? self::ENCODING_8BIT : self::ENCODING_7BIT))
 			->setBody($text);

@@ -49,7 +49,7 @@ class Template extends Nette\Object implements Nette\Application\UI\ITemplate
 	 */
 	public function render($file = NULL, array $params = array())
 	{
-		$this->latte->render($file ?: $this->file, $params + $this->params);
+		$this->latte->render($file ?: $this->file, $params ?: $this->params);
 	}
 
 
@@ -60,9 +60,13 @@ class Template extends Nette\Object implements Nette\Application\UI\ITemplate
 	 */
 	public function __toString()
 	{
+		ob_start();
 		try {
-			return $this->latte->renderToString($this->file, $this->params);
+			$this->render();
+			return ob_get_clean();
+
 		} catch (\Exception $e) {
+			ob_end_clean();
 			if (func_num_args()) {
 				throw $e;
 			}
@@ -191,16 +195,6 @@ class Template extends Nette\Object implements Nette\Application\UI\ITemplate
 	public function getParameters()
 	{
 		return $this->params;
-	}
-
-
-	/**
-	 * @deprecated
-	 */
-	public function __call($name, $args)
-	{
-		trigger_error('Invoking filters on Template object is deprecated, use getLatte()->invokeFilter().', E_USER_DEPRECATED);
-		return $this->latte->invokeFilter($name, $args);
 	}
 
 

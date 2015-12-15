@@ -7,7 +7,8 @@
 
 namespace Nette\Database\Table;
 
-use Nette;
+use Nette,
+	Nette\Database\Reflection\MissingReferenceException;
 
 
 /**
@@ -27,6 +28,9 @@ class ActiveRow implements \IteratorAggregate, IRow
 
 	/** @var bool */
 	private $dataRefreshed = FALSE;
+
+	/** @var bool */
+	private $isModified = FALSE;
 
 
 	public function __construct(array $data, Selection $table)
@@ -134,12 +138,11 @@ class ActiveRow implements \IteratorAggregate, IRow
 	 */
 	public function ref($key, $throughColumn = NULL)
 	{
-		$row = $this->table->getReferencedTable($this, $key, $throughColumn);
-		if ($row === FALSE) {
-			throw new Nette\MemberAccessException("No reference found for \${$this->table->name}->ref($key).");
+		if (!$throughColumn) {
+			list($key, $throughColumn) = $this->table->getDatabaseReflection()->getBelongsToReference($this->table->getName(), $key);
 		}
 
-		return $row;
+		return $this->getReference($key, $throughColumn);
 	}
 
 
@@ -151,12 +154,13 @@ class ActiveRow implements \IteratorAggregate, IRow
 	 */
 	public function related($key, $throughColumn = NULL)
 	{
-		$groupedSelection = $this->table->getReferencingTable($key, $throughColumn, $this[$this->table->getPrimary()]);
-		if (!$groupedSelection) {
-			throw new Nette\MemberAccessException("No reference found for \${$this->table->name}->related($key).");
+		if (strpos($key, '.') !== FALSE) {
+			list($key, $throughColumn) = explode('.', $key);
+		} elseif (!$throughColumn) {
+			list($key, $throughColumn) = $this->table->getDatabaseReflection()->getHasManyReference($this->table->getName(), $key);
 		}
 
-		return $groupedSelection;
+		return $this->table->getReferencingTable($key, $throughColumn, $this[$this->table->getPrimary()]);
 	}
 
 
@@ -167,23 +171,11 @@ class ActiveRow implements \IteratorAggregate, IRow
 	 */
 	public function update($data)
 	{
-		if ($data instanceof \Traversable) {
-			$data = iterator_to_array($data);
-		}
-
-		$primary = $this->getPrimary();
-		if (!is_array($primary)) {
-			$primary = array($this->table->getPrimary() => $primary);
-		}
-
 		$selection = $this->table->createSelectionInstance()
-			->wherePrimary($primary);
+			->wherePrimary($this->getPrimary());
 
 		if ($selection->update($data)) {
-			if ($tmp = array_intersect_key($data, $primary)) {
-				$selection = $this->table->createSelectionInstance()
-					->wherePrimary($tmp + $primary);
-			}
+			$this->isModified = TRUE;
 			$selection->select('*');
 			if (($row = $selection->fetch()) === FALSE) {
 				throw new Nette\InvalidStateException('Database refetch failed; row does not exist!');
@@ -285,11 +277,14 @@ class ActiveRow implements \IteratorAggregate, IRow
 			return $this->data[$key];
 		}
 
-		$referenced = $this->table->getReferencedTable($this, $key);
-		if ($referenced !== FALSE) {
-			$this->accessColumn($key, FALSE);
-			return $referenced;
-		}
+		try {
+			list($table, $column) = $this->table->getDatabaseReflection()->getBelongsToReference($this->table->getName(), $key);
+			$referenced = $this->getReference($table, $column);
+			if ($referenced !== FALSE) {
+				$this->accessColumn($key, FALSE);
+				return $referenced;
+			}
+		} catch(MissingReferenceException $e) {}
 
 		$this->removeAccessColumn($key);
 		throw new Nette\MemberAccessException("Cannot read an undeclared column '$key'.");
@@ -313,23 +308,32 @@ class ActiveRow implements \IteratorAggregate, IRow
 	}
 
 
-	/**
-	 * @internal
-	 */
-	public function accessColumn($key, $selectColumn = TRUE)
+	protected function accessColumn($key, $selectColumn = TRUE)
 	{
 		$this->table->accessColumn($key, $selectColumn);
 		if ($this->table->getDataRefreshed() && !$this->dataRefreshed) {
 			$this->data = $this->table[$this->getSignature()]->data;
 			$this->dataRefreshed = TRUE;
 		}
-		return array_key_exists($key, $this->data);
 	}
 
 
 	protected function removeAccessColumn($key)
 	{
 		$this->table->removeAccessColumn($key);
+	}
+
+
+	protected function getReference($table, $column)
+	{
+		$this->accessColumn($column);
+		if (array_key_exists($column, $this->data)) {
+			$value = $this->data[$column];
+			$referenced = $this->table->getReferencedTable($table, $column, $value);
+			return isset($referenced[$value]) ? $referenced[$value] : NULL; // referenced row may not exist
+		}
+
+		return FALSE;
 	}
 
 }

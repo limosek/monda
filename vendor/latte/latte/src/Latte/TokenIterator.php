@@ -9,7 +9,7 @@ namespace Latte;
 
 
 /**
- * Traversing helper.
+ * Traversing helper. Internal class.
  *
  * @author     David Grudl
  * @internal
@@ -61,7 +61,7 @@ class TokenIterator extends Object
 
 	/**
 	 * Returns next token.
-	 * @param  int|string  (optional) desired token type or value
+	 * @param  desired token
 	 * @return array|NULL
 	 */
 	public function nextToken()
@@ -72,7 +72,7 @@ class TokenIterator extends Object
 
 	/**
 	 * Returns next token value.
-	 * @param  int|string  (optional) desired token type or value
+	 * @param  desired token
 	 * @return string|NULL
 	 */
 	public function nextValue()
@@ -83,7 +83,7 @@ class TokenIterator extends Object
 
 	/**
 	 * Returns all next tokens.
-	 * @param  int|string  (optional) desired token type or value
+	 * @param  desired token
 	 * @return array[]
 	 */
 	public function nextAll()
@@ -93,8 +93,8 @@ class TokenIterator extends Object
 
 
 	/**
-	 * Returns all next tokens until it sees a given token type or value.
-	 * @param  int|string  token type or value to stop before
+	 * Returns all next tokens until it sees a token with the given value.
+	 * @param  tokens
 	 * @return array[]
 	 */
 	public function nextUntil($arg)
@@ -104,8 +104,8 @@ class TokenIterator extends Object
 
 
 	/**
-	 * Returns concatenation of all next token values.
-	 * @param  int|string  (optional) token type or value to be joined
+	 * Returns concatenation of all next tokens.
+	 * @param  desired token
 	 * @return string
 	 */
 	public function joinAll()
@@ -115,8 +115,8 @@ class TokenIterator extends Object
 
 
 	/**
-	 * Returns concatenation of all next tokens until it sees a given token type or value.
-	 * @param  int|string  token type or value to stop before
+	 * Returns concatenation of all next tokens until it sees a token with the given value.
+	 * @param  tokens
 	 * @return string
 	 */
 	public function joinUntil($arg)
@@ -127,7 +127,7 @@ class TokenIterator extends Object
 
 	/**
 	 * Checks the current token.
-	 * @param  int|string  token type or value
+	 * @param  token
 	 * @return bool
 	 */
 	public function isCurrent($arg)
@@ -143,8 +143,8 @@ class TokenIterator extends Object
 
 
 	/**
-	 * Checks the next token existence.
-	 * @param  int|string  (optional) token type or value
+	 * Checks the next token.
+	 * @param  token
 	 * @return bool
 	 */
 	public function isNext()
@@ -154,8 +154,8 @@ class TokenIterator extends Object
 
 
 	/**
-	 * Checks the previous token existence.
-	 * @param  int|string  (optional) token type or value
+	 * Checks the previous token.
+	 * @param  token
 	 * @return bool
 	 */
 	public function isPrev()
@@ -165,7 +165,7 @@ class TokenIterator extends Object
 
 
 	/**
-	 * @return self
+	 * @return TokenIterator
 	 */
 	public function reset()
 	{
@@ -174,9 +174,6 @@ class TokenIterator extends Object
 	}
 
 
-	/**
-	 * Moves cursor to next token.
-	 */
 	protected function next()
 	{
 		$this->position++;
@@ -185,12 +182,6 @@ class TokenIterator extends Object
 
 	/**
 	 * Looks for (first) (not) wanted tokens.
-	 * @param  array of desired token types or values
-	 * @param  bool
-	 * @param  bool
-	 * @param  bool
-	 * @param  bool
-	 * @param  bool
 	 * @return mixed
 	 */
 	protected function scan($wanted, $onlyFirst, $advance, $strings = FALSE, $until = FALSE, $prev = FALSE)

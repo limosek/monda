@@ -47,16 +47,21 @@ class Json
 	 */
 	public static function encode($value, $options = 0)
 	{
-		$flags = PHP_VERSION_ID >= 50400 ? (JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | ($options & self::PRETTY ? JSON_PRETTY_PRINT : 0)) : 0;
-
 		if (PHP_VERSION_ID < 50500) {
-			$json = Callback::invokeSafe('json_encode', array($value, $flags), function($message) { // needed to receive 'recursion detected' error
+			set_error_handler(function($severity, $message) { // needed to receive 'recursion detected' error
+				restore_error_handler();
 				throw new JsonException($message);
 			});
-		} else {
-			$json = json_encode($value, $flags);
 		}
 
+		$json = json_encode(
+			$value,
+			PHP_VERSION_ID >= 50400 ? (JSON_UNESCAPED_UNICODE | ($options & self::PRETTY ? JSON_PRETTY_PRINT : 0)) : 0
+		);
+
+		if (PHP_VERSION_ID < 50500) {
+			restore_error_handler();
+		}
 		if ($error = json_last_error()) {
 			$message = isset(static::$messages[$error]) ? static::$messages[$error]
 				: (PHP_VERSION_ID >= 50500 ? json_last_error_msg() : 'Unknown error');
@@ -81,11 +86,8 @@ class Json
 			throw new JsonException('Invalid UTF-8 sequence', 5); // workaround for PHP < 5.3.3 & PECL JSON-C
 		}
 
-		$forceArray = (bool) ($options & self::FORCE_ARRAY);
-		if (!$forceArray && preg_match('#(?<=[^\\\\]")\\\\u0000(?:[^"\\\\]|\\\\.)*+"\s*+:#', $json)) { // workaround for json_decode fatal error when object key starts with \u0000
-			throw new JsonException(static::$messages[JSON_ERROR_CTRL_CHAR]);
-		}
-		$args = array($json, $forceArray, 512);
+		$args = array($json, (bool) ($options & self::FORCE_ARRAY));
+		$args[] = 512;
 		if (PHP_VERSION_ID >= 50400 && !(defined('JSON_C_VERSION') && PHP_INT_SIZE > 4)) { // not implemented in PECL JSON-C 1.3.2 for 64bit systems
 			$args[] = JSON_BIGINT_AS_STRING;
 		}

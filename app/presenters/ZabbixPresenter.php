@@ -4,71 +4,75 @@ namespace App\Presenters;
 
 use \Exception,
     Nette,
-    \Tracy\Debugger,
     App\Model,
-    App\Model\CliLogger,
-    App\Model\Tw,
-    App\Model\Options,
     Nette\Utils\DateTime as DateTime;
 
-class zabbixPresenter extends BasePresenter {
+class ZabbixPresenter extends MapPresenter {
 
-    public $module = "zabbix";
-    public $moduleparams = Array(
-        //key,          default,    defaulthelp,    choices
-        //description
-        'dsn' => Array(
-            'pgsql:host=127.0.0.1;port=5432;dbname=zabbix', 'pgsql:host=127.0.0.1;port=5432;dbname=zabbix', '',
-            'Use this zabbix Database settings'
-        ),
-        'dbuser' => Array(
-            'zabbix', 'zabbix', '',
-            'Use this zabbix Database user'
-        ),
-        'dbpw' => Array(
-            '', '', '',
-            'Use this zabbix Database password'
-        ),
-        'id' => Array(
-            '1', '1', '',
-            'Use this zabbix server ID'
-        ),
-        'url' => Array(
-            'http://localhost/zabbix', 'http://localhost/zabbix', '',
-            'Base of zabbix urls'
-        ),
-        'apiurl' => Array(
-            'http://localhost/zabbix/api_jsonrpc.php', 'http://localhost/zabbix/api_jsonrpc.php', '',
-            'Use this zabbix API url'
-        ),
-        'apiuser' => Array(
-            'monda', 'monda', '',
-            'Use this zabbix API user'
-        ),
-        'apipw' => Array(
-            '', '', '',
-            'Use this zabbix API password'
-        ),
-        'history_table' => Array(
-            'history', 'history', '',
-            'Zabbix history table to work on'
-        ),
-        'history_uint_table' => Array(
-            'history_uint', 'history_uint', '',
-            'Zabbix history_uint table to work on'
-        ),
-        'apiexpire' => Array(
-            '24 hours', '24 hours', '',
-            'Maximum time to cache api requests. Use 0 to not cache.'
-        )
-    );
-    public $moduleactions = Array(
-        "add" => "Add zabbix server to Monda",
-        "del" => "Deletr zabbix server from Monda"
-    );
-    public $modulehelp = "Zabbix server operations";
-    public $modulehints = Array(
-        "Zabbix server manipulation is safe for zabbix server. It will manipulate only with Monda DB."
-    );
+    public function Help() {
+        \App\Model\CliDebug::warn("
+     Zabbix Map operations
+
+     zabbix:twgraph  - Create zabbix 
+ 
+     [common opts]
+    \n");
+        self::helpOpts();
+    }
+    
+    public function getOpts($ret) {
+        $ret=parent::getOpts($ret);
+        $ret=self::parseOpt($ret,
+                "rwhost",
+                false,"rwhost",
+                "Host in Zabbix with readwrite access to create objects.",
+                "monda",
+                "monda"
+                );
+        return($ret);
+    }
+    
+    function renderTwGraph() {
+        
+        parent::renderTw();
+        $this->template->title = "Timewindow ".$this->opts->wids[0];
+        $colors=Array(
+            1 => "001100",
+            2 => "002200",
+            3 => "003300",
+            4 => "004400",
+            5 => "005500",
+            6 => "006600",
+            7 => "007700",
+            8 => "008800",
+            9 => "009900",
+            10 => "00aa00"
+        );
+        $color=1;
+        $gs=  \App\Model\Monda::apiCmd("graphGet",Array(
+            "itemids" => $this->template->top10items
+        ));
+        $gid=false;
+        foreach ($gs as $g) {
+            if ($g->name=="monda_test") $gid=$g->graphid;
+        }
+        if ($gid) {
+            \App\Model\Monda::apiCmd("graphDelete",Array($gid));
+        }
+        foreach ($this->template->top10items as $i) {
+            $gitems[] = Array(
+                    "itemid" => $i,
+                    "color" => $colors[$color++]
+                );
+        }
+        $r=  \App\Model\Monda::apiCmd("graphCreate",
+                Array(
+                    "name" => "monda_test",
+                    "width" => 800,
+                    "height" => 600,
+                    "gitems" => $gitems
+                ));
+        dump($r);exit;
+    }
 
 }

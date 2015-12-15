@@ -41,18 +41,15 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 	public static $xhtml = FALSE;
 
 	/** @var array  empty (void) elements */
-	public static $emptyElements = array(
-		'img' => 1, 'hr' => 1, 'br' => 1, 'input' => 1, 'meta' => 1, 'area' => 1, 'embed' => 1, 'keygen' => 1,
-		'source' => 1, 'base' => 1, 'col' => 1, 'link' => 1, 'param' => 1, 'basefont' => 1, 'frame' => 1,
-		'isindex' => 1, 'wbr' => 1, 'command' => 1, 'track' => 1,
-	);
+	public static $emptyElements = array('img'=>1,'hr'=>1,'br'=>1,'input'=>1,'meta'=>1,'area'=>1,'embed'=>1,'keygen'=>1,
+		'source'=>1,'base'=>1,'col'=>1,'link'=>1,'param'=>1,'basefont'=>1,'frame'=>1,'isindex'=>1,'wbr'=>1,'command'=>1,'track'=>1);
 
 
 	/**
 	 * Static factory.
 	 * @param  string element name (or NULL)
-	 * @param  array|string element's attributes or plain text content
-	 * @return self
+	 * @param  array|string element's attributes (or textual content)
+	 * @return Html
 	 */
 	public static function el($name = NULL, $attrs = NULL)
 	{
@@ -232,23 +229,8 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 
 	/**
-	 * Setter for data-* attributes. Booleans are converted to 'true' resp. 'false'.
-	 * @return self
-	 */
-	public function data($name, $value = NULL)
-	{
-		if (func_num_args() === 1) {
-			$this->attrs['data'] = $name;
-		} else {
-			$this->attrs["data-$name"] = is_bool($value) ? json_encode($value) : $value;
-		}
-		return $this;
-	}
-
-
-	/**
 	 * Sets element's HTML content.
-	 * @param  string raw HTML string
+	 * @param  string
 	 * @return self
 	 * @throws Nette\InvalidArgumentException
 	 */
@@ -290,7 +272,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 	public function setText($text)
 	{
 		if (!is_array($text) && !$text instanceof self) {
-			$text = htmlspecialchars((string) $text, ENT_NOQUOTES, 'UTF-8');
+			$text = htmlspecialchars((string) $text, ENT_NOQUOTES);
 		}
 		return $this->setHtml($text);
 	}
@@ -308,7 +290,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Adds new element's child.
-	 * @param  Html|string Html node or raw HTML string
+	 * @param  Html|string child node
 	 * @return self
 	 */
 	public function add($child)
@@ -320,8 +302,8 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 	/**
 	 * Creates and adds a new Html child.
 	 * @param  string  elements's name
-	 * @param  array|string element's attributes or raw HTML string
-	 * @return self  created element
+	 * @param  array|string element's attributes (or textual content)
+	 * @return Html  created element
 	 */
 	public function create($name, $attrs = NULL)
 	{
@@ -332,11 +314,11 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Inserts child node.
-	 * @param  int|NULL position of NULL for appending
-	 * @param  Html|string Html node or raw HTML string
+	 * @param  int
+	 * @param  Html node
 	 * @param  bool
 	 * @return self
-	 * @throws Nette\InvalidArgumentException
+	 * @throws \Exception
 	 */
 	public function insert($index, $child, $replace = FALSE)
 	{
@@ -358,8 +340,8 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Inserts (replaces) child node (\ArrayAccess implementation).
-	 * @param  int|NULL position of NULL for appending
-	 * @param  Html|string Html node or raw HTML string
+	 * @param  int
+	 * @param  Html node
 	 * @return void
 	 */
 	public function offsetSet($index, $child)
@@ -370,8 +352,8 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Returns child node (\ArrayAccess implementation).
-	 * @param  int
-	 * @return self|string
+	 * @param  int index
+	 * @return mixed
 	 */
 	public function offsetGet($index)
 	{
@@ -381,7 +363,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Exists child node? (\ArrayAccess implementation).
-	 * @param  int
+	 * @param  int index
 	 * @return bool
 	 */
 	public function offsetExists($index)
@@ -392,7 +374,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Removes child node (\ArrayAccess implementation).
-	 * @param  int
+	 * @param  int index
 	 * @return void
 	 */
 	public function offsetUnset($index)
@@ -404,7 +386,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 
 	/**
-	 * Returns children count.
+	 * Required by the \Countable interface.
 	 * @return int
 	 */
 	public function count()
@@ -429,6 +411,9 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 	 */
 	public function getIterator()
 	{
+		if (func_num_args() && func_get_arg(0)) {
+			throw new Nette\DeprecatedException(__METHOD__ . " doesn't support deep iterator any more.");
+		}
 		return new \ArrayIterator($this->children);
 	}
 
@@ -445,7 +430,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Renders element's start tag, content and end tag.
-	 * @param  int
+	 * @param  int indent
 	 * @return string
 	 */
 	public function render($indent = NULL)
@@ -510,7 +495,6 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 	/**
 	 * Returns element's attributes.
 	 * @return string
-	 * @internal
 	 */
 	public function attributes()
 	{
@@ -564,9 +548,6 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 					$value = implode($key === 'style' || !strncmp($key, 'on', 2) ? ';' : ' ', $tmp);
 				}
-
-			} elseif (is_float($value)) {
-				$value = rtrim(rtrim(number_format($value, 10, '.', ''), '0'), '.');
 
 			} else {
 				$value = (string) $value;

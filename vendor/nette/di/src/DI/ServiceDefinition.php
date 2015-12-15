@@ -14,13 +14,30 @@ use Nette;
  * Definition used by ContainerBuilder.
  *
  * @author     David Grudl
+ *
+ * @method string getClass()
+ * @method Statement getFactory()
+ * @method ServiceDefinition setSetup(Statement[])
+ * @method Statement[] getSetup()
+ * @method ServiceDefinition setParameters(array)
+ * @method array getParameters()
+ * @method ServiceDefinition setTags(array)
+ * @method array getTags()
+ * @method ServiceDefinition setAutowired(bool)
+ * @method bool isAutowired()
+ * @method ServiceDefinition setInject(bool)
+ * @method bool getInject()
+ * @method ServiceDefinition setImplement(string)
+ * @method string getImplement()
+ * @method ServiceDefinition setImplementType(string)
+ * @method string getImplementType()
  */
 class ServiceDefinition extends Nette\Object
 {
-	/** @var string|NULL  class or interface name */
+	/** @var string  class or interface name */
 	private $class;
 
-	/** @var Statement|NULL */
+	/** @var Statement */
 	private $factory;
 
 	/** @var Statement[] */
@@ -36,21 +53,18 @@ class ServiceDefinition extends Nette\Object
 	private $autowired = TRUE;
 
 	/** @var bool */
-	private $dynamic = FALSE;
+	public $inject = FALSE;
 
-	/** @var string|NULL  interface name */
+	/** @var string  interface name */
 	private $implement;
 
-	/** @var string|NULL  create | get */
+	/** @internal @var string  create | get */
 	private $implementType;
 
 
-	/**
-	 * @return self
-	 */
 	public function setClass($class, array $args = array())
 	{
-		$this->class = ltrim($class, '\\');
+		$this->class = $class;
 		if ($args) {
 			$this->setFactory($class, $args);
 		}
@@ -58,18 +72,6 @@ class ServiceDefinition extends Nette\Object
 	}
 
 
-	/**
-	 * @return string
-	 */
-	public function getClass()
-	{
-		return $this->class;
-	}
-
-
-	/**
-	 * @return self
-	 */
 	public function setFactory($factory, array $args = array())
 	{
 		$this->factory = $factory instanceof Statement ? $factory : new Statement($factory, $args);
@@ -77,206 +79,28 @@ class ServiceDefinition extends Nette\Object
 	}
 
 
-	/**
-	 * @return Statement|NULL
-	 */
-	public function getFactory()
-	{
-		return $this->factory;
-	}
-
-
-	public function getEntity()
-	{
-		return $this->factory ? $this->factory->getEntity() : NULL;
-	}
-
-
-	/**
-	 * @return self
-	 */
 	public function setArguments(array $args = array())
 	{
-		if (!$this->factory) {
-			$this->factory = new Statement($this->class);
+		if ($this->factory) {
+			$this->factory->arguments = $args;
+		} else {
+			$this->setClass($this->class, $args);
 		}
-		$this->factory->arguments = $args;
 		return $this;
 	}
 
 
-	/**
-	 * @param  Statement[]
-	 * @return self
-	 */
-	public function setSetup(array $setup)
+	public function addSetup($target, array $args = array())
 	{
-		foreach ($setup as $v) {
-			if (!$v instanceof Statement) {
-				throw new Nette\InvalidArgumentException('Argument must be Nette\DI\Statement[].');
-			}
-		}
-		$this->setup = $setup;
+		$this->setup[] = new Statement($target, $args);
 		return $this;
 	}
 
 
-	/**
-	 * @return Statement[]
-	 */
-	public function getSetup()
+	public function addTag($tag, $attrs = TRUE)
 	{
-		return $this->setup;
-	}
-
-
-	/**
-	 * @return self
-	 */
-	public function addSetup($entity, array $args = array())
-	{
-		$this->setup[] = $entity instanceof Statement ? $entity : new Statement($entity, $args);
+		$this->tags[$tag] = $attrs;
 		return $this;
-	}
-
-
-	/**
-	 * @return self
-	 */
-	public function setParameters(array $params)
-	{
-		$this->parameters = $params;
-		return $this;
-	}
-
-
-	/**
-	 * @return array
-	 */
-	public function getParameters()
-	{
-		return $this->parameters;
-	}
-
-
-	/**
-	 * @return self
-	 */
-	public function setTags(array $tags)
-	{
-		$this->tags = $tags;
-		return $this;
-	}
-
-
-	/**
-	 * @return array
-	 */
-	public function getTags()
-	{
-		return $this->tags;
-	}
-
-
-	/**
-	 * @return self
-	 */
-	public function addTag($tag, $attr = TRUE)
-	{
-		$this->tags[$tag] = $attr;
-		return $this;
-	}
-
-
-	/**
-	 * @return mixed
-	 */
-	public function getTag($tag)
-	{
-		return isset($this->tags[$tag]) ? $this->tags[$tag] : NULL;
-	}
-
-
-	/**
-	 * @param  bool
-	 * @return self
-	 */
-	public function setAutowired($state = TRUE)
-	{
-		$this->autowired = (bool) $state;
-		return $this;
-	}
-
-
-	/**
-	 * @return bool
-	 */
-	public function isAutowired()
-	{
-		return $this->autowired;
-	}
-
-
-	/**
-	 * @param  bool
-	 * @return self
-	 */
-	public function setDynamic($state = TRUE)
-	{
-		$this->dynamic = (bool) $state;
-		return $this;
-	}
-
-
-	/**
-	 * @return bool
-	 */
-	public function isDynamic()
-	{
-		return $this->dynamic;
-	}
-
-
-	/**
-	 * @param  string
-	 * @return self
-	 */
-	public function setImplement($interface)
-	{
-		$this->implement = ltrim($interface, '\\');
-		return $this;
-	}
-
-
-	/**
-	 * @return string
-	 */
-	public function getImplement()
-	{
-		return $this->implement;
-	}
-
-
-	/**
-	 * @param  string
-	 * @return self
-	 */
-	public function setImplementType($type)
-	{
-		if (!in_array($type, array('get', 'create'), TRUE)) {
-			throw new Nette\InvalidArgumentException('Argument must be get|create.');
-		}
-		$this->implementType = $type;
-		return $this;
-	}
-
-
-	/**
-	 * @return string
-	 */
-	public function getImplementType()
-	{
-		return $this->implementType;
 	}
 
 
@@ -293,22 +117,6 @@ class ServiceDefinition extends Nette\Object
 	public function isShared()
 	{
 		trigger_error(__METHOD__ . '() is deprecated.', E_USER_DEPRECATED);
-	}
-
-
-	/** @return self */
-	public function setInject($state = TRUE)
-	{
-		//trigger_error(__METHOD__ . '() is deprecated.', E_USER_DEPRECATED);
-		return $this->addTag(Extensions\InjectExtension::TAG_INJECT, $state);
-	}
-
-
-	/** @return self */
-	public function getInject()
-	{
-		//trigger_error(__METHOD__ . '() is deprecated.', E_USER_DEPRECATED);
-		return $this->getTag(Extensions\InjectExtension::TAG_INJECT);
 	}
 
 }

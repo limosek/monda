@@ -8,7 +8,7 @@ require __DIR__ . '/../src/tracy.php';
 
 use Tracy\Debugger;
 
-Debugger::enable(Debugger::DETECT, __DIR__ . '/log');
+Debugger::enable();
 
 
 function first($arg1, $arg2)

@@ -155,11 +155,9 @@ class AnnotationsParser
 	{
 		if (empty($name)) {
 			throw new Nette\InvalidArgumentException('Class name must not be empty.');
+		}
 
-		} elseif ($name === 'self') {
-			return $reflector->getName();
-
-		} elseif ($name[0] === '\\') { // already fully qualified
+		if ($name[0] === '\\') { // already fully qualified
 			return ltrim($name, '\\');
 		}
 
@@ -272,19 +270,18 @@ class AnnotationsParser
 	 * Parses PHP file.
 	 * @param  string
 	 * @return array [class => [prop => comment (or 'use' => [alias => class])]
-	 * @internal
 	 */
 	public static function parsePhp($code)
 	{
 		if (Strings::match($code, '#//nette'.'loader=(\S*)#')) {
-			return;
+			return; // TODO: allways ignore?
 		}
 
 		$tokens = @token_get_all($code);
 		$namespace = $class = $classLevel = $level = $docComment = NULL;
 		$res = $uses = array();
 
-		while (list(, $token) = each($tokens)) {
+		while (list($key, $token) = each($tokens)) {
 			switch (is_array($token) ? $token[0] : $token) {
 				case T_DOC_COMMENT:
 					$docComment = $token[1];

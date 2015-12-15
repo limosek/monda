@@ -53,8 +53,8 @@ interface IRequest
 
 	/**
 	 * Returns uploaded file.
-	 * @param  string key
-	 * @return FileUpload|NULL
+	 * @param  string key (or more keys)
+	 * @return FileUpload
 	 */
 	function getFile($key);
 
@@ -122,19 +122,19 @@ interface IRequest
 
 	/**
 	 * Returns the IP address of the remote client.
-	 * @return string|NULL
+	 * @return string
 	 */
 	function getRemoteAddress();
 
 	/**
 	 * Returns the host of the remote client.
-	 * @return string|NULL
+	 * @return string
 	 */
 	function getRemoteHost();
 
 	/**
 	 * Returns raw content of HTTP request body.
-	 * @return string|NULL
+	 * @return string
 	 */
 	function getRawBody();
 

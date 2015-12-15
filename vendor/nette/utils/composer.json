@@ -21,7 +21,6 @@
 	},
 	"suggest": {
 		"ext-iconv": "to use Strings::webalize() and toAscii()",
-		"ext-intl": "for script transliteration in Strings::webalize() and toAscii()",
 		"ext-mbstring": "to use Strings::lower() etc...",
 		"ext-gd": "to use Image"
 	},
@@ -31,10 +30,5 @@
 	"autoload": {
 		"classmap": ["src/"]
 	},
-	"minimum-stability": "dev",
-	"extra": {
-		"branch-alias": {
-			"dev-master": "2.3-dev"
-		}
-	}
+	"minimum-stability": "dev"
 }

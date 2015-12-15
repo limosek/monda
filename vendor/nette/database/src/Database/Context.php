@@ -7,8 +7,7 @@
 
 namespace Nette\Database;
 
-use Nette,
-	Nette\Database\Conventions\StaticConventions;
+use Nette;
 
 
 /**
@@ -21,21 +20,20 @@ class Context extends Nette\Object
 	/** @var Connection */
 	private $connection;
 
-	/** @var IStructure */
-	private $structure;
-
-	/** @var IConventions */
-	private $conventions;
+	/** @var IReflection */
+	private $reflection;
 
 	/** @var Nette\Caching\IStorage */
 	private $cacheStorage;
 
+	/** @var SqlPreprocessor */
+	private $preprocessor;
 
-	public function __construct(Connection $connection, IStructure $structure, IConventions $conventions = NULL, Nette\Caching\IStorage $cacheStorage = NULL)
+
+	public function __construct(Connection $connection, IReflection $reflection = NULL, Nette\Caching\IStorage $cacheStorage = NULL)
 	{
 		$this->connection = $connection;
-		$this->structure = $structure;
-		$this->conventions = $conventions ?: new StaticConventions;
+		$this->reflection = $reflection ?: new Reflection\ConventionalReflection;
 		$this->cacheStorage = $cacheStorage;
 	}
 
@@ -43,21 +41,21 @@ class Context extends Nette\Object
 	/** @return void */
 	public function beginTransaction()
 	{
-		$this->connection->beginTransaction();
+		$this->queryArgs('::beginTransaction', array());
 	}
 
 
 	/** @return void */
 	public function commit()
 	{
-		$this->connection->commit();
+		$this->queryArgs('::commit', array());
 	}
 
 
 	/** @return void */
 	public function rollBack()
 	{
-		$this->connection->rollBack();
+		$this->queryArgs('::rollBack', array());
 	}
 
 
@@ -79,7 +77,8 @@ class Context extends Nette\Object
 	 */
 	public function query($statement)
 	{
-		return $this->connection->query(func_get_args());
+		$args = func_get_args();
+		return $this->queryArgs(array_shift($args), $args);
 	}
 
 
@@ -90,17 +89,34 @@ class Context extends Nette\Object
 	 */
 	public function queryArgs($statement, array $params)
 	{
-		return $this->connection->queryArgs($statement, $params);
+		$this->connection->connect();
+		if ($params) {
+			if (!$this->preprocessor) {
+				$this->preprocessor = new SqlPreprocessor($this->connection);
+			}
+			array_unshift($params, $statement);
+			list($statement, $params) = $this->preprocessor->process($params);
+		}
+
+		try {
+			$result = new ResultSet($this->connection, $statement, $params);
+		} catch (\PDOException $e) {
+			$e->queryString = $statement;
+			$this->connection->onQuery($this->connection, $e);
+			throw $e;
+		}
+		$this->connection->onQuery($this->connection, $result);
+		return $result;
 	}
 
 
 	/**
 	 * @param  string
-	 * @return Table\Selection
+	 * @return Nette\Database\Table\Selection
 	 */
 	public function table($table)
 	{
-		return new Table\Selection($this, $this->conventions, $table, $this->cacheStorage);
+		return new Table\Selection($this->connection, $table, $this->reflection, $this->cacheStorage);
 	}
 
 
@@ -111,25 +127,10 @@ class Context extends Nette\Object
 	}
 
 
-	/** @return IStructure */
-	public function getStructure()
-	{
-		return $this->structure;
-	}
-
-
-	/** @return IConventions */
-	public function getConventions()
-	{
-		return $this->conventions;
-	}
-
-
-	/** @deprecated */
+	/** @return IReflection */
 	public function getDatabaseReflection()
 	{
-		trigger_error(__METHOD__ . '() is deprecated; use getConventions() instead.', E_USER_DEPRECATED);
-		return $this->conventions;
+		return $this->reflection;
 	}
 
 
@@ -144,7 +145,8 @@ class Context extends Nette\Object
 	 */
 	public function fetch($args)
 	{
-		return $this->connection->query(func_get_args())->fetch();
+		$args = func_get_args();
+		return $this->queryArgs(array_shift($args), $args)->fetch();
 	}
 
 
@@ -156,7 +158,8 @@ class Context extends Nette\Object
 	 */
 	public function fetchField($args)
 	{
-		return $this->connection->query(func_get_args())->fetchField();
+		$args = func_get_args();
+		return $this->queryArgs(array_shift($args), $args)->fetchField();
 	}
 
 
@@ -168,7 +171,8 @@ class Context extends Nette\Object
 	 */
 	public function fetchPairs($args)
 	{
-		return $this->connection->query(func_get_args())->fetchPairs();
+		$args = func_get_args();
+		return $this->queryArgs(array_shift($args), $args)->fetchPairs();
 	}
 
 
@@ -180,7 +184,8 @@ class Context extends Nette\Object
 	 */
 	public function fetchAll($args)
 	{
-		return $this->connection->query(func_get_args())->fetchAll();
+		$args = func_get_args();
+		return $this->queryArgs(array_shift($args), $args)->fetchAll();
 	}
 
 

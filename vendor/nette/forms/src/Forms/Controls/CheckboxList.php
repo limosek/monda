@@ -16,11 +16,11 @@ use Nette,
  *
  * @author     David Grudl
  *
- * @property-read Html $separatorPrototype
+ * @property-read Nette\Utils\Html $separatorPrototype
  */
 class CheckboxList extends MultiChoiceControl
 {
-	/** @var Html  separator element template */
+	/** @var Nette\Utils\Html  separator element template */
 	protected $separator;
 
 
@@ -34,7 +34,7 @@ class CheckboxList extends MultiChoiceControl
 
 	/**
 	 * Generates control's HTML element.
-	 * @return string
+	 * @return Nette\Utils\Html
 	 */
 	public function getControl()
 	{
@@ -59,7 +59,7 @@ class CheckboxList extends MultiChoiceControl
 	/**
 	 * Generates label's HTML element.
 	 * @param  string
-	 * @return Html
+	 * @return Nette\Utils\Html
 	 */
 	public function getLabel($caption = NULL)
 	{
@@ -69,7 +69,7 @@ class CheckboxList extends MultiChoiceControl
 
 	/**
 	 * Returns separator HTML element template.
-	 * @return Html
+	 * @return Nette\Utils\Html
 	 */
 	public function getSeparatorPrototype()
 	{
@@ -78,11 +78,10 @@ class CheckboxList extends MultiChoiceControl
 
 
 	/**
-	 * @return Html
+	 * @return Nette\Utils\Html
 	 */
 	public function getControlPart($key)
 	{
-		$key = key(array((string) $key => NULL));
 		return parent::getControl()->addAttributes(array(
 			'id' => $this->getHtmlId() . '-' . $key,
 			'checked' => in_array($key, (array) $this->value, TRUE),
@@ -94,7 +93,7 @@ class CheckboxList extends MultiChoiceControl
 
 
 	/**
-	 * @return Html
+	 * @return Nette\Utils\Html
 	 */
 	public function getLabelPart($key)
 	{

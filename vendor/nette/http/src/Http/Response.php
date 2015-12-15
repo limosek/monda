@@ -37,9 +37,6 @@ class Response extends Nette\Object implements IResponse
 	/** @var string Whether the cookie is hidden from client-side */
 	public $cookieHttpOnly = TRUE;
 
-	/** @var bool Whether warn on possible problem with data in output buffer */
-	public $warnOnBuffer = TRUE;
-
 	/** @var int HTTP response code */
 	private $code = self::S200_OK;
 
@@ -47,14 +44,10 @@ class Response extends Nette\Object implements IResponse
 	public function __construct()
 	{
 		if (PHP_VERSION_ID >= 50400) {
-			if (is_int($code = http_response_code())) {
-				$this->code = $code;
+			if (is_int(http_response_code())) {
+				$this->code = http_response_code();
 			}
-		}
-
-		if (PHP_VERSION_ID >= 50401) { // PHP bug #61106
-			$rm = new \ReflectionMethod('Nette\Http\Helpers::removeDuplicateCookies');
-			header_register_callback($rm->getClosure()); // requires closure due PHP bug #66375
+			header_register_callback($this->removeDuplicateCookies);
 		}
 	}
 
@@ -151,16 +144,13 @@ class Response extends Nette\Object implements IResponse
 	{
 		$this->setCode($code);
 		$this->setHeader('Location', $url);
-		if (preg_match('#^https?:|^\s*+[a-z0-9+.-]*+[^:]#i', $url)) {
-			$escapedUrl = htmlSpecialChars($url, ENT_IGNORE | ENT_QUOTES, 'UTF-8');
-			echo "<h1>Redirect</h1>\n\n<p><a href=\"$escapedUrl\">Please click here to continue</a>.</p>";
-		}
+		echo "<h1>Redirect</h1>\n\n<p><a href=\"" . htmlSpecialChars($url, ENT_IGNORE | ENT_QUOTES) . "\">Please click here to continue</a>.</p>";
 	}
 
 
 	/**
 	 * Sets the number of seconds before a page cached on a browser expires.
-	 * @param  string|int|\DateTime  time, value 0 means "until the browser is closed"
+	 * @param  string|int|DateTime  time, value 0 means "until the browser is closed"
 	 * @return self
 	 * @throws Nette\InvalidStateException  if HTTP headers have been sent
 	 */
@@ -174,7 +164,7 @@ class Response extends Nette\Object implements IResponse
 
 		$time = DateTime::from($time);
 		$this->setHeader('Cache-Control', 'max-age=' . ($time->format('U') - time()));
-		$this->setHeader('Expires', Helpers::formatDate($time));
+		$this->setHeader('Expires', self::date($time));
 		return $this;
 	}
 
@@ -190,7 +180,7 @@ class Response extends Nette\Object implements IResponse
 
 
 	/**
-	 * Returns value of an HTTP header.
+	 * Return the value of the HTTP header.
 	 * @param  string
 	 * @param  mixed
 	 * @return mixed
@@ -210,7 +200,7 @@ class Response extends Nette\Object implements IResponse
 
 	/**
 	 * Returns a list of headers to sent.
-	 * @return array (name => value)
+	 * @return array
 	 */
 	public function getHeaders()
 	{
@@ -224,11 +214,15 @@ class Response extends Nette\Object implements IResponse
 
 
 	/**
-	 * @deprecated
+	 * Returns HTTP valid date format.
+	 * @param  string|int|DateTime
+	 * @return string
 	 */
 	public static function date($time = NULL)
 	{
-		return Helpers::formatDate($time);
+		$time = DateTime::from($time);
+		$time->setTimezone(new \DateTimeZone('GMT'));
+		return $time->format('D, d M Y H:i:s \G\M\T');
 	}
 
 
@@ -251,7 +245,7 @@ class Response extends Nette\Object implements IResponse
 	 * Sends a cookie.
 	 * @param  string name of the cookie
 	 * @param  string value
-	 * @param  string|int|\DateTime  expiration time, value 0 means "until the browser is closed"
+	 * @param  string|int|DateTime  expiration time, value 0 means "until the browser is closed"
 	 * @param  string
 	 * @param  string
 	 * @param  bool
@@ -271,7 +265,7 @@ class Response extends Nette\Object implements IResponse
 			$secure === NULL ? $this->cookieSecure : (bool) $secure,
 			$httpOnly === NULL ? $this->cookieHttpOnly : (bool) $httpOnly
 		);
-		Helpers::removeDuplicateCookies();
+		$this->removeDuplicateCookies();
 		return $this;
 	}
 
@@ -291,10 +285,26 @@ class Response extends Nette\Object implements IResponse
 	}
 
 
-	/** @internal @deprecated */
+	/**
+	 * Removes duplicate cookies from response.
+	 * @return void
+	 */
 	public function removeDuplicateCookies()
 	{
-		trigger_error('Use Nette\Http\Helpers::removeDuplicateCookies()', E_USER_WARNING);
+		if (headers_sent($file, $line) || ini_get('suhosin.cookie.encrypt')) {
+			return;
+		}
+
+		$flatten = array();
+		foreach (headers_list() as $header) {
+			if (preg_match('#^Set-Cookie: .+?=#', $header, $m)) {
+				$flatten[$m[0]] = $header;
+				header_remove('Set-Cookie');
+			}
+		}
+		foreach (array_values($flatten) as $key => $header) {
+			header($header, $key === 0);
+		}
 	}
 
 
@@ -302,9 +312,8 @@ class Response extends Nette\Object implements IResponse
 	{
 		if (headers_sent($file, $line)) {
 			throw new Nette\InvalidStateException('Cannot send header after HTTP headers have been sent' . ($file ? " (output started at $file:$line)." : '.'));
-
-		} elseif ($this->warnOnBuffer && ob_get_length() && !array_filter(ob_get_status(TRUE), function($i) { return !$i['chunk_size']; })) {
-			trigger_error('Possible problem: you are sending a HTTP header while already having some data in output buffer. Try Tracy\OutputDebugger or start session earlier.', E_USER_NOTICE);
+		} elseif (ob_get_length() && !array_filter(ob_get_status(TRUE), function($i) { return !$i['chunk_size']; })) {
+			trigger_error('Possible problem: you are sending a HTTP header while already having some data in output buffer. Try OutputDebugger or start session earlier.', E_USER_NOTICE);
 		}
 	}
 

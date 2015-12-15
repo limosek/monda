@@ -76,9 +76,9 @@ class PhpWriter extends Object
 				case 'word':
 					$code = $me->formatWord($arg); break;
 				case 'args':
-					$code = $me->formatArgs(); break;
+					$code = $me->formatArgs(); break; // TODO: only as node.args
 				case 'array':
-					$code = $me->formatArray();
+					$code = $me->formatArray(); // TODO: only as node.array
 					$code = $cond && $code === 'array()' ? '' : $code; break;
 				case 'var':
 					$code = var_export($arg, TRUE); break;

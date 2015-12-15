@@ -1,53 +1,26 @@
 
-{block dygraph}
-  <div id={$graph->id} style="float:left"></div>
-  <div id={$graph->legendid} style="float:left"></div>
+{block content}
+<div id="content">
+    <div id="graphdiv"></div>
     <script type="text/javascript">
   g = new Dygraph(
-    document.getElementById({$graph->id}),
-    {$graph->csv}
+
+    // containing div
+    document.getElementById("graphdiv"),
+    {$top10csv}
     ,
      { 
-          delimiter: ",",
-          title: {$graph->title},
-          {if (isset($graph->colors))} colors: [{foreach $graph->colors as $c}{$c},{/foreach}], {/if}
-          labels: [{foreach $graph->labels as $l}{$l},{/foreach}],
-          xlabel: {$graph->xlabel},
-          ylabel: {$graph->ylabel},
-          width: {$graph->width},
-          labelsDiv: {$graph->legendid},
-          labelsSeparateLines: true,
-          fillGraph: true,
-          hideOverlayOnMouseOut: false,
-          legend: "always"
+         delimiter: ",",
+          colors: ["red", "blue", "green"],
+          labels: [{foreach $top10items as $d}{$d},{/foreach}],
+          width: "800"
     }
+
   );
     </script>
-{/block}
-
-{block content}
- <div id="content">
-    {snippet iteminfo}
-        {if isset($testdata)}{$testdata}{/if}
-    {/snippet}
-
-     <h1>TimeWindow {$w->description}</h1>
-     <div id="header">
-          <a n:href="itemInfo! $w->id" class="ajax">Change variable!</a>
-         <div class="loi">Loi: {$w->loi}</div>
-         <div class="seconds">Seconds: {$w->seconds}</div>
-         <div class="found">Found items: {$w->found}</div>
-         <div class="processed">Loi: {$w->processed}</div>
-         <div class="ignored">Ignored: {$w->ignored}
-            <div class="lowstddev">Items with low stddev: {$w->lowstddev}</div>
-            <div class="lowstddev">Items with low avg: {$w->lowavg}</div>
-            <div class="lowcnt">Items with low count of values: {$w->lowcnt}</div>
-         </div>
-     </div>
-  {include dygraph, graph=>$overalldygraph}
-
+    {$top10graphcsv}
     {foreach $map->getChildren() as $child1} 
-      <div id="{$child1->getValue()->itemid}" class="isbox {join(" ",$child1->getValue()->class)}" title="{$child1->getValue()->description}">
+      <div id="{$child1->getValue()->name}" class="isbox {join(" ",$child1->getValue()->class)}" title="{$child1->getValue()->description}">
           <h3><a target="_blank" href="{$child1->getValue()->gurl2}">{$child1->getValue()->description}</a></h3>
           <div class="description">{$child1->getValue()->description}</div>
           <div class="agenda">
@@ -58,7 +31,7 @@
               <div class="cv">Cv:&nbsp;{$child1->getValue()->cv}</div>
               <div class="cnt">Cnt:&nbsp;{$child1->getValue()->cnt}</div>
           </div>
-          <div class="graphs" >
+          <div class="graphs">
               <!img src="{$child1->getValue()->gurl2}"</img>
           </div>
       </div>

@@ -22,7 +22,7 @@ use Nette,
  */
 class TemplateFactory extends Nette\Object implements UI\ITemplateFactory
 {
-	/** @var ILatteFactory */
+	/** @var Nette\Bridges\ApplicationLatte\ILatteFactory */
 	private $latteFactory;
 
 	/** @var Nette\Http\IRequest */
@@ -52,11 +52,11 @@ class TemplateFactory extends Nette\Object implements UI\ITemplateFactory
 	/**
 	 * @return Template
 	 */
-	public function createTemplate(UI\Control $control = NULL)
+	public function createTemplate(UI\Control $control)
 	{
 		$latte = $this->latteFactory->create();
 		$template = new Template($latte);
-		$presenter = $control ? $control->getPresenter(FALSE) : NULL;
+		$presenter = $control->getPresenter(FALSE);
 
 		if ($control instanceof UI\Presenter) {
 			$latte->setLoader(new Loader($control));
@@ -70,25 +70,14 @@ class TemplateFactory extends Nette\Object implements UI\ITemplateFactory
 			$latte->getParser()->shortNoEscape = TRUE;
 			$latte->getCompiler()->addMacro('cache', new Nette\Bridges\CacheLatte\CacheMacro($latte->getCompiler()));
 			UIMacros::install($latte->getCompiler());
-			if (class_exists('Nette\Bridges\FormsLatte\FormMacros')) {
-				Nette\Bridges\FormsLatte\FormMacros::install($latte->getCompiler());
-			}
-			if ($control) {
-				$control->templatePrepareFilters($template);
-			}
+			Nette\Bridges\FormsLatte\FormMacros::install($latte->getCompiler());
+			$control->templatePrepareFilters($template);
 		});
 
 		$latte->addFilter('url', 'rawurlencode'); // back compatiblity
 		foreach (array('normalize', 'toAscii', 'webalize', 'padLeft', 'padRight', 'reverse') as $name) {
 			$latte->addFilter($name, 'Nette\Utils\Strings::' . $name);
 		}
-		$latte->addFilter('null', function() {});
-		$latte->addFilter('length', function($var) {
-			return is_string($var) ? Nette\Utils\Strings::length($var) : count($var);
-		});
-		$latte->addFilter('modifyDate', function($time, $delta, $unit = NULL) {
-			return $time == NULL ? NULL : Nette\Utils\DateTime::from($time)->modify($delta . $unit); // intentionally ==
-		});
 
 		// default parameters
 		$template->control = $template->_control = $control;
@@ -96,7 +85,7 @@ class TemplateFactory extends Nette\Object implements UI\ITemplateFactory
 		$template->user = $this->user;
 		$template->netteHttpResponse = $this->httpResponse;
 		$template->netteCacheStorage = $this->cacheStorage;
-		$template->baseUri = $template->baseUrl = $this->httpRequest ? rtrim($this->httpRequest->getUrl()->getBaseUrl(), '/') : NULL;
+		$template->baseUri = $template->baseUrl = rtrim($this->httpRequest->getUrl()->getBaseUrl(), '/');
 		$template->basePath = preg_replace('#https?://[^/]+#A', '', $template->baseUrl);
 		$template->flashes = array();
 

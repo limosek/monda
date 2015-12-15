@@ -17,14 +17,14 @@ use Nette;
  *
  * @property-read string $name
  * @property-read string $sanitizedName
- * @property-read string|NULL $contentType
+ * @property-read string $contentType
  * @property-read int $size
  * @property-read string $temporaryFile
  * @property-read int $error
  * @property-read bool $ok
  * @property-read bool $image
- * @property-read array|NULL $imageSize
- * @property-read string|NULL $contents
+ * @property-read array $imageSize
+ * @property-read string $contents
  */
 class FileUpload extends Nette\Object
 {
@@ -81,7 +81,7 @@ class FileUpload extends Nette\Object
 
 	/**
 	 * Returns the MIME content type of an uploaded file.
-	 * @return string|NULL
+	 * @return string
 	 */
 	public function getContentType()
 	{
@@ -173,7 +173,6 @@ class FileUpload extends Nette\Object
 	/**
 	 * Returns the image.
 	 * @return Nette\Utils\Image
-	 * @throws Nette\Utils\ImageException
 	 */
 	public function toImage()
 	{
@@ -183,7 +182,7 @@ class FileUpload extends Nette\Object
 
 	/**
 	 * Returns the dimensions of an uploaded image as array.
-	 * @return array|NULL
+	 * @return array
 	 */
 	public function getImageSize()
 	{
@@ -193,7 +192,7 @@ class FileUpload extends Nette\Object
 
 	/**
 	 * Get file contents.
-	 * @return string|NULL
+	 * @return string
 	 */
 	public function getContents()
 	{

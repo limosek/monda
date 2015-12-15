@@ -21,13 +21,14 @@ use Nette,
  * @property-read string $mask
  * @property-read array $defaults
  * @property-read int $flags
+ * @property-read string|FALSE $targetPresenter
  */
 class Route extends Nette\Object implements Application\IRouter
 {
 	const PRESENTER_KEY = 'presenter';
 	const MODULE_KEY = 'module';
 
-	/** @deprecated */
+	/** flag */
 	const CASE_SENSITIVE = 256;
 
 	/** @internal url type */
@@ -55,6 +56,7 @@ class Route extends Nette\Object implements Application\IRouter
 	public static $styles = array(
 		'#' => array( // default style for path parameters
 			self::PATTERN => '[^/]+',
+			self::FILTER_IN => 'rawurldecode',
 			self::FILTER_OUT => array(__CLASS__, 'param2path'),
 		),
 		'?#' => array( // default style for query parameters
@@ -91,7 +93,7 @@ class Route extends Nette\Object implements Application\IRouter
 	/** @var string  regular expression pattern */
 	private $re;
 
-	/** @var string[]  parameter aliases in regular expression */
+	/** @var string  parameter aliases in regular expression */
 	private $aliases;
 
 	/** @var array of [value & fixity, filterIn, filterOut] */
@@ -105,12 +107,6 @@ class Route extends Nette\Object implements Application\IRouter
 
 	/** @var int */
 	private $flags;
-
-	/** @var Nette\Http\Url */
-	private $lastRefUrl;
-
-	/** @var string */
-	private $lastBaseUrl;
 
 
 	/**
@@ -154,13 +150,12 @@ class Route extends Nette\Object implements Application\IRouter
 		$re = $this->re;
 
 		if ($this->type === self::HOST) {
-			$host = $url->getHost();
-			$path = '//' . $host . $url->getPath();
-			$host = ip2long($host) ? array($host) : array_reverse(explode('.', $host));
+			$path = '//' . $url->getHost() . $url->getPath();
+			$host = array_reverse(explode('.', $url->getHost()));
 			$re = strtr($re, array(
 				'/%basePath%/' => preg_quote($url->getBasePath(), '#'),
-				'%tld%' => preg_quote($host[0], '#'),
-				'%domain%' => preg_quote(isset($host[1]) ? "$host[1].$host[0]" : $host[0], '#'),
+				'%tld%' => $host[0],
+				'%domain%' => isset($host[1]) ? "$host[1]\\.$host[0]" : $host[0],
 			));
 
 		} elseif ($this->type === self::RELATIVE) {
@@ -175,7 +170,7 @@ class Route extends Nette\Object implements Application\IRouter
 		}
 
 		if ($path !== '') {
-			$path = rtrim(rawurldecode($path), '/') . '/';
+			$path = rtrim($path, '/') . '/';
 		}
 
 		if (!$matches = Strings::match($path, $re)) {
@@ -194,7 +189,10 @@ class Route extends Nette\Object implements Application\IRouter
 
 		// 2) CONSTANT FIXITY
 		foreach ($this->metadata as $name => $meta) {
-			if (!isset($params[$name]) && isset($meta['fixity']) && $meta['fixity'] !== self::OPTIONAL) {
+			if (isset($params[$name])) {
+				//$params[$name] = $this->flags & self::CASE_SENSITIVE === 0 ? strtolower($params[$name]) : */$params[$name]; // strtolower damages UTF-8
+
+			} elseif (isset($meta['fixity']) && $meta['fixity'] !== self::OPTIONAL) {
 				$params[$name] = NULL; // cannot be overwriten in 3) and detected by isset() in 4)
 			}
 		}
@@ -292,7 +290,7 @@ class Route extends Nette\Object implements Application\IRouter
 
 		if (isset($metadata[self::MODULE_KEY])) { // try split into module and [submodule:]presenter parts
 			$module = $metadata[self::MODULE_KEY];
-			if (isset($module['fixity']) && strncmp($presenter, $module[self::VALUE] . ':', strlen($module[self::VALUE]) + 1) === 0) {
+			if (isset($module['fixity']) && strncasecmp($presenter, $module[self::VALUE] . ':', strlen($module[self::VALUE]) + 1) === 0) {
 				$a = strlen($module[self::VALUE]);
 			} else {
 				$a = strrpos($presenter, ':');
@@ -313,11 +311,10 @@ class Route extends Nette\Object implements Application\IRouter
 			if (isset($meta['fixity'])) {
 				if ($params[$name] === FALSE) {
 					$params[$name] = '0';
-				} elseif (is_scalar($params[$name])) {
-					$params[$name] = (string) $params[$name];
 				}
-
-				if ($params[$name] === $meta[self::VALUE]) { // remove default values; NULL values are retain
+				if (is_scalar($params[$name]) ? strcasecmp($params[$name], $meta[self::VALUE]) === 0
+					: $params[$name] === $meta[self::VALUE]
+				) { // remove default values; NULL values are retain
 					unset($params[$name]);
 					continue;
 
@@ -390,29 +387,27 @@ class Route extends Nette\Object implements Application\IRouter
 		} while (TRUE);
 
 
-		if ($this->type !== self::HOST) {
-			if ($this->lastRefUrl !== $refUrl) {
-				$scheme = ($this->flags & self::SECURED ? 'https://' : 'http://');
-				$basePath = ($this->type === self::RELATIVE ? $refUrl->getBasePath() : '');
-				$this->lastBaseUrl = $scheme . $refUrl->getAuthority() . $basePath;
-				$this->lastRefUrl = $refUrl;
-			}
-			$url = $this->lastBaseUrl . $url;
+		// absolutize path
+		if ($this->type === self::RELATIVE) {
+			$url = '//' . $refUrl->getAuthority() . $refUrl->getBasePath() . $url;
+
+		} elseif ($this->type === self::PATH) {
+			$url = '//' . $refUrl->getAuthority() . $url;
 
 		} else {
-			$host = $refUrl->getHost();
-			$host = ip2long($host) ? array($host) : array_reverse(explode('.', $host));
+			$host = array_reverse(explode('.', $refUrl->getHost()));
 			$url = strtr($url, array(
 				'/%basePath%/' => $refUrl->getBasePath(),
 				'%tld%' => $host[0],
 				'%domain%' => isset($host[1]) ? "$host[1].$host[0]" : $host[0],
 			));
-			$url = ($this->flags & self::SECURED ? 'https:' : 'http:') . $url;
 		}
 
-		if (strpos($url, '//', 7) !== FALSE) {
-			return NULL;
+		if (strpos($url, '//', 2) !== FALSE) {
+			return NULL; // TODO: implement counterpart in match() ?
 		}
+
+		$url = ($this->flags & self::SECURED ? 'https:' : 'http:') . $url;
 
 		// build query string
 		if ($this->xlat) {
@@ -452,22 +447,11 @@ class Route extends Nette\Object implements Application\IRouter
 
 		foreach ($metadata as $name => $meta) {
 			if (!is_array($meta)) {
-				$metadata[$name] = $meta = array(self::VALUE => $meta);
-			}
+				$metadata[$name] = array(self::VALUE => $meta, 'fixity' => self::CONSTANT);
 
-			if (array_key_exists(self::VALUE, $meta)) {
-				if (is_scalar($meta[self::VALUE])) {
-					$metadata[$name][self::VALUE] = (string) $meta[self::VALUE];
-				}
+			} elseif (array_key_exists(self::VALUE, $meta)) {
 				$metadata[$name]['fixity'] = self::CONSTANT;
 			}
-		}
-
-		if (strpbrk($mask, '?<[') === FALSE) {
-			$this->re = '#' . preg_quote($mask, '#') . '/?\z#A';
-			$this->sequence = array($mask);
-			$this->metadata = $metadata;
-			return;
 		}
 
 		// PARSE MASK
@@ -556,6 +540,11 @@ class Route extends Nette\Object implements Application\IRouter
 				continue;
 			}
 
+			// check name (limitation by regexp)
+			if (preg_match('#[^a-z0-9_-]#i', $name)) {
+				throw new Nette\InvalidArgumentException("Parameter name must be alphanumeric string due to limitations of PCRE, '$name' given.");
+			}
+
 			// pattern, condition & metadata
 			if ($class !== '') {
 				if (!isset(static::$styles[$class])) {
@@ -595,7 +584,7 @@ class Route extends Nette\Object implements Application\IRouter
 					$meta['defOut'] = $meta[self::VALUE];
 				}
 			}
-			$meta[self::PATTERN] = "#(?:$pattern)\\z#A";
+			$meta[self::PATTERN] = "#(?:$pattern)\\z#A" . ($this->flags & self::CASE_SENSITIVE ? '' : 'iu');
 
 			// include in expression
 			$aliases['p' . $i] = $name;
@@ -625,7 +614,7 @@ class Route extends Nette\Object implements Application\IRouter
 		}
 
 		$this->aliases = $aliases;
-		$this->re = '#' . $re . '/?\z#A';
+		$this->re = '#' . $re . '/?\z#A' . ($this->flags & self::CASE_SENSITIVE ? '' : 'iu');
 		$this->metadata = $metadata;
 		$this->sequence = $sequence;
 	}
@@ -673,12 +662,12 @@ class Route extends Nette\Object implements Application\IRouter
 	/**
 	 * Proprietary cache aim.
 	 * @internal
-	 * @return string[]|NULL
+	 * @return string|FALSE
 	 */
-	public function getTargetPresenters()
+	public function getTargetPresenter()
 	{
 		if ($this->flags & self::ONE_WAY) {
-			return array();
+			return FALSE;
 		}
 
 		$m = $this->metadata;
@@ -693,7 +682,7 @@ class Route extends Nette\Object implements Application\IRouter
 		}
 
 		if (isset($m[self::PRESENTER_KEY]['fixity']) && $m[self::PRESENTER_KEY]['fixity'] === self::CONSTANT) {
-			return array($module . $m[self::PRESENTER_KEY][self::VALUE]);
+			return $module . $m[self::PRESENTER_KEY][self::VALUE];
 		}
 		return NULL;
 	}
@@ -749,8 +738,10 @@ class Route extends Nette\Object implements Application\IRouter
 	 */
 	private static function path2action($s)
 	{
+		$s = strtolower($s);
 		$s = preg_replace('#-(?=[a-z])#', ' ', $s);
-		$s = lcfirst(ucwords($s));
+		$s = substr(ucwords('x' . $s), 1);
+		//$s = lcfirst(ucwords($s));
 		$s = str_replace(' ', '', $s);
 		return $s;
 	}
@@ -778,6 +769,7 @@ class Route extends Nette\Object implements Application\IRouter
 	 */
 	private static function path2presenter($s)
 	{
+		$s = strtolower($s);
 		$s = preg_replace('#([.-])(?=[a-z])#', '$1 ', $s);
 		$s = ucwords($s);
 		$s = str_replace('. ', ':', $s);
@@ -801,11 +793,13 @@ class Route extends Nette\Object implements Application\IRouter
 
 
 	/**
-	 * @deprecated
+	 * Creates new style.
+	 * @param  string  style name (#style, urlParameter, ?queryParameter)
+	 * @param  string  optional parent style name
+	 * @return void
 	 */
 	public static function addStyle($style, $parent = '#')
 	{
-		trigger_error(__METHOD__ . '() is deprecated.', E_USER_DEPRECATED);
 		if (isset(static::$styles[$style])) {
 			throw new Nette\InvalidArgumentException("Style '$style' already exists.");
 		}
@@ -823,11 +817,14 @@ class Route extends Nette\Object implements Application\IRouter
 
 
 	/**
-	 * @deprecated
+	 * Changes style property value.
+	 * @param  string  style name (#style, urlParameter, ?queryParameter)
+	 * @param  string  property name (Route::PATTERN, Route::FILTER_IN, Route::FILTER_OUT, Route::FILTER_TABLE)
+	 * @param  mixed   property value
+	 * @return void
 	 */
 	public static function setStyleProperty($style, $key, $value)
 	{
-		trigger_error(__METHOD__ . '() is deprecated.', E_USER_DEPRECATED);
 		if (!isset(static::$styles[$style])) {
 			throw new Nette\InvalidArgumentException("Style '$style' doesn't exist.");
 		}

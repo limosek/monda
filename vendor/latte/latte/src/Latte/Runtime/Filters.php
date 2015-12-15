@@ -14,14 +14,13 @@ use Latte;
  * Template filters.
  *
  * @author     David Grudl
- * @internal
  */
 class Filters
 {
-	/** @deprecated */
+	/** @var string default date format */
 	public static $dateFormat = '%x';
 
-	/** @internal @var bool  use XHTML syntax? */
+	/** @var bool  use XHTML syntax? */
 	public static $xhtml = FALSE;
 
 
@@ -40,7 +39,7 @@ class Filters
 		if ($quotes !== ENT_NOQUOTES && strpos($s, '`') !== FALSE && strpbrk($s, ' <>"\'') === FALSE) {
 			$s .= ' ';
 		}
-		return htmlSpecialChars($s, $quotes, 'UTF-8');
+		return htmlSpecialChars($s, $quotes);
 	}
 
 
@@ -69,7 +68,7 @@ class Filters
 		// XML 1.0: \x09 \x0A \x0D and C1 allowed directly, C0 forbidden
 		// XML 1.1: \x00 forbidden directly and as a character reference,
 		//   \x09 \x0A \x0D \x85 allowed directly, C0, C1 and \x7F allowed as character references
-		return htmlSpecialChars(preg_replace('#[\x00-\x08\x0B\x0C\x0E-\x1F]+#', '', $s), ENT_QUOTES, 'UTF-8');
+		return htmlSpecialChars(preg_replace('#[\x00-\x08\x0B\x0C\x0E-\x1F]+#', '', $s), ENT_QUOTES);
 	}
 
 
@@ -187,12 +186,8 @@ class Filters
 		if ($time instanceof \DateInterval) {
 			return $time->format($format);
 
-		} elseif (is_numeric($time)) {
-			$time = new \DateTime('@' . $time);
-			$time->setTimeZone(new \DateTimeZone(date_default_timezone_get()));
-
 		} elseif (!$time instanceof \DateTime && !$time instanceof \DateTimeInterface) {
-			$time = new \DateTime($time);
+			$time = new \DateTime((is_numeric($time) ? '@' : '') . $time);
 		}
 		return strpos($format, '%') === FALSE
 			? $time->format($format) // formats using date()

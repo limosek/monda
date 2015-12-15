@@ -10,8 +10,7 @@ namespace NetteModule;
 use Nette,
 	Nette\Application,
 	Nette\Application\Responses,
-	Nette\Http,
-	Latte;
+	Nette\Http;
 
 
 /**
@@ -29,14 +28,14 @@ class MicroPresenter extends Nette\Object implements Application\IPresenter
 	/** @var Nette\Http\IRequest|NULL */
 	private $httpRequest;
 
-	/** @var Application\IRouter|NULL */
+	/** @var IRouter|NULL */
 	private $router;
 
-	/** @var Application\Request */
+	/** @var Request */
 	private $request;
 
 
-	public function __construct(Nette\DI\Container $context = NULL, Http\IRequest $httpRequest = NULL, Application\IRouter $router = NULL)
+	public function __construct(Nette\DI\Container $context = NULL, Http\IRequest $httpRequest = NULL, IRouter $router = NULL)
 	{
 		$this->context = $context;
 		$this->httpRequest = $httpRequest;
@@ -46,7 +45,7 @@ class MicroPresenter extends Nette\Object implements Application\IPresenter
 
 	/**
 	 * Gets the context.
-	 * @return Nette\DI\Container
+	 * @return \SystemContainer|Nette\DI\Container
 	 */
 	public function getContext()
 	{
@@ -78,15 +77,14 @@ class MicroPresenter extends Nette\Object implements Application\IPresenter
 		$reflection = Nette\Utils\Callback::toReflection(Nette\Utils\Callback::check($callback));
 		$params = Application\UI\PresenterComponentReflection::combineArgs($reflection, $params);
 
-		if ($this->context) {
-			foreach ($reflection->getParameters() as $param) {
-				if ($param->getClassName()) {
-					unset($params[$param->getPosition()]);
-				}
+		foreach ($reflection->getParameters() as $param) {
+			if ($param->getClassName()) {
+				unset($params[$param->getPosition()]);
 			}
+		}
 
+		if ($this->context) {
 			$params = Nette\DI\Helpers::autowireArguments($reflection, $params, $this->context);
-			$params['presenter'] = $this;
 		}
 
 		$response = call_user_func_array($callback, $params);
@@ -95,12 +93,12 @@ class MicroPresenter extends Nette\Object implements Application\IPresenter
 			$response = array($response, array());
 		}
 		if (is_array($response)) {
-			list($templateSource, $templateParams) = $response;
-			$response = $this->createTemplate()->setParameters($templateParams);
-			if (!$templateSource instanceof \SplFileInfo) {
-				$response->getLatte()->setLoader(new Latte\Loaders\StringLoader);
+			$response = $this->createTemplate()->setParameters($response[1]);
+			if ($response[0] instanceof \SplFileInfo) {
+				$response->setFile($response[0]);
+			} else {
+				$response->setSource($response[0]); // TODO
 			}
-			$response->setFile($templateSource);
 		}
 		if ($response instanceof Application\UI\ITemplate) {
 			return new Responses\TextResponse($response);

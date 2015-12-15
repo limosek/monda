@@ -20,7 +20,6 @@
 		"nette/utils": "~2.2"
 	},
 	"require-dev": {
-		"nette/di": "~2.3",
 		"nette/tester": "~1.0"
 	},
 	"conflict": {
@@ -29,10 +28,5 @@
 	"autoload": {
 		"classmap": ["src/"]
 	},
-	"minimum-stability": "dev",
-	"extra": {
-		"branch-alias": {
-			"dev-master": "2.3-dev"
-		}
-	}
+	"minimum-stability": "dev"
 }

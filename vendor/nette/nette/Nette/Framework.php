@@ -11,14 +11,26 @@ use Nette;
 
 
 /**
- * Framework version.
+ * The Nette Framework (http://nette.org)
+ *
+ * @author     David Grudl
  */
 class Framework
 {
 
+	/** Nette Framework version identification */
 	const NAME = 'Nette Framework',
-		VERSION = '2.3.2',
-		VERSION_ID = 20302,
-		REVISION = 'released on 2015-05-05';
+		VERSION = '2.2.2',
+		VERSION_ID = 20202,
+		REVISION = 'released on 2014-06-26';
+
+
+	/**
+	 * Static class - cannot be instantiated.
+	 */
+	final public function __construct()
+	{
+		throw new StaticClassException;
+	}
 
 }

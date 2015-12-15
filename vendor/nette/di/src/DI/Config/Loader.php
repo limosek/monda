@@ -15,6 +15,8 @@ use Nette,
  * Configuration file loader.
  *
  * @author     David Grudl
+ *
+ * @property-read array $dependencies
  */
 class Loader extends Nette\Object
 {
@@ -41,7 +43,7 @@ class Loader extends Nette\Object
 		if (!is_file($file) || !is_readable($file)) {
 			throw new Nette\FileNotFoundException("File '$file' is missing or is not readable.");
 		}
-		$this->dependencies[] = realpath($file);
+		$this->dependencies[] = $file = realpath($file);
 		$data = $this->getAdapter($file)->load($file);
 
 		if ($section) {

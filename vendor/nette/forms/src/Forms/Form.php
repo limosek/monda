@@ -83,13 +83,13 @@ class Form extends Container implements Nette\Utils\IHtmlString
 	/** @internal protection token ID */
 	const PROTECTOR_ID = '_token_';
 
-	/** @var callable[]  function(Form $sender); Occurs when the form is submitted and successfully validated */
+	/** @var array of function(Form $sender); Occurs when the form is submitted and successfully validated */
 	public $onSuccess;
 
-	/** @var callable[]  function(Form $sender); Occurs when the form is submitted and is not valid */
+	/** @var array of function(Form $sender); Occurs when the form is submitted and is not valid */
 	public $onError;
 
-	/** @var callable[]  function(Form $sender); Occurs when the form is submitted */
+	/** @var array of function(Form $sender); Occurs when the form is submitted */
 	public $onSubmit;
 
 	/** @var mixed or NULL meaning: not detected yet */
@@ -396,10 +396,9 @@ class Form extends Container implements Nette\Utils\IHtmlString
 	{
 		if (!$this->isSubmitted()) {
 			return;
-
-		} elseif (!$this->getErrors()) {
-			$this->validate();
 		}
+
+		$this->validate();
 
 		if ($this->submittedBy instanceof ISubmitterControl) {
 			if ($this->isValid()) {
@@ -409,20 +408,19 @@ class Form extends Container implements Nette\Utils\IHtmlString
 			}
 		}
 
-		if (!$this->isValid()) {
-			$this->onError($this);
-		} elseif ($this->onSuccess) {
+		if ($this->onSuccess) {
 			foreach ($this->onSuccess as $handler) {
-				$params = Nette\Utils\Callback::toReflection($handler)->getParameters();
-				$values = isset($params[1]) ? $this->getValues($params[1]->isArray()) : NULL;
-				Nette\Utils\Callback::invoke($handler, $this, $values);
 				if (!$this->isValid()) {
 					$this->onError($this);
 					break;
 				}
+				$params = Nette\Utils\Callback::toReflection($handler)->getParameters();
+				$values = isset($params[1]) ? $this->getValues($params[1]->isArray()) : NULL;
+				Nette\Utils\Callback::invoke($handler, $this, $values);
 			}
+		} elseif (!$this->isValid()) {
+			$this->onError($this);
 		}
-
 		$this->onSubmit($this);
 	}
 
@@ -471,7 +469,6 @@ class Form extends Container implements Nette\Utils\IHtmlString
 	}
 
 
-	/** @internal */
 	public function validateMaxPostSize()
 	{
 		if (!$this->submittedBy || strcasecmp($this->getMethod(), 'POST') || empty($_SERVER['CONTENT_LENGTH'])) {
@@ -483,7 +480,7 @@ class Form extends Container implements Nette\Utils\IHtmlString
 			$maxSize <<= $units[$ch];
 		}
 		if ($maxSize > 0 && $maxSize < $_SERVER['CONTENT_LENGTH']) {
-			$this->addError(sprintf(Validator::$messages[self::MAX_FILE_SIZE], $maxSize));
+			$this->addError(sprintf(Rules::$defaultMessages[self::MAX_FILE_SIZE], $maxSize));
 		}
 	}
 
@@ -534,6 +531,14 @@ class Form extends Container implements Nette\Utils\IHtmlString
 	public function getOwnErrors()
 	{
 		return array_unique($this->errors);
+	}
+
+
+	/** @deprecated */
+	public function getAllErrors()
+	{
+		trigger_error(__METHOD__ . '() is deprecated; use getErrors() instead.', E_USER_DEPRECATED);
+		return $this->getErrors();
 	}
 
 
@@ -593,7 +598,7 @@ class Form extends Container implements Nette\Utils\IHtmlString
 
 	/**
 	 * Renders form to string.
-	 * @param can throw exceptions? (hidden parameter)
+	 * @return can throw exceptions? (hidden parameter)
 	 * @return string
 	 */
 	public function __toString()

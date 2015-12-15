@@ -12,7 +12,9 @@ if (!function_exists('dump')) {
 	 */
 	function dump($var)
 	{
-		array_map('Tracy\Debugger::dump', func_get_args());
+		foreach (func_get_args() as $arg) {
+			Tracy\Debugger::dump($arg);
+		}
 		return $var;
 	}
 }

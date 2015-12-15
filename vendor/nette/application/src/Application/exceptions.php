@@ -36,17 +36,17 @@ class InvalidPresenterException extends \Exception
 
 
 /**
- * The exception that indicates client error with HTTP code 4xx.
+ * Bad HTTP / presenter request exception.
  */
 class BadRequestException extends \Exception
 {
 	/** @var int */
-	protected $code = 404;
+	protected $defaultCode = 404;
 
 
 	public function __construct($message = '', $code = 0, \Exception $previous = NULL)
 	{
-		parent::__construct($message, $code < 200 || $code > 504 ? $this->code : $code, $previous);
+		parent::__construct($message, $code < 200 || $code > 504 ? $this->defaultCode : $code, $previous);
 	}
 
 }
@@ -58,6 +58,6 @@ class BadRequestException extends \Exception
 class ForbiddenRequestException extends BadRequestException
 {
 	/** @var int */
-	protected $code = 403;
+	protected $defaultCode = 403;
 
 }

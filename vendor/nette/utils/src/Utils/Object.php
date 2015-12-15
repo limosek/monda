@@ -49,14 +49,14 @@ use Nette,
  *
  * @author     David Grudl
  *
- * @property-read Nette\Reflection\ClassType|\ReflectionClass $reflection
+ * @property-read Nette\Reflection\ClassType $reflection
  */
 abstract class Object
 {
 
 	/**
 	 * Access to reflection.
-	 * @return Nette\Reflection\ClassType|\ReflectionClass
+	 * @return ReflectionClass
 	 */
 	public static function getReflection()
 	{

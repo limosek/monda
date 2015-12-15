@@ -20,7 +20,7 @@ class PhpExtension extends Nette\DI\CompilerExtension
 
 	public function afterCompile(Nette\PhpGenerator\ClassType $class)
 	{
-		$initialize = $class->getMethod('initialize');
+		$initialize = $class->methods['initialize'];
 		foreach ($this->getConfig() as $name => $value) {
 			if (!is_scalar($value)) {
 				throw new Nette\InvalidStateException("Configuration value for directive '$name' is not scalar.");
