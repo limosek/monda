@@ -50,7 +50,11 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             $this->wait();
         }
         if (!getenv("MONDA_CLI")) {
-            throw New Exception("Error #$code: $msg");
+            if ($code!=0) {
+                throw New Exception("Error #$code: $msg");
+            } else {
+                exit;
+            }
         } else {
             exit($code);
         }
@@ -223,6 +227,18 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 );
         $this->dbg=New Model\CliDebug($ret->debug);
         $ret=self::parseOpt($ret,
+                "progress",
+                "P","progress",
+                "Progress informations on stderr",
+                false
+                );
+        $ret=self::parseOpt($ret,
+                "configinfo",
+                "C","config-info",
+                "Configuration information",
+                false
+                );
+        $ret=self::parseOpt($ret,
                 "dry",
                 "R","dry_run",
                 "Only show what would be done. Do not touch db.",
@@ -353,6 +369,20 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 ""
                 );
         $ret=self::parseOpt($ret,
+                "csvdelim",
+                false,"csv_delimiter",
+                "Use this delimiter for CSV output",
+                ";",
+                ";"
+                );
+        $ret=self::parseOpt($ret,
+                "csvenc",
+                false,"csv_enclosure",
+                "Use this enclosure for CSV output",
+                '"',
+                '"'
+                );
+        $ret=self::parseOpt($ret,
                 "zabbix_history_table",
                 "Zht","zabbix_history_table",
                 "Zabbix history table to work on",
@@ -408,10 +438,20 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         }
     }
     
+    function beforeRender() {
+        if ($this->opts->configinfo) {
+            dump($this->opts);
+            self::mexit();
+        }
+    }
+    
     function renderCli() {
-
+        global $container;
+        $httpResponse = $container->getByType('Nette\Http\Response');
+        $httpResponse->setContentType('text/csv', 'UTF-8');
+        
        foreach ((array) $this->exportdata as $id=>$row) {
-           echo "#Row $id:\n";
+           echo "#Row $id (size ".count($row).")\n";
             foreach ($row as $r=>$v) {
                 echo "$r='$v'\n";
             }
@@ -421,22 +461,34 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
     
     function renderCsv() {
-
+        global $container;
+        $httpResponse = $container->getByType('Nette\Http\Response');
+        $httpResponse->setContentType('text/csv', 'UTF-8');
+        
+        $opts=$this->opts;
         $i = 0;
+        
         foreach ((array) $this->exportdata as $id => $row) {
             if ($i == 0) {
                 foreach ($row as $r => $v) {
-                    echo sprintf('"%s";',$r);
+                    echo sprintf('%s%s%s;',$opts->csvenc,$r,$opts->csvenc);
                 }
                 echo "\n";
             }
+            $cnt=count($row);
+            $j=1;
             foreach ($row as $r => $v) {
                 if (is_object($v)) { 
                     if (get_class($v)=="Nette\Utils\DateTime") {
                         $v=$v->format("c");
                     }
                 }
-                echo sprintf('"%s";',$v);
+                if ($j!=$cnt) {
+                    echo sprintf('%s%s%s%s',$opts->csvenc,$v,$opts->csvenc,$opts->csvdelim);
+                } else {
+                    echo sprintf('%s%s%s%s',$opts->csvenc,$v,$opts->csvenc);
+                }
+                $j++;
             }
             echo "\n";
             $i++;

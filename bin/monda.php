@@ -4,8 +4,7 @@
 use Nette\Utils\Strings,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
-    Nette\Database\Context,
-    \ZabbixApi;
+    Nette\Database\Context;
 
 proc_nice(19);
 if (getenv("MONDA_TMP")) {

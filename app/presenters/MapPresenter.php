@@ -45,11 +45,21 @@ class MapPresenter extends BasePresenter
                 false,
                 "No limit"
                 );
+        $ret=self::parseOpt($ret,
+                "maxmapobjects",
+                false,"maxmapobjects",
+                "Maximum number of objects in map",
+                40,
+                40
+                );
         return($ret);
     }
     
     public function createMap($name,$props=false) {
         $map=New Node($name);
+        if (!$props) {
+            $props=New \stdClass();
+        }
         $props->name=$name;
         $map->setValue($props);
         return($map);
@@ -67,7 +77,7 @@ class MapPresenter extends BasePresenter
     
     function renderTw() {
         $opts=$this->opts;
-        if (!$opts->wids || count($wids)>1) {
+        if (!$opts->wids || count($opts->wids)>1) {
             self::mexit(2,"Bad window ids!\n");
         }
         $map=self::createMap($opts->mapname);
@@ -77,6 +87,7 @@ class MapPresenter extends BasePresenter
         }
         $w=\App\Model\Tw::twGet($opts->wids);
         $map->w=$w;
+        $this->template->wid=$w->id;
         $items=$items->fetchAll();
         $maxcv=0;
         $maxloi=0;
@@ -86,6 +97,7 @@ class MapPresenter extends BasePresenter
         $minstddev=0;
         $mincnt=0;
         $maxcnt=0;
+
         foreach ($items as $item) {
             $maxcv=max($maxcv,$item->cv);
             $mincv=min($mincv,$item->cv);
@@ -96,7 +108,11 @@ class MapPresenter extends BasePresenter
             $mincnt=min($mincnt,$item->cnt);
             $maxcnt=max($maxcnt,$item->cnt);
         }
+        $objects=0;
+        $map->items=Array();
         foreach ($items as $item) {
+            $objects++;
+            if ($objects>$opts->maxmapobjects) continue;
             $props=New \StdClass();
             $props->cv=$item->cv;
             $props->loi=$item->loi;
@@ -109,8 +125,10 @@ class MapPresenter extends BasePresenter
             $props->gurl2=sprintf("%s/chart.php?itemids[]=%d&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
             if ($opts->outputverb=="expanded") {
                 $props->description= HsPresenter::expandHost($item->hostid).":".IsPresenter::expandItem($item->itemid);
+                $map->items[]=$props->description;
             } else {
                 $props->description=$item->itemid;
+                $map->items[]=$item->itemid;
             }
             
             $props->height=round(50*($item->loi/$maxloi));
@@ -128,11 +146,16 @@ class MapPresenter extends BasePresenter
         $this->template->map=$map;
         $i=1;
         $zitemids="";
+        $t10i=Array();
         foreach ($items as $item) {
             $zitemids.="itemids[]=$item->itemid&";
+            $t10i[]=$item->itemid;
             $i++;
             if ($i>10) break;
         }
+        $this->template->top10items=$t10i;
+        $top10itemsjs=join(",",$t10i);
+        $this->template->top10csv="$opts->zaburl/monda/is/zabbixhistory?w=$w->id&Ii=$top10itemsjs&csv_enclosure=&csv_delimiter=,";
         $this->template->top10graph=sprintf("%s/chart.php?%s&&graphtype=0&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$zitemids,$w->seconds,$w->fstamp,time());
     }
     

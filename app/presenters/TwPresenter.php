@@ -177,7 +177,7 @@ class TwPresenter extends BasePresenter
     }
     
     public function renderStats() {
-        $this->exportdata=Tw::twStats($this->opts);
+        $this->exportdata=Array(Tw::twStats($this->opts));
         parent::renderShow($this->exportdata);
         self::mexit();
     }

@@ -15,24 +15,34 @@ use Nette,
  */
 class HostStat extends Monda {
     
+    function hostGroupsToIds($hostgroups) {
+        $hq=Array(
+            "selectHosts" => "refer",
+            "output" => "extend",
+            "filter" => Array(
+                    "name"=> $hostgroups
+                )
+            );
+        $hg=Monda::apiCmd("hostGroupGet",$hq);
+        $hostids=Array();
+        if (count($hg)>0) {
+            foreach ($hg as $hostgroup) {
+                foreach ($hostgroup->hosts as $host) {
+                    $hostids[]=$host->hostid;
+                }
+            }
+        } else {
+            \App\Presenters\BasePresenter::mexit(22,"Hostgroup(s) to fetch does not exists!\n");
+        }
+        return($hostids);
+    }
+    
     function hostsToIds($opts) {
         if (!is_array($opts->hostids)) {
             $opts->hostids=Array();
         }
         if ($opts->hostgroups) {
-            $hq=Array(
-                "selectHosts" => "refer",
-                "output" => "extend",
-                "filter" => Array(
-                        "name"=> $opts->hostgroups
-                    )
-                );
-            $hg=Monda::apiCmd("hostGroupGet",$hq);
-            foreach ($hg as $hostgroup) {
-                foreach ($hostgroup->hosts as $host) {
-                    $opts->hostids[]=$host->hostid;
-                }
-            }
+            $opts->hostids=Array_merge($opts->hostids,self::hostGroupsToIds($opts->hostgroups));
         }
         if ($opts->hosts) {
             $iq = Array(
@@ -40,14 +50,18 @@ class HostStat extends Monda {
             );
             $iq["filter"]["host"] = $opts->hosts;
             $h = Monda::apiCmd("hostGet",$iq);
-            foreach ($h as $host) {
-                $opts->hostids[]=$host->hostid;
+            if (count($h)>0) {
+                foreach ($h as $host) {
+                    $opts->hostids[]=$host->hostid;
+                }
+            } else {
+                \App\Presenters\BasePresenter::mexit(22,"Host(s) to fetch does not exists!\n");
             }
         }
         return($opts);
     }
     
-    function hosts2itemids($hostids) {
+    function hostids2itemids($hostids) {
         $itemids=Array();
         $c=1;
         $hostcount=count($hostids);
@@ -68,15 +82,24 @@ class HostStat extends Monda {
         return($itemids);
     }
     
-    function host2id($host) {
+    function hosts2ids($hosts) {
         $iq = Array(
                 "monitored" => true,
                 "filter" => Array(
-                    "name" => Array($host)
+                    "name" => $hosts
                     )
             );
-        $h=Monda::apiCmd("hostGet",$iq);
-        return($h->hostid);
+        $hs=Monda::apiCmd("hostGet",$iq);
+        $ret=Array();
+        foreach ($hs as $h) {
+            $ret[$h->host]=$h->hostid;
+        }
+        return($ret);
+    }
+    
+    function host2id($host) {
+        $h=self::hosts2ids(Array($host));
+        return($h[$host]);
     }
     
     function hsSearch($opts) {
@@ -123,7 +146,7 @@ class HostStat extends Monda {
     
     function hsUpdate($opts) {
         $hostids=$this->opts->hostids;
-        $itemids=self::hosts2itemids($hostids);
+        $itemids=self::hostids2itemids($hostids);
         $wids=Tw::twToIds($opts);
         CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items.\n",count($wids),count($hostids),count($itemids)));
         if (count($wids)==0 || count($hostids)<1 || count($itemids)<1) {
@@ -131,7 +154,7 @@ class HostStat extends Monda {
         }
         self::mbegin();
         foreach ($hostids as $hostid) {
-            $hitemids=self::hosts2itemids(array($hostid));
+            $hitemids=self::hostids2itemids(array($hostid));
             if (count($hitemids)<1) continue;
             $ius=self::mquery("
                 UPDATE itemstat

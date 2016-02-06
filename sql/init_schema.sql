@@ -24,6 +24,8 @@ CREATE TABLE timewindow
   stddev0 bigint DEFAULT NULL,
   lowavg bigint DEFAULT NULL,
   lowcnt bigint DEFAULT NULL,
+  lowcv bigint DEFAULT NULL,
+  lowstddev bigint DEFAULT NULL,
   loi integer DEFAULT 0,
   CONSTRAINT "p_timewindow" PRIMARY KEY (id)
 )

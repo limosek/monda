@@ -124,15 +124,18 @@ class CronPresenter extends IsPresenter
             $monthnow=time();
         } else {
             $monthago=$opts->start;
-            $monthnow=$monthago+\App\Model\Monda::_1MONTH;
         }
         $start=date_format(New DateTime(date("Y-m-01 00:00",$monthago)),"U");
-        $end=date_format(New DateTime(date("Y-m-01 00:00",$monthnow)),"U");
         
         if ($this->isOptDefault("length")) {
-            $opts->length=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY,\App\Model\Monda::_1MONTH);
+            $opts->length=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY,\App\Model\Monda::_1MONTH,\App\Model\Monda::_1MONTH28,\App\Model\Monda::_1MONTH30,\App\Model\Monda::_1MONTH31);
         }
-        self::renderrange($opts,$start,$end,\App\Model\Monda::_1MONTH,"1month");
+        $end=$opts->end;
+        while ($start<$end) {
+            $monthlength=date("t",$start)*\App\Model\Monda::_1DAY;
+            self::renderrange($opts,$start,$start+$monthlength,$monthlength,"1month");
+            $start+=$monthlength;
+        }
         if (!$aopts) {
             parent::mexit();
         }

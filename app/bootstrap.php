@@ -31,7 +31,7 @@ if (file_exists(getenv("MONDARC")) && !getenv("MONDA_PASS2")) {
     $cfggetargs=Array();
     foreach (file(getenv("MONDARC")) as $line) {
         if (preg_match("#^-#",$line)) {
-            if (preg_match("#^(-[a-zA-Z0-9_\-]*) {1,4}(.*)$#",$line,$regs)) {
+            if (preg_match("#^(-[a-zA-Z0-9_\-]*)[ =]{1,4}(.*)$#",$line,$regs)) {
                 $option=trim($regs[1],TCHARS);
                 $woption=trim($regs[1],WCHARS);
                 $value=trim($regs[2],TCHARS);
@@ -61,10 +61,9 @@ if (file_exists(getenv("MONDARC")) && !getenv("MONDA_PASS2")) {
             $p=$presenter;
             $a="Default";
         }
-        if ($p=="hm") $p="HtmlMap";
-        if ($p=="gm") $p="GraphvizMap";
         $presenter="$p:$a";
         $cmd=sprintf("'%s' '%s' %s --foo %s",$cmd,$presenter,$cfgargs,join(" ",$cmdargs));
+        //echo $cmd;
         system($cmd,$ret);
         exit($ret);
     } else {

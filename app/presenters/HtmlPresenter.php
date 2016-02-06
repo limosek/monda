@@ -7,7 +7,7 @@ use \Exception,
     App\Model,
     Nette\Utils\DateTime as DateTime;
 
-class HtmlMapPresenter extends MapPresenter {
+class HtmlPresenter extends MapPresenter {
 
     public function Help() {
         \App\Model\CliDebug::warn("
@@ -35,7 +35,7 @@ class HtmlMapPresenter extends MapPresenter {
     
     function renderTw() {
         parent::renderTw();
-        $this->template->title = "Timewindow ".$this->opts->wids;
+        $this->template->title = "Timewindow ".$this->opts->wids[0];
     }
 
 }

@@ -21,6 +21,8 @@ class CliDebug {
         "critical" => 4
     );
     private static $level;
+    private static $logf;
+    private static $writef;
     
     static function comparelevel($l1,$l2) {
         if (!is_numeric($l1)) {
@@ -44,8 +46,14 @@ class CliDebug {
                 }
             }
         }
+        if (getenv("MONDA_LOG")) {
+            self::$logf=fopen(getenv("MONDA_LOG")."/stderr.log","w");
+        } else {
+            self::$logf=fopen("php://stderr","w");
+        }
+        self::$writef=fopen("php://stdout","a");
         if (!array_key_exists($level, self::$levels)) {
-            fprintf(STDERR,"Unknown log level ".self::getLevel()."!\n");
+            fprintf(self::$logf,"Unknown log level ".self::getLevel()."!\n");
         } else {
             self::$level=$level;
         }
@@ -57,18 +65,22 @@ class CliDebug {
             
     static function log($message,$priority=Debugger::INFO) {
         if (self::comparelevel($priority,self::getLevel())) {
-            fprintf(STDERR,$message);
+            fprintf(self::$logf,$message);
         }
      }
      
      static function write($message,$priority=Debugger::WARNING) {
         if (self::comparelevel($priority,self::getLevel())) {
-            fprintf(STDOUT,$message);
+            fprintf(self::$writef,$message);
         }
      }
      
      static function dbg($message) {
          self::log($message,Debugger::DEBUG);
+     }
+     
+     static function progress($message) {
+         fprintf(self::$logf,$message);
      }
      
      static function info($message) {

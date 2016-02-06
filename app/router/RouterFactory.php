@@ -31,7 +31,7 @@ class RouterFactory {
         }
         $router[] = new Route('/monda/<presenter>/<action>',
                 array(
-                 'presenter' => 'HtmlMap',
+                 'presenter' => 'Html',
                  'action' => 'tl',
                 ),$secured);
         return $router;
