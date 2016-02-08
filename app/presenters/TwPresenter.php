@@ -72,13 +72,6 @@ class TwPresenter extends BasePresenter
                 "no"
                 );
         $ret=self::parseOpt($ret,
-                "loionly",
-                "L","only_with_loi",
-                "Select only objects which have loi>0",
-                false,
-                "no"
-                );
-        $ret=self::parseOpt($ret,
                 "createdonly",
                 "c","only_just_created_windows",
                 "Select only windows which were just created and contains no data",
@@ -112,13 +105,6 @@ class TwPresenter extends BasePresenter
                 "Rename selected window(s). Can contain macros %Y, %M, %d, %H, %i, %l, %F",
                 false,
                 "None"
-                );
-        $ret=self::parseOpt($ret,
-                "max_windows",
-                "Wm","max_windows",
-                "Maximum number of windows to fetch (LIMIT SELECT)",
-                false,
-                "All"
                 );
         if ($ret->wids) {
             $ret->wids=preg_split("/,/",$ret->wids);

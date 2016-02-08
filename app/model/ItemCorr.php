@@ -191,23 +191,6 @@ class ItemCorr extends Monda {
             return(false);
         }
         $i = 0;
-        self::mbegin();
-        /*$dic = self::mquery("
-                        DELETE FROM itemcorr
-                        WHERE windowid1 IN (?) AND windowid2 IN (?) AND itemid1 IN (?) AND itemid2 IN (?)",
-                                $wids["windowid1"], $wids["windowid2"], $wids["itemid1"], $wids["itemid2"]);*/
-        foreach ($cids as $cid) {
-            if ($cid["icitemid1"]==null && $cid["icitemid2"]=null) continue;
-            $ics=Array(
-                "windowid1" => $cid["windowid1"],
-                "windowid2" => $cid["windowid2"],
-                "itemid1" => $cid["itemid1"],
-                "itemid2" => $cid["itemid2"],
-                "loi" => 0,
-                "corr" =>0
-            );
-            $iic= self::mquery("INSERT INTO itemcorr ",$ics);
-        }
         foreach ($wids["windowid1"] as $wid1) {
             $i++;
             $w1=Tw::twGet($wid1);
@@ -262,6 +245,7 @@ class ItemCorr extends Monda {
                     );
                     $mincorr = 0;
                     $maxcorr = 0;
+                    self::mbegin();
                     foreach ($icrows as $icrow) {
                         
                         $icrow->windowid1 = $wid1;
@@ -280,19 +264,18 @@ class ItemCorr extends Monda {
                             "windowid2" => $icrow->windowid2,
                             "itemid1" => $icrow->itemid1,
                             "itemid2" => $icrow->itemid2,
-                        );
-                        $urow=Array(
                             "corr" => $icrow->corr,
                             "cnt" => $icrow->cnt
                         );
-                        $iic = self::mquery("UPDATE itemcorr SET ? WHERE ", $icrow, $wrow);
+                        self::mquery("DELETE FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?",$icrow->windowid1,$icrow->windowid2,$icrow->itemid1,$icrow->itemid2);
+                        $iic = self::mquery("INSERT INTO itemcorr", $wrow);
                     }
                     CliDebug::info(sprintf("Min corr: %f, max corr: %f\n", $mincorr, $maxcorr));
+                    self::mcommit();
                 }
                 self::exitJob();
             }
         }
-        self::mcommit();
         self::exitJobServer();
     }
     

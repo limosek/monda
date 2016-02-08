@@ -14,11 +14,17 @@ use Nette,
  */
 class EventCorr extends Monda {
 
-    function ecSearch($opts) {
+    function ecSearch($opts,$start) {
+        if ($start+Monda::_1DAY>$opts->end) {
+            $end=$opts->end;
+        } else {
+            $end=$start+Monda::_1DAY;
+        }
+        CliDebug::warn(sprintf("Searching for events between <%d,%d> ", $start,$end));
         $eq=Array(
-            "hostids" => $opts->hostids,
-            "time_from" => $opts->start,
-            "time_till" => $opts->end,
+            #"hostids" => $opts->hostids,
+            "time_from" => $start,
+            "time_till" => $end,
             "output" => "extend",
             "selectItems" => "refer",
             "selectHosts" => "refer",
@@ -26,25 +32,33 @@ class EventCorr extends Monda {
             "select_acknowledges" => "refer"
         );
         $events=self::apiCmd("eventGet",$eq);
+        CliDebug::warn(sprintf("Found %d events, updating LOI.\n",count($events)));
         return($events);
     }
     
     function ecLoi($opts) {
-        $events=self::ecSearch($opts);
-        CliDebug::warn(sprintf("Need to update loi for %d events.\n",count($events)));
-        if (count($events)==0) {
-            return;
-        }
+        $start = $opts->start;
         self::mbegin();
-        foreach ($events as $e) {
-            $w=Tw::twSearchClock($e->clock)->fetchAll();
-            $wids=self::extractIds($w,array("id"));
-            self::mquery("UPDATE timewindow SET loi=loi+? WHERE id IN (?)",$opts->inc_loi_event_window,$wids["id"]);
-            foreach ($e->hosts as $h) {
-                self::mquery("UPDATE hoststat SET loi=loi+? WHERE hostid=? AND windowid IN (?)",$opts->inc_loi_event_host,$h->hostid,$wids["id"]);
+        while ($start < $opts->end) {
+            $events = self::ecSearch($opts, $start);
+            $start += Monda::_1DAY;
+            if (count($events) == 0) {
+                return;
             }
-            foreach ($e->items as $i) {
-                self::mquery("UPDATE itemstat SET loi=loi+? WHERE hostid=? AND windowid IN (?)",$opts->inc_loi_event_item,$i->itemid,$wids["id"]);
+            foreach ($events as $e) {
+                $w = Tw::twSearchClock($e->clock)->fetchAll();
+                $wids = self::extractIds($w, array("id"));
+                self::mquery("UPDATE timewindow SET loi=loi+? WHERE id IN (?)", $opts->inc_loi_event_window, $wids["id"]);
+                if (isset($e->hosts)) {
+                    foreach ($e->hosts as $h) {
+                        self::mquery("UPDATE hoststat SET loi=loi+? WHERE hostid=? AND windowid IN (?)", $opts->inc_loi_event_host, $h->hostid, $wids["id"]);
+                    }
+                }
+                if (isset($e->items)) {
+                    foreach ($e->items as $i) {
+                        self::mquery("UPDATE itemstat SET loi=loi+? WHERE hostid=? AND windowid IN (?)", $opts->inc_loi_event_item, $i->itemid, $wids["id"]);
+                    }
+                }
             }
         }
         self::mcommit();

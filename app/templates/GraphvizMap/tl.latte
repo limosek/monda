@@ -5,20 +5,17 @@
 {block content}
 
 digraph Timeline {
-   rankdir=LR; 
+   twmonda [ height=0.1,width=0.1,label="Monda base" ];
    splines=line; 
    {block tlbox}
     {foreach $map->getChildren() as $child}
           {if !$child->isLeaf()}
-          subgraph stw{$child->getValue()->id} {
-          rankdir=LR; 
-          style=filled;
-          color=lightgrey;
-            label="{$child->getValue()->description}";
-            {include tlbox, map => $child} 
-          }
+                # loi={$child->getValue()->loi}, loih={$child->getValue()->loih}
+                tw{$child->getValue()->id} [ label="{$child->getValue()->description}",height={$child->getValue()->size|number:1},width={$child->getValue()->size|number:1} ];
+            {include tlbox, map => $child}
           {else}
-            tw{$child->getValue()->id};
+              # loi={$child->getValue()->loi}, loih={$child->getValue()->loih}
+              tw{$child->getValue()->id} [ label="{$child->getValue()->description}",height={$child->getValue()->size|number:1},width={$child->getValue()->size|number:1} ];
           {/if}
     {/foreach}
    {/block}

@@ -94,10 +94,38 @@ class HostStat extends Monda {
             WHERE
              hoststat.windowid IN (?)
              AND hoststat.hostid IN (?)
+             AND hoststat.loi IS NOT NULL
              ORDER BY hoststat.loi DESC
+             LIMIT ?
             ",
                 $wids,
-                $opts->hostids);
+                $opts->hostids,
+                $opts->max_rows);
+        return($ids);
+    }
+    
+    function hsStats($opts) {
+        $wids=Tw::twToIds($opts);
+        if (count($wids)==0) {
+            return(false);
+        }
+        $ids=self::mquery("
+            SELECT
+              hoststat.hostid AS hostid,
+              AVG(hoststat.cnt) AS cnt,
+              AVG(hoststat.loi) AS loi
+            FROM hoststat
+            WHERE
+             hoststat.windowid IN (?)
+             AND hoststat.hostid IN (?)
+             AND hoststat.loi IS NOT NULL
+             GROUP BY hoststat.hostid
+             ORDER BY AVG(hoststat.loi) DESC
+             LIMIT ?
+            ",
+                $wids,
+                $opts->hostids,
+                $opts->max_rows);
         return($ids);
     }
     

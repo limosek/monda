@@ -79,19 +79,14 @@ class ItemStat extends Monda {
         } else {
             $hostidssql="";
         }
-        if ($opts->isloionly) {
-            $loisql="i.loi>0 AND";
-        } else {
-            $loisql="";
-        }
         $wids=Tw::twToIds($opts);
         if (count($wids)>0) {
             $windowidsql=sprintf("windowid IN (%s) AND",join(",",$wids));
         } else {
             return(false);
         }
-        if ($opts->max_items) {
-            $limit="LIMIT ".$opts->max_items;
+        if ($opts->max_rows) {
+            $limit="LIMIT ".$opts->max_rows;
         } else {
             $limit="";
         }
@@ -108,10 +103,30 @@ class ItemStat extends Monda {
                         i.windowid AS windowid
                     FROM itemstat i
                     JOIN timewindow tw ON (i.windowid=tw.id)
-                 WHERE $itemidssql $hostidssql $windowidsql $loisql true
+                 WHERE i.loi>$opts->minloi AND i.loi IS NOT NULL AND $itemidssql $hostidssql $windowidsql true
                 ORDER by i.loi DESC "
                 . "$limit"
                 );
+        return($rows);
+    }
+    
+    function isStats($opts) {
+        $itemids=self::isToIds($opts);
+        $rows=self::mquery("SELECT 
+                i.itemid AS itemid,
+                        MIN(i.min_) AS min_,
+                        MAX(i.max_) AS max_,
+                        AVG(i.avg_) AS avg_,
+                        AVG(i.stddev_) AS stddev_,
+                        AVG(i.loi)::integer AS loi,
+                        AVG(i.cnt) AS cnt,
+                        AVG(i.cv) AS cv
+                    FROM itemstat i
+                 WHERE i.itemid IN (?)
+                 AND i.loi IS NOT NULL
+                 GROUP BY i.itemid
+                 ORDER BY AVG(i.loi) DESC
+                ",$itemids);
         return($rows);
     }
     
@@ -141,6 +156,7 @@ class ItemStat extends Monda {
         
     function isCompute($opts,$wids) {
         
+        if (!$wids) return;
         $windows=Tw::twGet($wids,true);
         $widstxt=join(",",$wids);
         $ttable="mwtmp_".rand(1000,9999);
@@ -320,7 +336,7 @@ class ItemStat extends Monda {
                 UPDATE itemstat 
                 SET loi=100*(cv/?)
                 WHERE windowid IN (?)
-                ",$stat->maxcv,$wids);
+                ",$opts->max_cv,$wids);
         }
     }
 }

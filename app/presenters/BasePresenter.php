@@ -373,6 +373,20 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "24 hours",
                 "24 hours"
                 );
+        $ret=$this->parseOpt($ret,
+                "max_rows",
+                "Im","max_rows",
+                "Maximum number of rows to get (LIMIT for SELECT)",
+                300,
+                "300"
+                );
+        $ret=self::parseOpt($ret,
+                "minloi",
+                false,"min_loi",
+                "Select only objects which have loi bbigger than this",
+                0,
+                0
+                );
         $ret=self::parseOpt($ret,
                 "sqlcacheexpire",
                 "Sce","sql_cache_expire",

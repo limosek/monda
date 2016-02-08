@@ -75,7 +75,7 @@ class Tw extends Monda {
         if ($opts->wids) {
             $widssql = sprintf("AND id IN (%s)", join(",", $opts->wids));
         } else {
-            $widssql = "";
+            $widssql = "AND true";
         }
         $onlyemptysql = "";
         if ($opts->empty) {
@@ -130,18 +130,8 @@ class Tw extends Monda {
         } else {
             $createdsql = "true";
         }
-        if ($opts->loionly) {
-            if ($opts->loionly === true) {
-                $loionlysql = "timewindow.loi>0 AND timewindow.loi IS NOT NULL";
-            } else {
-                $loionlysql = "timewindow.loi>$opts->loi AND timewindow.loi IS NOT NULL";
-            }
-            $updatedflag = true;
-        } else {
-            $loionlysql = "true";
-        }
-        if ($opts->max_windows) {
-            $limit = "LIMIT " . $opts->max_windows;
+        if ($opts->max_rows) {
+            $limit = "LIMIT " . $opts->max_rows;
         } else {
             $limit = "";
         }
@@ -178,9 +168,10 @@ class Tw extends Monda {
                 serverid=?
                 $secondssql
                 AND tfrom>=? AND (tfrom+seconds*interval '1 second')<=?
+                AND timewindow.loi>$opts->minloi AND timewindow.loi IS NOT NULL
                 AND (updated<? OR ?)
                 AND $createdsql
-                AND $loionlysql $widssql
+                $widssql
                )
             GROUP BY id
             HAVING $onlyemptysql true
@@ -286,8 +277,8 @@ class Tw extends Monda {
                 MAX(ignored) AS maxignored,
                 MIN(loi) AS minloi,
                 MAX(loi) AS maxloi,
-                MIN(loi::float/(seconds*3600)) AS minloih,
-                MAX(loi::float/(seconds*3600)) AS maxloih,
+                MIN(loi::float/(seconds/3600)) AS minloih,
+                MAX(loi::float/(seconds/3600)) AS maxloih,
                 STDDEV(loi) AS stddevloi
             FROM timewindow
             WHERE id IN (?)", $wids);

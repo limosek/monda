@@ -15,6 +15,7 @@ class IsPresenter extends BasePresenter
      ItemStats operations
             
      is:show [common opts]
+     is:stats [common opts]
      is:compute [common opts]
      is:delete [common opts]
      is:loi [common opts]
@@ -57,6 +58,13 @@ class IsPresenter extends BasePresenter
                 0.01
                 );
         $ret=$this->parseOpt($ret,
+                "max_cv",
+                false,"max_cv",
+                "Maximum CV to process values.",
+                100,
+                100
+                );
+        $ret=$this->parseOpt($ret,
                 "itemids",
                 "Ii","itemids",
                 "Itemids to get",
@@ -83,20 +91,6 @@ class IsPresenter extends BasePresenter
         if ($ret->items) {
             $ret->items=preg_split("/,/",$ret->items);
         }
-        $ret=$this->parseOpt($ret,
-                "max_items",
-                "Im","max_items",
-                "Maximum number of items to get (LIMIT for SELECT)",
-                false,
-                "All"
-                );
-        $ret=$this->parseOpt($ret,
-                "isloionly",
-                "ISL","itemstat_with_loi",
-                "Search only items with loi>0",
-                false,
-                false
-                );
         $ret=\App\Model\ItemStat::itemsToIds($ret);
         if (is_array($ret->itemids)) {
             \App\Model\CliDebug::info(sprintf("Itemids selected: %s\n",join(",",$ret->itemids)));
@@ -133,6 +127,24 @@ class IsPresenter extends BasePresenter
                     \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
                     $row["host"]=HsPresenter::expandHost($row->hostid);
                     $row["key"]=self::expandItem($row->itemid);
+                    $this->exportdata[$i]=$row;
+                }
+            }
+            parent::renderShow($this->exportdata);
+        }
+        self::mexit();
+    }
+    
+    public function renderStats() {
+        $rows=\App\Model\ItemStat::isStats($this->opts);
+        if ($rows) {
+            $this->exportdata=$rows->fetchAll();
+            if ($this->opts->outputverb=="expanded") {
+                $i=0;
+                foreach ($this->exportdata as $i=>$row) {
+                    $i++;
+                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
+                    $row["key"]=self::expandItem($row->itemid,true);
                     $this->exportdata[$i]=$row;
                 }
             }

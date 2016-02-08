@@ -13,18 +13,24 @@ class GraphvizMapPresenter extends MapPresenter {
         \App\Model\CliDebug::warn("
      Graphviz Map operations
   
-     gm:tw [common opts]
+     gm:tl [common opts]
+     gm:hs [common opts]
  
      [common opts]
     \n");
         self::helpOpts();
     }
-
+    
     function renderTl() {
         $this->setLayout(false);
-        $this->template->title = "Monda Timeline";
+        $this->template->title = "Monda TimeWindow Hierarchy";
         parent::renderTl();
-        //Dump($this->template->map);exit;
+    }
+
+    function renderHs() {
+        $this->setLayout(false);
+        $this->template->title = "Monda Hosts Stats";
+        parent::renderHs();
     }
 
 }

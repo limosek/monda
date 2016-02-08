@@ -45,6 +45,20 @@ class MapPresenter extends BasePresenter
                 false,
                 "No limit"
                 );
+        $ret=self::parseOpt($ret,
+                "loi_sizefactor",
+                false,"loi_sizefactor",
+                "Size factor for loi",
+                2,
+                2
+                );
+        $ret=self::parseOpt($ret,
+                "loi_minsize",
+                false,"loi_minsize",
+                "Minimum box size",
+                0.1,
+                0.1
+                );
         return($ret);
     }
     
@@ -154,11 +168,14 @@ class MapPresenter extends BasePresenter
                 $props->id=$window->id;
                 $props->cv=$window->loi;
                 $props->seconds=$window->seconds;
+                $props->size=1;
                 $props->processed=$window->processed;
                 $props->found=$window->found;
                 $props->fstamp=$window->fstamp;
                 $props->tstamp=$window->tstamp;
                 $props->loi=$window->loi;
+                $props->loih=$window->loih;
+                $props->size=($window->loih/$stats["maxloih"])*$this->opts->loi_sizefactor+$this->opts->loi_minsize;
                 $props->url=self::link("Tw",Array("w"=>$window->id));
                 $props->description=$window->description;
                 $props->zabbix=$window->description;
@@ -181,13 +198,16 @@ class MapPresenter extends BasePresenter
                         break;
                     case \App\Model\Monda::_1WEEK:
                         $props->class[]="l_week";
+                        $props->size=3;
                         break;
                     case \App\Model\Monda::_1MONTH:
                         $props->class[]="l_month";
                         $props->class[]="month_".date("M",$props->fstamp+date("Z"));
+                        $props->size=4;
                         break;
                    case \App\Model\Monda::_1YEAR:
                         $props->class[]="l_year";
+                       $props->size=5;
                         break;
                 }
                 if ($window->processed==0) {
@@ -198,6 +218,7 @@ class MapPresenter extends BasePresenter
                 }
             } else {
                 $props->id=$id;
+                $props->loi=0;
             }
             $map=New Node($props->id);
             $map->setValue($props);
@@ -221,15 +242,38 @@ class MapPresenter extends BasePresenter
         $this->template->map=$map;
     }
     
-    function renderMonth() {
-        $opts=$this->opts;
-        $opts->wsort="start/+";
-        $opts->maxmapdepth=3;
-        $opts->length=Array(\App\Model\Monda::_1DAY,\App\Model\Monda::_1WEEK,\App\Model\Monda::_1MONTH);
-        $wids=\App\Model\Tw::twToIds($opts);
-        $tree=\App\Model\Tw::twTree($wids,$opts->minmapdepth,$opts->maxmapdepth);
-        $wstats=  \App\Model\Tw::twStats($opts);
-        $this->template->map=$tree;
+    function renderHs() {
+        $map = New Node("monda");
+        $hosts = \App\Model\HostStat::hsSearch($this->opts)->fetchAll();
+        $windows = \App\Model\Tw::twSearch($this->opts)->fetchAll();
+        $stats=  \App\Model\Tw::twStats($this->opts);
+        foreach ($windows as $window) {
+            if (!$window->loi) continue;
+            $twnode=New Node($window->id);
+            $props = New \StdClass();
+            $props->id = $window->id;
+            $props->name = $window->description;
+            $props->loi = $window->loi;
+            $props->size=$window->loi/$stats["maxloi"]*20;
+            $twnode->setValue($props);
+            foreach ($hosts as $host) {
+                if ($host->windowid!=$window->id) continue;
+                $hostnode = New Node($window->id.$host->hostid);
+                $props = New \StdClass();
+                $props->id = $window->id.$host->hostid;
+                $props->name = HsPresenter::expandHost($host->hostid);
+                $props->loi = $host->loi;
+                $props->size=$host->loi/$stats["maxloi"]*100;
+                $hostnode->setValue($props);
+                $twnode->addChild($hostnode);
+            }
+            $map->addChild($twnode);
+        }
+        $props = New \StdClass();
+        $props->id = "monda";
+        $map->setValue($props);
+        //dump($map);exit;
+        $this->template->map = $map;
     }
-    
+
 }

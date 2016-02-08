@@ -16,6 +16,7 @@ class HsPresenter extends BasePresenter
      Host operations
             
      hs:show [common opts]
+     hs:stats [common opts]
      hs:update [common opts]
         Update hostids for itemids in monda db
      hs:delete [common opts]
@@ -88,6 +89,24 @@ class HsPresenter extends BasePresenter
 
     public function renderShow() {
         $rows=  \App\Model\HostStat::hsSearch($this->opts);
+        if ($rows) {
+            $this->exportdata=$rows->fetchAll();
+            if ($this->opts->outputverb=="expanded") {
+                $i=0;
+                foreach ($this->exportdata as $i=>$row) {
+                    $i++;
+                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
+                    $row["host"]=HsPresenter::expandHost($row->hostid);
+                    $this->exportdata[$i]=$row;
+                }
+            }
+            parent::renderShow($this->exportdata);
+        }
+        self::mexit();
+    }
+    
+    public function renderStats() {
+        $rows=  \App\Model\HostStat::hsStats($this->opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
             if ($this->opts->outputverb=="expanded") {
