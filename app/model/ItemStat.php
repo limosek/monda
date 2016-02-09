@@ -119,7 +119,7 @@ class ItemStat extends Monda {
                         AVG(i.avg_) AS avg_,
                         AVG(i.stddev_) AS stddev_,
                         AVG(i.loi)::integer AS loi,
-                        AVG(i.cnt) AS cnt,
+                        AVG(i.cnt)::integer AS cnt,
                         AVG(i.cv) AS cv
                     FROM itemstat i
                  WHERE i.itemid IN (?)

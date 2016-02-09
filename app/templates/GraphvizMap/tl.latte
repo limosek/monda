@@ -5,14 +5,17 @@
 {block content}
 
 digraph Timeline {
+    node [shape=circle,penwidth=3];
+    edge [penwidth=3];
    twmonda [ height=0.1,width=0.1,label="Monda base" ];
    splines=line; 
    {block tlbox}
     {foreach $map->getChildren() as $child}
           {if !$child->isLeaf()}
-                # loi={$child->getValue()->loi}, loih={$child->getValue()->loih}
-                tw{$child->getValue()->id} [ label="{$child->getValue()->description}",height={$child->getValue()->size|number:1},width={$child->getValue()->size|number:1} ];
-            {include tlbox, map => $child}
+           # loi={$child->getValue()->loi}, loih={$child->getValue()->loih}
+        subgraph tw{$child->getValue()->id} [ label="{$child->getValue()->description}",height={$child->getValue()->size|number:1},width={$child->getValue()->size|number:1} ];
+                {include tlbox, map => $child}
+            }
           {else}
               # loi={$child->getValue()->loi}, loih={$child->getValue()->loih}
               tw{$child->getValue()->id} [ label="{$child->getValue()->description}",height={$child->getValue()->size|number:1},width={$child->getValue()->size|number:1} ];
@@ -20,18 +23,11 @@ digraph Timeline {
     {/foreach}
    {/block}
    {block hbox}
+   { rank=same;
    {foreach $map->getChildren() as $child}
-         {if isset($map->getValue()->id)}
            tw{$map->getValue()->id} -> tw{$child->getValue()->id};
-         {else}
-           Timeline -> tw{$child->getValue()->id}; 
-         {/if}
          {include hbox, map => $child} 
-   {/foreach}
-   {foreach $map->getChildren() as $child}
-         {if isset($map->getValue()->id) && isset($map->getValue()->tfrom) && ($map->getValue()->tfrom==$child->getValue()->tfrom)}
-           { rank=same; tw{$map->getValue()->id} tw{$child->getValue()->id} };
-         {/if}
+         }
    {/foreach}
    {/block}
 }

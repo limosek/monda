@@ -68,7 +68,7 @@ class Monda extends Nette\Object {
     function apiCmd($cmd,$req) {
         $ckey=$cmd.serialize($req);
         $ret = $this->apicache->load($ckey);
-        if ($ret === NULL) {
+        if ($ret === NULL || $this->opts->apicacheexpire==0) {
             if (!isset($this->api)) {
                 if (!self::init_api()) {
                     CliDebug::warn("Zabbix Api query ignored (zapi=false)! ($cmd)\n");
@@ -106,7 +106,7 @@ class Monda extends Nette\Object {
         $args = func_get_args();
         $ckey=serialize($args);
         $ret=$this->sqlcache->load($ckey);
-        if ($ret===null) {
+        if ($ret===null || $this->opts->sqlcacheexpire==0) {
             $ret=self::zquery($args)->fetchAll();
             $this->sqlcache->save($ckey,
                     $ret,
@@ -191,7 +191,7 @@ class Monda extends Nette\Object {
         $args = func_get_args();
         $ckey=serialize($args);
         $ret=$this->sqlcache->load($ckey);
-        if ($ret===null) {
+        if ($ret===null || $this->opts->sqlcacheexpire==0) {
             $ret=self::mquery($args)->fetchAll();
             $this->sqlcache->save($ckey,
                     $ret,

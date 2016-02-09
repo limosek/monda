@@ -28,7 +28,8 @@ class Tw extends Monda {
                         "seconds" => $length,
                         "created" => New DateTime(),
                         "serverid" => $zid,
-                        "parentid" => null
+                        "parentid" => null,
+                        "loi" => 0
             )));
         } else {
             CliDebug::dbg("Skiping window zabbix_id=$zid,start=$start,length=$length,$description (already in db)\n");
@@ -168,7 +169,7 @@ class Tw extends Monda {
                 serverid=?
                 $secondssql
                 AND tfrom>=? AND (tfrom+seconds*interval '1 second')<=?
-                AND timewindow.loi>$opts->minloi AND timewindow.loi IS NOT NULL
+                AND timewindow.loi>$opts->minloi 
                 AND (updated<? OR ?)
                 AND $createdsql
                 $widssql
@@ -182,12 +183,13 @@ class Tw extends Monda {
         return($rows);
     }
 
-    function twSearchClock($clock,$empty=true) {
+    function twSearchClock($clock,$empty=true,$toclock=false) {
         if ($empty) {
             $emptysql="found>0";
         } else {
             $emptysql="true";
         }
+        if (!$toclock) $toclock=$clock;
         $rows = Monda::mquery("
             SELECT 
                 id,parentid,
@@ -208,8 +210,8 @@ class Tw extends Monda {
                 lowcnt,
                 serverid
             FROM timewindow
-            WHERE extract(epoch from tfrom)<? AND extract(epoch from tfrom)+seconds>? AND $emptysql
-            ", $clock, $clock);
+            WHERE extract(epoch from tfrom)>=? AND extract(epoch from tfrom)+seconds<=? AND $emptysql
+            ", $clock, $toclock);
         return($rows);
     }
 
@@ -246,8 +248,12 @@ class Tw extends Monda {
         return($id);
     }
 
-    function twToIds($opts) {
-        $widrows = Tw::twSearch($opts);
+    function twToIds($opts,$clockonly=false) {
+        if (!$clockonly) {
+            $widrows = Tw::twSearch($opts);
+        } else {
+            $widrows = Tw::twSearchClock($opts->start,false,$opts->end);
+        }
         $wids = Array();
         while ($wid = $widrows->fetch()) {
             $wids[] = $wid->id;
@@ -257,6 +263,7 @@ class Tw extends Monda {
 
     function twStats($opts,$zabbix=false) {
         $wids = self::twToIds($opts);
+        if (!$wids) return(false);
         $row = Monda::mcquery("
             SELECT
                 COUNT(*) AS cnt,
@@ -364,6 +371,7 @@ class Tw extends Monda {
     function twLoi($opts) {
         $opts->empty = false;
         $opts->updated = true;
+        $opts->minloi = -1;
         $wids = self::twToIds($opts);
         CliDebug::warn(sprintf("Recomputing loi for %d windows\n", count($wids)));
         if (count($wids) == 0) {
@@ -389,7 +397,7 @@ class Tw extends Monda {
 
     function twDelete($opts) {
         Monda::mbegin();
-        $wids = self::twToIds($opts);
+        $wids = self::twToIds($opts,true);
         if (is_array($opts->length)) {
             $lengths = join(",", $opts->length);
         } else {

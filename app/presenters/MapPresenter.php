@@ -175,7 +175,7 @@ class MapPresenter extends BasePresenter
                 $props->tstamp=$window->tstamp;
                 $props->loi=$window->loi;
                 $props->loih=$window->loih;
-                $props->size=($window->loih/$stats["maxloih"])*$this->opts->loi_sizefactor+$this->opts->loi_minsize;
+                $props->size=$window->loi*$this->opts->loi_sizefactor+$this->opts->loi_minsize;
                 $props->url=self::link("Tw",Array("w"=>$window->id));
                 $props->description=$window->description;
                 $props->zabbix=$window->description;
