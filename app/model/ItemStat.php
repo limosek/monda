@@ -279,6 +279,27 @@ class ItemStat extends Monda {
         return($ret);
     }
     
+    public function IsZabbixHistory($opts) {
+        $itemids=self::IsToIDs($opts);
+        $windowids=  Tw::twToIds($opts);
+        $timesql="";
+        foreach ($windowids as $wid) {
+            $w=  Tw::twGet($wid);
+            $timesql.="OR (clock BETWEEN $w->fstamp AND $w->tstamp) ";
+        }
+        $hist=  Monda::zcquery("                
+              SELECT itemid,clock,value FROM history WHERE (false $timesql) AND itemid IN (?)
+              UNION ALL 
+              SELECT itemid,clock,value FROM history_uint WHERE (false $timesql) AND itemid IN (?)
+              ORDER BY clock,itemid
+                ",$itemids,$itemids);
+        $ret=Array();
+        foreach ($hist as $h) {
+            $ret[$h->itemid][$h->clock]=$h->value;
+        }
+        return($ret);
+    }
+    
     public function IsMultiCompute($opts) {
         if (\App\Presenters\BasePresenter::isOptDefault("empty")) {
             $opts->empty=true;
