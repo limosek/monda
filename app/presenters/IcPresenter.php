@@ -15,6 +15,7 @@ class IcPresenter extends BasePresenter
      ItemCorr operations
             
      ic:show [common opts]
+     ic:matrix [common opts]
      ic:compute [common opts]
      ic:delete [common opts]
      ic:loi [common opts]
@@ -112,6 +113,53 @@ class IcPresenter extends BasePresenter
         self::mexit();
     }
     
+    public function renderMatrix() {
+        $opts = $this->opts;
+        $opts->empty = false;
+        $opts->icempty = false;
+        $rows = \App\Model\ItemCorr::icQuickSearch($opts);
+        $m = Array();
+        $cnt = Array();
+        $itemids = Array();
+        if ($rows) {
+            $rows = $rows->fetchAll();
+            if (sizeof($opts->wids) == 1) {
+                foreach ($rows as $r) {
+                    $m[$r->itemid1][$r->itemid2] = $r->corr;
+                    $m[$r->itemid2][$r->itemid1] = $r->corr;
+                    $itemids[$r->itemid1] = true;
+                    $itemids[$r->itemid2] = true;
+                }
+            } elseif (sizeof($opts->wids) == 2) {
+                foreach ($rows as $r) {
+                    if ($r->windowid1 != $r->windowid2) {
+                        $m[$r->itemid1][$r->itemid2] = $r->corr;
+                        $m[$r->itemid2][$r->itemid1] = $r->corr;
+                        $itemids[$r->itemid1] = true;
+                        $itemids[$r->itemid2] = true;
+                    }
+                }
+            } else {
+                self::mexit(1, "Must be one window or two windows (-w)\n");
+            }
+        }
+        foreach ($itemids as $i => $v) {
+            foreach ($itemids as $j => $v) {
+                if (!isset($m[$i][$j])) {
+                    if ($i == $j) {
+                        echo "1 ";
+                    } else {
+                        echo "0 ";
+                    }
+                } else {
+                    echo $m[$i][$j] . " ";
+                }
+            }
+            echo "\n";
+        }
+        self::mexit();
+    }
+
     public function renderLoi() {
         \App\Model\ItemCorr::IcLoi($this->opts);
         self::mexit();

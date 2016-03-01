@@ -27,7 +27,7 @@ class DefaultPresenter extends BasePresenter
      cron           - Combining all operations from cron
      hm             - Create HTML maps
      gm             - Create Graphiz maps
-     gp             - Crrate Gnuplot graphs
+     gp             - Create Gnuplot graphs
      
      Hint: Date formats: @timestamp, YYYY_MM_DD_hhmm, YYYYMMDDhhmm, now, '-1 day'
      Hint: Divide more ids by comma ( like 1,3,45)

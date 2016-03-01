@@ -21,11 +21,18 @@ class ItemStat extends Monda {
         if ($host) {
             $iq["host"] = $host;
         }
+        if ($this->opts->hostids) {
+            $iq["hostids"] = $this->opts->hostids;
+        }
         if ($hostgroup) {
             $iq["hostgroup"] = $hostgroup;
         }
         if ($key) {
-            $iq["filter"] = Array("key_" => $key);
+            if (substr($key,0,1)!="@") {
+                $iq["filter"] = Array("key_" => $key);
+            } else {
+                $iq["search"] = Array("key_" => substr($key,1));
+            }
         }
         $i = Monda::apiCmd("itemGet",$iq);
         $ret = Array();
@@ -56,7 +63,6 @@ class ItemStat extends Monda {
                 $opts->itemids=Array();
             }
             foreach ($opts->items as $item) {
-                //List($host,$key)=preg_split("/:/",$item);
                 $i=self::itemSearch($item,false,$opts->hostgroups);
                 if (count($i)>0) {
                     $opts->itemids=array_merge($opts->itemids,$i);
@@ -280,26 +286,39 @@ class ItemStat extends Monda {
     }
     
     public function IsZabbixHistory($opts) {
-        $itemids=self::IsToIDs($opts);
-        $windowids=  Tw::twToIds($opts);
-        $timesql="";
+        $itemids = self::IsToIDs($opts);
+        $windowids = Tw::twToIds($opts);
+        $timesql = "";
         foreach ($windowids as $wid) {
-            $w=  Tw::twGet($wid);
+            $w = Tw::twGet($wid);
             $timesql.="OR (clock BETWEEN $w->fstamp AND $w->tstamp) ";
         }
-        $hist=  Monda::zcquery("                
-              SELECT itemid,clock,value FROM history WHERE (false $timesql) AND itemid IN (?)
+        $g = 600;
+        $hist = Monda::zcquery("                
+              SELECT itemid,(clock/$g)::bigint*$g AS c,AVG(value) AS v FROM history WHERE (false $timesql) AND itemid IN (?)
+                GROUP BY itemid,(clock/$g)::bigint*$g
               UNION ALL 
-              SELECT itemid,clock,value FROM history_uint WHERE (false $timesql) AND itemid IN (?)
-              ORDER BY clock,itemid
-                ",$itemids,$itemids);
-        $ret=Array();
+              SELECT itemid,(clock/$g)::bigint*$g AS c,AVG(value) AS v FROM history_uint WHERE (false $timesql) AND itemid IN (?)
+                GROUP BY itemid,(clock/$g)::bigint*$g
+              ORDER BY c,itemid
+                ", $itemids, $itemids);
+        $ret = Array();
+        $i = 0;
+        $maxi=0;
+        $mini=100000;
         foreach ($hist as $h) {
-            $ret[$h->itemid][$h->clock]=$h->value;
+            $ret[$h->c]["clock"]=$h->c;
+            $ret[$h->c][$h->itemid]=$h->v;
+            $maxi=max($maxi,sizeof($ret[$h->c]));
+            $mini=max($mini,sizeof($ret[$h->c]));
+        }
+        // Strip rows with less items
+        foreach ($ret as $c=>$r) {
+            if (sizeof($r)<$maxi) unset($ret[$c]);
         }
         return($ret);
     }
-    
+
     public function IsMultiCompute($opts) {
         if (\App\Presenters\BasePresenter::isOptDefault("empty")) {
             $opts->empty=true;

@@ -35,6 +35,7 @@ class HostStat extends Monda {
             }
         }
         if ($opts->hosts) {
+            $opts->hostids=Array();
             $iq = Array(
                 "monitored" => true
             );

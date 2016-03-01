@@ -269,6 +269,29 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "cli"
                 );
         $ret=self::parseOpt($ret,
+                "csvsep",
+                false,"csv_separator",
+                "Use this CSV separator",
+                ";",
+                ";"
+                );
+        $ret->csvsep=htmlspecialchars_decode($ret->csvsep);
+        $ret=self::parseOpt($ret,
+                "csvfield",
+                false,"csv_field_enclosure",
+                "Use this CSV enclosure",
+                '"',
+                '"'
+                );
+        $ret->csvfield=htmlspecialchars_decode($ret->csvfield);
+        $ret=self::parseOpt($ret,
+                "csvheader",
+                false,"csv_header",
+                "Use CSV header",
+                true,
+                true
+                );
+        $ret=self::parseOpt($ret,
                 "outputverb",
                 "Ov","output_verbosity",
                 "Use this output verbosity {id,expanded}",
@@ -435,12 +458,11 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
     
     function renderCsv() {
-
         $i = 0;
         foreach ((array) $this->exportdata as $id => $row) {
-            if ($i == 0) {
+            if ($i == 0 && $this->opts->csvheader) {
                 foreach ($row as $r => $v) {
-                    echo sprintf('"%s";',$r);
+                    echo sprintf('%s%s%s%s',$this->opts->csvfield,$r,$this->opts->csvfield,$this->opts->csvsep);
                 }
                 echo "\n";
             }
@@ -450,7 +472,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                         $v=$v->format("c");
                     }
                 }
-                echo sprintf('"%s";',$v);
+                echo sprintf('%s%s%s%s',$this->opts->csvfield,$v,$this->opts->csvfield,$this->opts->csvsep);
             }
             echo "\n";
             $i++;

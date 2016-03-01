@@ -16,6 +16,7 @@ class IsPresenter extends BasePresenter
             
      is:show [common opts]
      is:stats [common opts]
+     is:history [common opts]
      is:compute [common opts]
      is:delete [common opts]
      is:loi [common opts]
@@ -84,12 +85,12 @@ class IsPresenter extends BasePresenter
         $ret=$this->parseOpt($ret,
                 "items",
                 "Ik","items",
-                "Item keys to get",
+                "Item keys to get. Use ~ to add more items. Prepend item by @ to use regex.",
                 false,
                 "All"
                 );
         if ($ret->items) {
-            $ret->items=preg_split("/,/",$ret->items);
+            $ret->items=preg_split("/~/",$ret->items);
         }
         $ret=\App\Model\ItemStat::itemsToIds($ret);
         if (is_array($ret->itemids)) {
@@ -121,9 +122,7 @@ class IsPresenter extends BasePresenter
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
             if ($this->opts->outputverb=="expanded") {
-                $i=0;
                 foreach ($this->exportdata as $i=>$row) {
-                    $i++;
                     \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
                     $row["host"]=HsPresenter::expandHost($row->hostid);
                     $row["key"]=self::expandItem($row->itemid);
@@ -135,14 +134,21 @@ class IsPresenter extends BasePresenter
         self::mexit();
     }
     
+    public function renderHistory() {
+        $rows = \App\Model\ItemStat::isZabbixHistory($this->opts);
+        if ($rows) {
+            $this->exportdata=array_values($rows);
+            //dump($rows);exit;
+            parent::renderShow($this->exportdata);
+        }
+    }
+
     public function renderStats() {
         $rows=\App\Model\ItemStat::isStats($this->opts);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
             if ($this->opts->outputverb=="expanded") {
-                $i=0;
                 foreach ($this->exportdata as $i=>$row) {
-                    $i++;
                     \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
                     $row["key"]=self::expandItem($row->itemid,true);
                     $this->exportdata[$i]=$row;

@@ -110,6 +110,19 @@ class ItemCorr extends Monda {
         } else {
             $hostidssql="";
         }
+        switch ($opts->corr) {
+            case "samewindow":
+                $corrsql="AND ic.windowid1=ic.windowid2";
+                break;
+            case "samehour":
+                $opts->length=Monda::_1HOUR;
+                $corrsql="AND ic.windowid1<>ic.windowid2";
+                break;
+            case "samedow":
+                $opts->length=Monda::_1DAY;
+                $corrsql="AND ic.windowid1<>ic.windowid2";
+                break;              
+        }
         $wids=Tw::twToIds($opts);
         if (count($wids)>0) {
             $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
@@ -121,7 +134,6 @@ class ItemCorr extends Monda {
         } else {
             $loisql="";
         }
-        
         $rows=self::mquery(
                 "SELECT
                         windowid1,windowid2,itemid1,itemid2,corr,ic.cnt,ic.loi
@@ -134,6 +146,7 @@ class ItemCorr extends Monda {
                     $windowidsql 
                          true
                      $loisql
+                     $corrsql
                  ORDER BY ic.loi DESC"
                 );
         return($rows);
@@ -219,7 +232,8 @@ class ItemCorr extends Monda {
                         AND h1.clock>? AND h1.clock<?
                         AND h2.clock>? AND h2.clock<?
                     GROUP BY h1.itemid,h2.itemid
-
+                    HAVING COUNT(*)>=?
+                    
                      UNION
 
                      SELECT  h1.itemid AS itemid1,
@@ -232,16 +246,19 @@ class ItemCorr extends Monda {
                         AND h1.clock>? AND h1.clock<?
                         AND h2.clock>? AND h2.clock<?
                     GROUP BY h1.itemid, h2.itemid
+                    HAVING COUNT(*)>?
                     ",      $w2["fstamp"]-$w1["fstamp"],
                             $opts->timeprecision,
                             $wids["itemid1"],$wids["itemid2"], 
                             $w1["fstamp"], $w1["tstamp"],
                             $w2["fstamp"], $w2["tstamp"],
+                            $opts->min_icvalues,
                             $w2["fstamp"]-$w1["fstamp"],
                             $opts->timeprecision,
                             $wids["itemid1"],$wids["itemid2"], 
                             $w1["fstamp"], $w1["tstamp"],
-                            $w2["fstamp"], $w2["tstamp"]
+                            $w2["fstamp"], $w2["tstamp"],
+                            $opts->min_icvalues
                     );
                     $mincorr = 0;
                     $maxcorr = 0;
