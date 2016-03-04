@@ -85,6 +85,7 @@ class ItemCorr extends Monda {
                  JOIN timewindow tw1 ON (is1.windowid=tw1.id)
                  JOIN timewindow tw2 ON (is2.windowid=tw2.id)
                  WHERE 
+                    ic.corr>? AND
                     $itemidssql
                     $hostidssql
                     $windowidsql 
@@ -94,7 +95,7 @@ class ItemCorr extends Monda {
                     AND (is1.itemid<=is2.itemid)
                     $sameiwsql $loisql $emptysql
                  $ranksql2
-                 LIMIT ?",$opts->maxicrows
+                 LIMIT ?",$opts->min_corr,$opts->max_rows
                 );
         return($rows);
     }
@@ -147,8 +148,10 @@ class ItemCorr extends Monda {
                          true
                      $loisql
                      $corrsql
-                 ORDER BY ic.loi DESC"
-                );
+                     AND ic.corr>?
+                 ORDER BY ic.loi DESC
+                 LIMIT ?
+                ",$opts->min_corr,$opts->max_rows);
         return($rows);
     }
     
@@ -183,6 +186,53 @@ class ItemCorr extends Monda {
                 }
         }
         return($icids);
+    }
+    
+    function icStats($opts) {
+        if ($opts->itemids) {
+            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$opts->itemids),join(",",$opts->itemids));
+        } else {
+            $itemidssql="";
+        }
+        if ($opts->hostids) {
+            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",$opts->hostids),join(",",$opts->hostids));
+        } else {
+            $hostidssql="";
+        }
+        $wids=Tw::twToIds($opts);
+        if (count($wids)>0) {
+            $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
+        } else {
+            return(false);
+        }
+        $rows=self::mquery(
+                "SELECT
+                        COUNT(DISTINCT windowid1) AS wcnt1,COUNT(DISTINCT windowid2) AS wcnt2,
+                        itemid1,itemid2,
+                        AVG(ic.corr)*COUNT(DISTINCT windowid1)*COUNT(DISTINCT windowid2) AS wcorr,
+                        AVG(corr) AS acorr,
+                        AVG(ic.cnt) AS acnt,
+                        AVG(ic.loi) AS aloi
+                 FROM itemcorr ic
+                 JOIN itemstat is1 ON (ic.itemid1=is1.itemid AND ic.windowid1=is1.windowid)
+                 JOIN itemstat is2 ON (ic.itemid2=is2.itemid AND ic.windowid2=is2.windowid)
+                 WHERE 
+                    (
+                     (itemid1<>itemid2) AND (windowid1=windowid2)
+                     OR
+                     (itemid1=itemid2) AND (windowid1<>windowid2)
+                    ) AND
+                    ic.corr>?
+                    AND
+                    $itemidssql
+                    $hostidssql
+                    $windowidsql 
+                    true
+                 GROUP BY itemid1,itemid2
+                 ORDER BY AVG(ic.corr) DESC
+                 LIMIT ?
+                ",$opts->min_corr,$opts->max_rows);
+        return($rows);
     }
     
     function icMultiCompute($opts) {

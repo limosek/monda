@@ -120,19 +120,22 @@ class ItemStat extends Monda {
         $itemids=self::isToIds($opts);
         $rows=self::mquery("SELECT 
                 i.itemid AS itemid,
+                        AVG(i.loi)::integer AS loi,
+                        AVG(i.loi)*COUNT(i.windowid)::float AS loiw,
                         MIN(i.min_) AS min_,
                         MAX(i.max_) AS max_,
                         AVG(i.avg_) AS avg_,
                         AVG(i.stddev_) AS stddev_,
-                        AVG(i.loi)::integer AS loi,
                         AVG(i.cnt)::integer AS cnt,
-                        AVG(i.cv) AS cv
+                        AVG(i.cv) AS cv,
+                        COUNT(i.windowid) AS wcnt
                     FROM itemstat i
                  WHERE i.itemid IN (?)
                  AND i.loi IS NOT NULL
                  GROUP BY i.itemid
-                 ORDER BY AVG(i.loi) DESC
-                ",$itemids);
+                 ORDER BY AVG(i.loi)*COUNT(i.windowid) DESC
+                 LIMIT ?
+                ",$itemids,$opts->max_rows);
         return($rows);
     }
     

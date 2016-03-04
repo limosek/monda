@@ -101,10 +101,10 @@ class Tw extends Monda {
                 $sortsql = "seconds";
                 break;
             case "loi":
-                $sortsql = "loi";
+                $sortsql = "timewindow.loi";
                 break;
             case "loih":
-                $sortsql = "loi/(seconds/3600)";
+                $sortsql = "timewindow.loi/(seconds/3600)";
                 break;
             case "updated":
                 $sortsql = "updated";
@@ -144,13 +144,14 @@ class Tw extends Monda {
         $rows = Monda::mquery("
             SELECT 
                 id,parentid,
+                timewindow.loi,
+                timewindow.loi/(timewindow.seconds/3600)::float AS loih,
+                description,
+                seconds,
                 tfrom,
                 (tfrom+seconds*interval '1 second') AS tto,
                 extract(epoch from tfrom) AS fstamp,
                 extract(epoch from tfrom)+seconds AS tstamp,
-                seconds,
-                description,
-                timewindow.loi,
                 created,
                 updated,
                 found,
@@ -160,8 +161,7 @@ class Tw extends Monda {
                 lowavg,
                 lowcnt,
                 lowcv,
-                serverid,
-                timewindow.loi/(timewindow.seconds/3600) AS loih,
+                serverid,     
                 COUNT(itemstat.itemid) AS itemcount
             FROM timewindow
             LEFT JOIN itemstat ON (windowid=id)

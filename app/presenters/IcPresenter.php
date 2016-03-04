@@ -15,6 +15,7 @@ class IcPresenter extends BasePresenter
      ItemCorr operations
             
      ic:show [common opts]
+     ic:stats [commom opts]
      ic:matrix [common opts]
      ic:compute [common opts]
      ic:delete [common opts]
@@ -61,13 +62,6 @@ class IcPresenter extends BasePresenter
                 "no"
                 );
         $ret=self::parseOpt($ret,
-                "maxicrows",
-                "ICmr","max_itemcorr_rows",
-                "Maximum rows returned by cross-item searching.",
-                250,
-                250
-                );
-        $ret=self::parseOpt($ret,
                 "timeprecision",
                 "Tp","time_precision",
                 "Time precision (maximum difference in time for correlation) in seconds",
@@ -80,6 +74,13 @@ class IcPresenter extends BasePresenter
                 "Minimum values to make correlation",
                 40,
                 40
+                );
+        $ret=self::parseOpt($ret,
+                "min_corr",
+                false,"min_corr",
+                "Minimum correlation to report",
+                0.4,
+                0.4
                 );
         return($ret);
     }
@@ -156,6 +157,28 @@ class IcPresenter extends BasePresenter
                 }
             }
             echo "\n";
+        }
+        self::mexit();
+    }
+    
+    function renderStats() {
+        $opts=$this->opts;
+        $opts->empty=false;
+        $opts->icempty=false;
+        $rows=  \App\Model\ItemCorr::icStats($opts);
+        if ($rows) {
+            $this->exportdata=$rows->fetchAll();
+            if ($this->opts->outputverb=="expanded") {
+                $i=0;
+                foreach ($this->exportdata as $i=>$row) {
+                    $i++;
+                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d                 \r",$i,count($this->exportdata)));
+                    $row["key1"]= IsPresenter::expandItem($row->itemid1,true);
+                    $row["key2"]= IsPresenter::expandItem($row->itemid2,true);
+                    $this->exportdata[$i]=$row;
+                }
+            }
+            parent::renderShow($this->exportdata);
         }
         self::mexit();
     }
