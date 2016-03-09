@@ -73,10 +73,20 @@ class Tw extends Monda {
     }
 
     function twSearch($opts) {
+        $secondssql="";
         if ($opts->wids) {
             $widssql = sprintf("AND id IN (%s)", join(",", $opts->wids));
+            $tmesql="";
         } else {
             $widssql = "AND true";
+            $tmesql=sprintf("AND tfrom>='%s' AND (tfrom+seconds*interval '1 second')<='%s'", New DateTime("@$opts->start"), New DateTime("@$opts->end"));
+            if ($opts->length) {
+                if (!is_array($opts->length)) {
+                    $secondssql="AND seconds=$opts->length ";
+                } else {
+                    $secondssql="AND seconds IN (".join(",",$opts->length).") ";
+                }
+            }
         }
         $onlyemptysql = "";
         if ($opts->empty) {
@@ -136,11 +146,6 @@ class Tw extends Monda {
         } else {
             $limit = "";
         }
-        if (!is_array($opts->length)) {
-            $secondssql="";
-        } else {
-            $secondssql="AND seconds IN (".join(",",$opts->length).") ";
-        }
         $rows = Monda::mquery("
             SELECT 
                 id,parentid,
@@ -168,7 +173,7 @@ class Tw extends Monda {
             WHERE (
                 serverid=?
                 $secondssql
-                AND tfrom>=? AND (tfrom+seconds*interval '1 second')<=?
+                $tmesql
                 AND timewindow.loi>$opts->minloi 
                 AND (updated<? OR ?)
                 AND $createdsql
@@ -178,7 +183,7 @@ class Tw extends Monda {
             HAVING $onlyemptysql true
             ORDER BY $sortsql
                 $limit
-                ", $opts->zid, New DateTime("@$opts->start"), New DateTime("@$opts->end"), New DateTime("@" . $updated), $updatedflag
+                ", $opts->zid, New DateTime("@" . $updated), $updatedflag
         );
         return($rows);
     }
@@ -312,15 +317,9 @@ class Tw extends Monda {
         return(self::twStats($opts, true));
     }
 
-    function TwTree($twids, $minlevel, $maxlevel) {
+    function TwTree($twids) {
         if (count($twids) == 0) {
             return(false);
-        }
-        if (!$minlevel) {
-            $minlevel = 0;
-        }
-        if (!$maxlevel) {
-            $maxlevel = 5;
         }
         $result = self::mcquery(
                         "SELECT
@@ -340,11 +339,6 @@ class Tw extends Monda {
             ORDER BY tw1.tfrom,tw2.tfrom,tw3.tfrom,tw4.tfrom", $twids, $twids, $twids, $twids);
         $treeids = Array();
         foreach ($result as $row) {
-            $level = ( ($row->id1 != null) + ($row->id2 != null) + ($row->id3 != null) + ($row->id4 != null) + ($row->id5 != null) + ($row->id6 != null)
-                    );
-            if ($level < $minlevel || $level > $maxlevel) {
-                continue;
-            }
             if ($row->id4) {
                 $tree[$row->id1][$row->id2][$row->id3][$row->id4] = $row->id4;
                 $treeids[$row->id1] = true;

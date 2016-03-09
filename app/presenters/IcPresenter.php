@@ -78,9 +78,16 @@ class IcPresenter extends BasePresenter
         $ret=self::parseOpt($ret,
                 "min_corr",
                 false,"min_corr",
-                "Minimum correlation to report",
+                "Minimum correlation to report (bigger than)",
                 0.4,
                 0.4
+                );
+        $ret=self::parseOpt($ret,
+                "max_corr",
+                false,"max_corr",
+                "Maximum correlation to report (less than)",
+                1,
+                1
                 );
         return($ret);
     }
@@ -166,6 +173,28 @@ class IcPresenter extends BasePresenter
         $opts->empty=false;
         $opts->icempty=false;
         $rows=  \App\Model\ItemCorr::icStats($opts);
+        if ($rows) {
+            $this->exportdata=$rows->fetchAll();
+            if ($this->opts->outputverb=="expanded") {
+                $i=0;
+                foreach ($this->exportdata as $i=>$row) {
+                    $i++;
+                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d                 \r",$i,count($this->exportdata)));
+                    $row["key1"]= IsPresenter::expandItem($row->itemid1,true);
+                    $row["key2"]= IsPresenter::expandItem($row->itemid2,true);
+                    $this->exportdata[$i]=$row;
+                }
+            }
+            parent::renderShow($this->exportdata);
+        }
+        self::mexit();
+    }
+    
+    function renderWcorr() {
+        $opts=$this->opts;
+        $opts->empty=false;
+        $opts->icempty=false;
+        $rows=  \App\Model\ItemCorr::icWStats($opts,true);
         if ($rows) {
             $this->exportdata=$rows->fetchAll();
             if ($this->opts->outputverb=="expanded") {

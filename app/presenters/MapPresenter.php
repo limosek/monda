@@ -31,20 +31,7 @@ class MapPresenter extends BasePresenter
                 "monda",
                 "monda"
                 );
-        $ret=self::parseOpt($ret,
-                "minmapdepth",
-                false,"minmapdepth",
-                "Minimum depth of map",
-                false,
-                "No limit"
-                );
-        $ret=self::parseOpt($ret,
-                "maxmapdepth",
-                false,"maxmapdepth",
-                "Maximum depth of map",
-                false,
-                "No limit"
-                );
+        
         $ret=self::parseOpt($ret,
                 "loi_sizefactor",
                 false,"loi_sizefactor",
@@ -171,18 +158,7 @@ class MapPresenter extends BasePresenter
         } else {
             $props=New \StdClass();
             if (is_int($id) && !array_key_exists($id,$twids)) {
-                $w = New \StdClass();
-                $w->id=$id;
-                $w->processed=0;
-                $w->found=0;
-                $w->seconds=0;
-                $w->fstamp=0;
-                $w->tstamp=0;
-                $w->loi=0;
-                $w->loih=0;
-                $w->ignored=0;
-                $w->description="unknown";
-                $twids[$id]=$w;
+                $twids[$id]=  \App\Model\Tw::twGet($id);
             }
             if (array_key_exists($id,$twids)) {
                 $window=$twids[$id];
@@ -199,14 +175,13 @@ class MapPresenter extends BasePresenter
                 $opts2=$this->opts;
                 $opts2->wid=$window->id;
                 if ($this->opts->itemids) {
-                    $itemidsstr="";
-                    foreach ($this->opts->itemids as $i) {
-                        $itemidsstr.="itemids[$i]=$i&";
-                    }
+                    $itemids=$this->opts->itemids;
                 } else {
-                    $itemidsstr="";
+                    $opts=$this->opts;
+                    $opts->wids=Array($id);
+                    $itemids=  \App\Model\ItemStat::isToIds($opts);
                 }
-                $props->url=sprintf("%s/history.php?",$this->opts->zaburl).sprintf("action=batchgraph&%s&graphtype=0&period=%d&stime=%d",$itemidsstr,$window->seconds,$window->fstamp);
+                $props->url=self::ZabbixGraphUrl1($itemids,$window->fstamp,$window->seconds);
                 $props->description=$window->description;
                 $props->zabbix=$window->description;
                 $props->class=Array();
@@ -254,22 +229,6 @@ class MapPresenter extends BasePresenter
             $map->setValue($props);
             return($map);
         }
-    }
-    
-    function renderTl() {
-        $opts=$this->opts;
-        $wids=\App\Model\Tw::twToIds($opts);
-        $tree=\App\Model\Tw::twTree($wids,$opts->minmapdepth,$opts->maxmapdepth);
-        $stats=\App\Model\Tw::twStats($opts);
-        $twids=Array();
-        foreach ($wids as $w) {
-            if (!array_key_exists($w,$twids)) {
-                $twids[$w]=\App\Model\Tw::twGet($w);
-            }
-        }
-        $map=self::TwTreeMap($tree,$twids,$stats,false,$opts->mapname);
-        $this->template->map=$map;
-        $this->template->stats=$stats;
     }
     
     function renderHs() {

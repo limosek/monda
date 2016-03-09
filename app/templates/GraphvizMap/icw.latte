@@ -4,20 +4,28 @@
 
 {block content}
 
-digraph HostStat {
-compound=true;
-   graph [gradientangle=45, fontsize=100 ] ;
-    
+digraph ItemCorrelationsWindow {
+   graph [gradientangle=0, fontsize=100 ] ;
+   node [gradientangle=0 ] ;
+   edge [dir=both, arrowhead=normal, arrrowtail=normal];
+   splines=true;
+   
    subgraph cluster_monda {
     edge [dir=both, arrowhead=normal, arrrowtail=normal];
+    label="{$window->description}\n#{$window->id}";
 
-    {foreach $itemids as $i=>$wids}
-        
-        { rank=same;
-       {foreach $wids as $wid}
-           {$wid}
+    {foreach $hosts as $h=>$itemids}
+       subgraph cluster_{$h} {
+         label="{$hostsinfo[$h]}";
+         style="filled";
+        {foreach $itemids as $itemid}
+           i{$itemid} [label="{$itemsinfo[$itemid]}\n#{$itemid}", URL="{$iurl[$itemid]}"];
        {/foreach} 
        }
+    {/foreach}
+    
+    {foreach $ics as $ic}
+        i{$ic->itemid1}->i{$ic->itemid2} [edgeURL="{$ic->url}", penwidth={$ic->size}, label="{$ic->label}" ];
     {/foreach}
    }
 }

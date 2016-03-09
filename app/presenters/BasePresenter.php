@@ -202,6 +202,34 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         }
     }
     
+    function zabbixGraphUrl1($itemids, $start, $seconds) {
+        if ($itemids) {
+            $itemidsstr = "";
+            foreach ($itemids as $i) {
+                $itemidsstr.="itemids[$i]=$i&";
+            }
+        } else {
+            $itemidsstr = "";
+        }
+        $url=sprintf("%s/history.php?", $this->opts->zaburl) . sprintf("action=batchgraph&%s&graphtype=0&period=%d&stime=%d", $itemidsstr, $seconds, $start);
+        return($url);
+    }
+    
+    function zabbixGraphUrl2($itemids, $start, $seconds) {
+        if ($itemids) {
+            $itemidsstr = "";
+            $j=0;
+            foreach ($itemids as $i) {
+                $itemidsstr.="itemids[$j]=$i&";
+                $j++;
+            }
+        } else {
+            $itemidsstr = "";
+        }
+        $url=sprintf("%s/chart.php?", $this->opts->zaburl) . sprintf("period=%d&stime=%s&%s&type=0&batch=1&updateProfile=0&profileIdx=&profileIdx2=&width=1024", $seconds, date("YmdHis",$start), $itemidsstr);
+        return($url);
+    }
+
     function getOpts($ret) {
         $ret=self::parseOpt($ret,
                 "help",

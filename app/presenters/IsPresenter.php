@@ -104,13 +104,18 @@ class IsPresenter extends BasePresenter
         self::mexit();
     }
     
-    public function expandItem($itemid,$withhost=false) {
+    public function expandItem($itemid,$withhost=false,$desc=false) {
         $ii=\App\Model\ItemStat::itemInfo($itemid);
         if (count($ii)>0) {
-            if ($withhost) {
-                return(HsPresenter::expandHost($ii[0]->hostid).":".$ii[0]->key_);
+            if ($desc) {
+                $itxt=$ii[0]->name;
             } else {
-                return($ii[0]->key_);
+                $itxt=$ii[0]->key_;
+            }
+            if ($withhost) {
+                return(HsPresenter::expandHost($ii[0]->hostid).":".$itxt);
+            } else {
+                return($itxt);
             }
         } else {
             return("unknown");

@@ -85,7 +85,7 @@ class ItemCorr extends Monda {
                  JOIN timewindow tw1 ON (is1.windowid=tw1.id)
                  JOIN timewindow tw2 ON (is2.windowid=tw2.id)
                  WHERE 
-                    ic.corr>? AND
+                    ((ic.corr>? AND ic.corr<?) OR ic.corr IS NULL) AND
                     $itemidssql
                     $hostidssql
                     $windowidsql 
@@ -95,7 +95,7 @@ class ItemCorr extends Monda {
                     AND (is1.itemid<=is2.itemid)
                     $sameiwsql $loisql $emptysql
                  $ranksql2
-                 LIMIT ?",$opts->min_corr,$opts->max_rows
+                 LIMIT ?",$opts->min_corr,$opts->max_corr,$opts->max_rows
                 );
         return($rows);
     }
@@ -116,15 +116,19 @@ class ItemCorr extends Monda {
                 $corrsql="AND ic.windowid1=ic.windowid2";
                 break;
             case "samehour":
-                $opts->length=Monda::_1HOUR;
+                $opts->length=Array(Monda::_1HOUR);
                 $corrsql="AND ic.windowid1<>ic.windowid2";
                 break;
             case "samedow":
-                $opts->length=Monda::_1DAY;
+                $opts->length=Array(Monda::_1DAY);
                 $corrsql="AND ic.windowid1<>ic.windowid2";
                 break;              
         }
-        $wids=Tw::twToIds($opts);
+        if (!$opts->wids) {
+            $wids=Tw::twToIds($opts);
+        } else {
+            $wids=$opts->wids;
+        }
         if (count($wids)>0) {
             $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
         } else {
@@ -137,7 +141,7 @@ class ItemCorr extends Monda {
         }
         $rows=self::mquery(
                 "SELECT
-                        windowid1,windowid2,itemid1,itemid2,corr,ic.cnt,ic.loi
+                        windowid1,windowid2,itemid1,itemid2,corr,ic.cnt,ic.loi AS icloi
                  FROM itemcorr ic
                  JOIN itemstat is1 ON (ic.itemid1=is1.itemid AND ic.windowid1=is1.windowid)
                  JOIN itemstat is2 ON (ic.itemid2=is2.itemid AND ic.windowid2=is2.windowid)
@@ -148,15 +152,19 @@ class ItemCorr extends Monda {
                          true
                      $loisql
                      $corrsql
-                     AND ic.corr>?
+                     AND ic.corr>? AND ic.corr<? 
                  ORDER BY ic.loi DESC
                  LIMIT ?
-                ",$opts->min_corr,$opts->max_rows);
+                ",$opts->min_corr,$opts->max_corr,$opts->max_rows);
         return($rows);
     }
     
-    function icToIds($opts,$pkey=false) {
-        $ids=self::icSearch($opts);
+    function icToIds($opts,$pkey=false,$quick=false) {
+        if ($quick) {
+            $ids=self::icQuickSearch($opts); 
+        } else {
+            $ids=self::icSearch($opts);
+        }
         if (!$ids) {
             return(false);
         }
@@ -182,7 +190,8 @@ class ItemCorr extends Monda {
                     "tto2" => date_format($row->tfrom2,"U")+$row->seconds2,
                       );
                 } else {
-                    $icids[]=$row->itemid1;
+                    $icids[$row->itemid1]=$row->itemid1;
+                    $icids[$row->itemid2]=$row->itemid2;
                 }
         }
         return($icids);
@@ -222,7 +231,7 @@ class ItemCorr extends Monda {
                      OR
                      (itemid1=itemid2) AND (windowid1<>windowid2)
                     ) AND
-                    ic.corr>?
+                    ic.corr>? AND ic.corr<?
                     AND
                     $itemidssql
                     $hostidssql
@@ -231,7 +240,52 @@ class ItemCorr extends Monda {
                  GROUP BY itemid1,itemid2
                  ORDER BY AVG(ic.corr) DESC
                  LIMIT ?
-                ",$opts->min_corr,$opts->max_rows);
+                ",$opts->min_corr,$opts->max_corr,$opts->max_rows);
+        return($rows);
+    }
+    
+    function icWStats($opts) {
+        if ($opts->itemids) {
+            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$opts->itemids),join(",",$opts->itemids));
+        } else {
+            $itemidssql="";
+        }
+        if ($opts->hostids) {
+            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",$opts->hostids),join(",",$opts->hostids));
+        } else {
+            $hostidssql="";
+        }
+        $wids=Tw::twToIds($opts);
+        if (count($wids)>0) {
+            $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
+        } else {
+            return(false);
+        }
+        $rows=self::mquery(
+                "SELECT
+                        COUNT(DISTINCT itemid1) AS icnt1,COUNT(DISTINCT itemid2) AS icnt2,
+                        windowid1,windowid2,
+                        AVG(ic.corr)*COUNT(DISTINCT itemid1)*COUNT(DISTINCT itemid2) AS icorr,
+                        AVG(corr) AS acorr,
+                        AVG(ic.cnt) AS acnt,
+                        AVG(ic.loi) AS aloi
+                 FROM itemcorr ic
+                 JOIN itemstat is1 ON (ic.itemid1=is1.itemid AND ic.windowid1=is1.windowid)
+                 JOIN itemstat is2 ON (ic.itemid2=is2.itemid AND ic.windowid2=is2.windowid)
+                 WHERE 
+                    (
+                     (itemid1=itemid2) AND (windowid1<>windowid2)
+                    ) AND
+                    ((ic.corr>? AND ic.corr<?) OR ic.corr IS NULL)
+                    AND
+                    $itemidssql
+                    $hostidssql
+                    $windowidsql 
+                    true
+                 GROUP BY windowid1,windowid2
+                 ORDER BY AVG(ic.corr) DESC
+                 LIMIT ?
+                ",$opts->min_corr,$opts->max_corr,$opts->max_rows);
         return($rows);
     }
     
