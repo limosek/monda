@@ -46,6 +46,7 @@ class MapPresenter extends BasePresenter
                 0.1,
                 0.1
                 );
+        $ret=self::readCfg($ret,Array("Ic","Is","Hs","Map"));
         return($ret);
     }
     

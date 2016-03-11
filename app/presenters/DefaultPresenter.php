@@ -10,6 +10,9 @@ use Nette\Application\Responses\TextResponse,
 
 class DefaultPresenter extends BasePresenter
 {
+    function startup() {
+        parent::startup();
+    }
     
     public function Help()
     {
@@ -23,11 +26,8 @@ class DefaultPresenter extends BasePresenter
      hs             - HostStat operations
      ic             - Item Correlation operations
      ec             - Event Correlation operations
-     loi            - Level Of interrest calculations
      cron           - Combining all operations from cron
-     hm             - Create HTML maps
      gm             - Create Graphiz maps
-     gp             - Create Gnuplot graphs
      
      Hint: Date formats: @timestamp, YYYY_MM_DD_hhmm, YYYYMMDDhhmm, now, '-1 day'
      Hint: Divide more ids by comma ( like 1,3,45)
@@ -35,6 +35,9 @@ class DefaultPresenter extends BasePresenter
     \n");
        self::helpOpts();
        echo "\n";
+       if (array_key_exists("exception",$this->params) && $this->params["exception"]->getCode()==404) {
+           echo "\nUnknown action! \n\n";
+       }
     }
 }
 

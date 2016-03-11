@@ -38,9 +38,7 @@ class HsPresenter extends BasePresenter
                 false,
                 "All"
                 );
-        if ($ret->hostids) {
-            $ret->hostids=preg_split("/,/",$ret->hostids);
-        }
+        
         $ret=self::parseOpt($ret,
                 "hostgroups",
                 "Hg","hostgroup",
@@ -48,9 +46,7 @@ class HsPresenter extends BasePresenter
                 "monda",
                 "monda"
                 );
-        if ($ret->hostgroups) {
-            $ret->hostgroups=preg_split("/,/",$ret->hostgroups);
-        }
+        
         $ret=self::parseOpt($ret,
                 "hosts",
                 "Hh","hosts",
@@ -58,6 +54,13 @@ class HsPresenter extends BasePresenter
                 false,
                 "All"
                 );
+        $ret=self::readCfg($ret,Array("Tw"));
+        if ($ret->hostgroups) {
+            $ret->hostgroups=preg_split("/,/",$ret->hostgroups);
+        }
+        if ($ret->hostids) {
+            $ret->hostids=preg_split("/,/",$ret->hostids);
+        }
         if ($ret->hosts) {
             $ret->hosts=preg_split("/,/",$ret->hosts);
         }

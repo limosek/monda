@@ -48,6 +48,7 @@ class EcPresenter extends BasePresenter
                 5,
                 5
                 );
+        $ret=self::readCfg($ret,Array("Is","Hs","Tw"));
         return($ret);
     }
     

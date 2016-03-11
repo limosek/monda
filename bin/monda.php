@@ -27,19 +27,9 @@ putenv("MONDA_CACHEDIR=$cachedir");
 putenv("MONDA_SQLCACHEDIR=$sqlcachedir");
 putenv("MONDA_APICACHEDIR=$apicachedir");
 putenv("MONDA_TMP=$tmpdir");
-putenv("MONDA_CLI=yes");
-#putenv("MONDA_LOG=" . __DIR__ . "/../log");
-
-if (getenv("MONDARC")) {
-    $cfgf=getenv("MONDARC");
-} else {
-    $cfgf=getenv("HOME")."/.mondarc";
-}
-putenv("MONDARC=$cfgf");
-
-$dbgidx=array_search("-D",$_SERVER["argv"]);
-if ($dbgidx && array_key_exists($dbgidx, $_SERVER["argv"])) {
-        putenv("MONDA_DEBUG=".$_SERVER["argv"][$dbgidx+1]);
+putenv("MONDA_CLI=1");
+if (!getenv("MONDARC")) {
+    putenv("MONDARC=".realpath(getenv("HOME")."/.mondarc"));
 }
 
 $container = require __DIR__ . '/../app/bootstrap.php';

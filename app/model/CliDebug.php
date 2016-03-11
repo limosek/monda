@@ -45,7 +45,7 @@ class CliDebug {
             }
         }
         if (!array_key_exists($level, self::$levels)) {
-            fprintf(STDERR,"Unknown log level ".self::getLevel()."!\n");
+            fwrite(STDERR,"Unknown log level ".self::getLevel()."!\n");
         } else {
             self::$level=$level;
         }
@@ -57,13 +57,13 @@ class CliDebug {
             
     static function log($message,$priority=Debugger::INFO) {
         if (self::comparelevel($priority,self::getLevel())) {
-            fprintf(STDERR,$message);
+            fwrite(STDERR,$message);
         }
      }
      
      static function write($message,$priority=Debugger::WARNING) {
         if (self::comparelevel($priority,self::getLevel())) {
-            fprintf(STDOUT,$message);
+            fwrite(STDOUT,$message);
         }
      }
      

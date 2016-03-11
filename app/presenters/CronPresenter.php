@@ -40,6 +40,7 @@ class CronPresenter extends IsPresenter
         $opts=HsPresenter::getOpts($opts);
         $opts=IsPresenter::getOpts($opts);
         $opts=IcPresenter::getOpts($opts);
+        $opts=EcPresenter::getOpts($opts);
         $ret=self::parseOpt($ret,
                 "subcron",
                 "Sc","sub_cron_targets",
@@ -47,6 +48,7 @@ class CronPresenter extends IsPresenter
                 false,
                 false
                 );
+        $ret=self::readCfg($ret,Array("Is","Hs","Tw","Ic","Ic","Ec"));
         return($opts);
     }
     

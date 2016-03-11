@@ -7,7 +7,7 @@ use \Exception,
     App\Model,
     Nette\Utils\DateTime as DateTime;
 
-class GraphvizMapPresenter extends MapPresenter {
+class GmPresenter extends MapPresenter {
 
     public function Help() {
         \App\Model\CliDebug::warn("
@@ -31,7 +31,13 @@ class GraphvizMapPresenter extends MapPresenter {
                 10,
                 10
                 );
+        $ret=self::readCfg($ret,Array("Ic","Is","Hs","Tw","Gm"));
         return($ret);
+    }
+    
+    public function renderGm() {
+        self::Help();
+        self::mexit();
     }
     
     function renderTws() {

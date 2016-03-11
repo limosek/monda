@@ -16,24 +16,43 @@ class RouterFactory {
      * @return \Nette\Application\IRouter
      */
     public function createRouter() {
-        $router = new RouteList();
-        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
-            $secured = Route::SECURED;
-        } else {
-            $secured=0;
-        }
+        global $argv;
         
+        $router = new RouteList();
         if (getenv("MONDA_CLI")) {
             $router[] = new Nette\Application\Routers\CliRouter(
-                        array('action' => 'Default'
-                            )
+                    array('help', 'action' => 'Default'
+                    )
+            );
+           $router[] = new Nette\Application\Routers\CliRouter(
+                    'taw[:<action>]', ['presenter' => 'Tw', 'action' => 'default']
+            );
+            $router[] = new Nette\Application\Routers\CliRouter(
+                    array('is', 'action' => 'ItemStat'
+                    )
+            );
+            $router[] = new Nette\Application\Routers\CliRouter(
+                    array('ic', 'action' => 'Ic'
+                    )
+            );
+            $router[] = new Nette\Application\Routers\CliRouter(
+                    array('hs', 'action' => 'HostStat'
+                    )
+            );
+            $router[] = new Nette\Application\Routers\CliRouter(
+                    array('gm', 'action' => 'Gm'
+                    )
+            );
+            $router[] = new Nette\Application\Routers\CliRouter(
+                    array('ec', 'action' => 'Ec'
+                    )
+            );
+            $router[] = new Nette\Application\Routers\CliRouter(
+                    array('cron', 'action' => 'Cron'
+                    )
             );
         }
-        $router[] = new Route('/monda/<presenter>/<action>',
-                array(
-                 'presenter' => 'HtmlMap',
-                 'action' => 'tl',
-                ),$secured);
+
         return $router;
     }
 

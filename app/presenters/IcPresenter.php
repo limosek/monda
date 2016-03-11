@@ -89,6 +89,7 @@ class IcPresenter extends BasePresenter
                 1,
                 1
                 );
+        $ret=self::readCfg($ret,Array("Is","Hs","Tw"));
         return($ret);
     }
     

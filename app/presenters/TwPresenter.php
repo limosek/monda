@@ -24,10 +24,6 @@ class TwPresenter extends BasePresenter
                 date_format(New DateTime(date("Y-01-01 00:00P")),"U"),
                 date("Y-01-01 00:00")
                 );
-        $ret->start=self::timetoseconds($ret->start);
-        if ($ret->start<631148400) {
-            self::mexit(4,sprintf("Bad start time (%d)?!\n",date("Y-m-d",$ret->start)));
-        }
         $ret=self::parseOpt($ret,
                 "end",
                 "e","end",
@@ -49,14 +45,6 @@ class TwPresenter extends BasePresenter
                 false,
                 "All"
                 );
-        if ($ret->length) {
-            $ret->length=preg_split("/,/",$ret->length);
-                foreach ($ret->length as $id=>$length) {
-                if (!is_numeric($length)) {
-                    $ret->length[$id]=self::timetoseconds($length)-time();
-                }
-            }
-        }
         $ret=self::parseOpt($ret,
                 "wsort",
                 "ws","windows_sort",
@@ -106,6 +94,19 @@ class TwPresenter extends BasePresenter
                 false,
                 "None"
                 );
+        $ret=self::readCfg($ret);
+        if ($ret->length) {
+            $ret->length=preg_split("/,/",$ret->length);
+                foreach ($ret->length as $id=>$length) {
+                if (!is_numeric($length)) {
+                    $ret->length[$id]=self::timetoseconds($length)-time();
+                }
+            }
+        }
+        $ret->start=self::timetoseconds($ret->start);
+        if ($ret->start<631148400) {
+            self::mexit(4,sprintf("Bad start time (%d)?!\n",date("Y-m-d",$ret->start)));
+        }
         if ($ret->wids) {
             $ret->wids=preg_split("/,/",$ret->wids);
         }

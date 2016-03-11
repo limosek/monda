@@ -40,8 +40,24 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         return(round($tme/self::TW_STEP)*self::TW_STEP);
     }
     
-    function mexit($code=0,$msg="") {
-        if ($code==0) {
+    function mexit($code = 0, $msg = "") {
+        if ($code != 0 || \App\Model\CliDebug::getLevel() == "debug") {
+            if (\App\Model\CliDebug::getLevel() == "debug") {
+                \App\Model\CliDebug::log("Used params: " . print_r($this->params,true));
+            } else {
+                \App\Model\CliDebug::log(sprintf("Used action: %s:%s:%s\n\n", $this->request->getMethod(), $this->request->getPresenterName(), $this->action));
+            }
+            if (isset($this->params["exception"])) {
+                \App\Model\CliDebug::log($this->params["exception"]->getMessage() . "\n");
+            }
+        }
+        if ($code == 0) {
+            if (!$msg) {
+                if (array_key_exists("exception",$this->params)) {
+                    $msg=$this->params["exception"]->getMessage()."\n";
+                    $code=$this->params["exception"]->getCode();
+                }
+            }
             Model\CliDebug::warn($msg);
         } else {
             Model\CliDebug::err($msg);
@@ -55,9 +71,11 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             exit($code);
         }
     }
-    
+
     public function renderDefault() {
-        $this->Help();
+        if (!isset($this->params["exception"])) {
+            $this->Help();
+        }
         self::mexit();
     }    
     public function __call($name, $args) {
@@ -100,12 +118,45 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         $this->opts=$this->getOpts($this->opts);
         if ($this->opts->help) {
             $this->opts->zapi=false;
-            $this->forward($this->getName().":default");
         }
+        $this->opts=self::readCfg($this->opts);
         parent::startup();
         return($this);
     }
     
+    function readCfg($obj,$contexts = false) {
+        global $ctxs;
+        
+        if (!is_array($ctxs)) {
+            $ctxs=Array();
+        }
+        if (!$contexts) {
+            $contexts = Array(
+                "global",
+                $this->name,
+                $this->name.":".$this->action);
+        }
+        if ($this->opts->zalias) {
+            $contexts[]="zabbix-".$this->opts->zalias;
+        }
+        if (file_exists(getenv("MONDARC"))) {
+            $fopts = parse_ini_file(getenv("MONDARC"), true);
+            $foptions = Array();
+            foreach ($contexts as $context) {
+                Model\CliDebug::dbg("Want to read INI context $context.\n");
+                if (array_key_exists($context,$fopts) && !array_key_exists($context,$ctxs)) {
+                    $foptions = array_merge($foptions, $fopts[$context]);
+                    Model\CliDebug::info("Got config from INI context $context.\n");
+                    $ctxs[$context]=1;
+                }
+            }
+            foreach ($foptions as $opt=>$value) {
+                $obj=self::iniSetOpt($obj,$opt,$value);
+            }
+        }
+        return($obj);
+    }
+
     function __construct() {
         global $container;
         
@@ -119,15 +170,20 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_CACHEDIR")));
     }
   
-    function parseOpt($obj,$key,$short,$long,$desc,$default=null,$defaulthelp=false,$choices=false,$params=false) {
+    function parseOpt($obj, $key, $short, $long, $desc, $default = null, $defaulthelp = false, $choices = false, $params = false) {
+
+        if (isset($obj->$key)) {
+            return($obj); // Already set before
+        }
         if (!$params) {
-            if (count($_GET)>0) {
-                $params=$_GET;
-            } else {
-                $params=$this->params;
+            if (is_array($this->params)) {
+                $params = $this->params;
+                if (array_key_exists("exception", $this->params)) {
+                    $params=Array();
+                }
             }
         }
-        $this->getopts[$key]=Array(
+        $this->getopts[$key] = Array(
             "short" => $short,
             "long" => $long,
             "description" => $desc,
@@ -135,26 +191,43 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             "defaulthelp" => $defaulthelp,
             "choices" => $choices
         );
-        if ($short && array_key_exists($short,$params)) {
-            $value=stripslashes($params[$short]);
-        } elseif (array_key_exists($long,$params)) {
-            $value=stripslashes($params[$long]);
-        } elseif (array_key_exists("_$short",$params)) {
-            $value=!$params["_$short"];
-        } elseif (array_key_exists("_$long",$params)) {
-            $value=!$params["_$long"];
+        if ($short && array_key_exists($short, $params)) {
+            $value = stripslashes($params[$short]);
+        } elseif (array_key_exists($long, $params)) {
+            $value = stripslashes($params[$long]);
+        } elseif (array_key_exists("_$short", $params)) {
+            $value = !$params["_$short"];
+        } elseif (array_key_exists("_$long", $params)) {
+            $value = !$params["_$long"];
         } else {
-            $value=$default;
-            $obj->defaults[]=$key;
+            $value = $default;
+            $obj->defaults[] = $key;
         }
-        $obj->$key=$value;
+        $obj->$key = $value;
         if ($choices) {
-            if (array_search($value,$choices)===false) {
-                self::mexit(14,sprintf("Bad option %s for parameter %s(%s). Possible values: {%s}\n",$value,$short,$long,join($choices,"|")));
+            if (array_search($value, $choices) === false) {
+                self::mexit(14, sprintf("Bad option %s for parameter %s(%s). Possible values: {%s}\n", $value, $short, $long, join($choices, "|")));
             }
         }
         if (is_object($this->dbg) && isset($obj->$key)) {
-            Model\CliDebug::dbg("Setting option $long($desc) to ".  strtr(\Nette\Diagnostics\Debugger::dump($obj->$key,true),"\n"," ")."\n");
+            Model\CliDebug::info("Setting option $long($desc) to " . strtr(\Nette\Diagnostics\Debugger::dump($obj->$key, true), "\n", " ") . "\n");
+        }
+        return($obj);
+    }
+    
+    function iniSetOpt($obj,$key,$value) {
+        $set=false;
+        foreach ($this->getopts as $k=>$v) {
+            if ($v["long"]==$key) {
+                if (true) {
+                    $set=true;
+                    $obj->$k=$value;
+                    Model\CliDebug::dbg("Setting INI option $key to " . strtr(\Nette\Diagnostics\Debugger::dump($value, true), "\n", " ") . "\n");
+                }
+            }
+        }
+        if (!$set) {
+            Model\CliDebug::warn("INI option $key unknown!\n"); 
         }
         return($obj);
     }
@@ -231,6 +304,8 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
 
     function getOpts($ret) {
+        global $argv;
+        
         $ret=self::parseOpt($ret,
                 "help",
                 "h","help",
@@ -249,6 +324,23 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Debug level (debug,info,warning,error,critical)",
                 "info"
                 );
+        foreach ($argv as $i=>$a) {
+            if (!strcmp($a, "--help") ||
+                    !strcmp($a, "-h")
+            ) {
+                $ret->help = true;
+            }
+            if (!strcmp($a, "-xh") ||
+                    !strcmp($a, "--xhelp")
+            ) {
+                $ret->xhelp = true;
+            }
+            if (!strcmp($a, "-D") ||
+                    !strcmp($a, "--debug")
+            ) {
+                $ret->debug = $argv[$i+1];
+            }
+        }
         $this->dbg=New Model\CliDebug($ret->debug);
         $ret=self::parseOpt($ret,
                 "dry",
@@ -336,6 +428,13 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Use this zabbix server ID",
                 "1",
                 "1"
+                );
+        $ret=self::parseOpt($ret,
+                "zalias",
+                false,"zabbix_alias",
+                "Use this zabbix server alias",
+                false,
+                false
                 );
         $ret=self::parseOpt($ret,
                 "mdsn",

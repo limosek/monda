@@ -79,9 +79,7 @@ class IsPresenter extends BasePresenter
                 10,
                 10
                 );
-        if ($ret->itemids) {
-            $ret->itemids=preg_split("/,/",$ret->itemids);
-        }
+        
         $ret=$this->parseOpt($ret,
                 "items",
                 "Ik","items",
@@ -89,6 +87,10 @@ class IsPresenter extends BasePresenter
                 false,
                 "All"
                 );
+        $ret=self::readCfg($ret,Array("Is","Hs","Tw"));
+        if ($ret->itemids) {
+            $ret->itemids=preg_split("/,/",$ret->itemids);
+        }
         if ($ret->items) {
             $ret->items=preg_split("/~/",$ret->items);
         }
