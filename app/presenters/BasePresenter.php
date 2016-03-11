@@ -258,31 +258,6 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "no"
                 );
         $ret=self::parseOpt($ret,
-                "fork",
-                "F","fork_level",
-                "Fork level (how many processes to run simultanously)",
-                false,
-                "no fork"
-                );
-        $ret=self::parseOpt($ret,
-                "maxload",
-                "Ml","max_load",
-                "Run jobs only if OS loadavg is lower than value",
-                10
-                );
-        $ret=self::parseOpt($ret,
-                "maxcpuwait",
-                "Mw","max_cpuwait",
-                "Run jobs only if CPU wait time lower than value[%%]",
-                20
-                );
-       /* $ret=self::parseOpt($ret,
-                "maxbackends",
-                "Mb","max_backends",
-                "Run jobs only if there is less then value connected backends in DB",
-                20
-                ); */
-        $ret=self::parseOpt($ret,
                 "zapi",
                 "za","zabbix_api",
                 "Use Zabbix API to retrieve objects. If this is false, cache is used. If object is not in cache, return empty values.",
@@ -319,6 +294,14 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 true,
                 true
                 );
+        $ret=self::parseOpt($ret,
+                "csvfields",
+                false,"csv_fields",
+                "Output only this fields",
+                false,
+                false
+                );
+        if ($ret->csvfields) $ret->csvfields=array_flip(preg_split("/,/",$ret->csvfields));
         $ret=self::parseOpt($ret,
                 "outputverb",
                 "Ov","output_verbosity",
@@ -494,13 +477,23 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 }
                 echo "\n";
             }
+            $col=1;
             foreach ($row as $r => $v) {
                 if (is_object($v)) { 
                     if (get_class($v)=="Nette\Utils\DateTime") {
                         $v=$v->format("c");
                     }
                 }
-                echo sprintf('%s%s%s%s',$this->opts->csvfield,$v,$this->opts->csvfield,$this->opts->csvsep);
+                $print=true;
+                if (is_array($this->opts->csvfields)) {
+                    if (array_key_exists($col,$this->opts->csvfields) ||array_key_exists($r,$this->opts->csvfields)) {
+                        $print=true;
+                    } else {
+                        $print=false;
+                    }
+                }
+                if ($print) echo sprintf('%s%s%s%s',$this->opts->csvfield,$v,$this->opts->csvfield,$this->opts->csvsep);
+                $col++;
             }
             echo "\n";
             $i++;
