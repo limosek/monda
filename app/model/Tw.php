@@ -91,8 +91,10 @@ class Tw extends Monda {
         $onlyemptysql = "";
         if ($opts->empty) {
             $onlyemptysql = "(updated IS NULL OR COUNT(itemstat.itemid)=0) AND";
+            $loisql="";
         } else {
             $onlyemptysql = "(updated IS NOT NULL AND COUNT(itemstat.itemid)>0) AND";
+            $loisql="AND timewindow.loi>$opts->minloi";
         }
         if (preg_match("#/#", $opts->wsort)) {
             List($sc, $so) = preg_split("#/#", $opts->wsort);
@@ -174,7 +176,7 @@ class Tw extends Monda {
                 serverid=?
                 $secondssql
                 $tmesql
-                AND timewindow.loi>$opts->minloi 
+                $loisql
                 AND (updated<? OR ?)
                 AND $createdsql
                 $widssql
@@ -215,8 +217,8 @@ class Tw extends Monda {
                 lowcnt,
                 serverid
             FROM timewindow
-            WHERE extract(epoch from tfrom)>=? AND extract(epoch from tfrom)+seconds<=? AND $emptysql
-            ", $clock, $toclock);
+            WHERE extract(epoch from tfrom)>=? AND extract(epoch from tfrom)+seconds<=? AND $emptysql AND serverid=?
+            ", $clock, $toclock,$this->opts->zid);
         return($rows);
     }
 
@@ -245,8 +247,8 @@ class Tw extends Monda {
                 COUNT(itemstat.itemid) AS itemcount
              FROM timewindow
              LEFT JOIN itemstat ON (windowid=id)
-             WHERE id IN (?)
-             GROUP BY timewindow.id", $wid);
+             WHERE id IN (?) AND serverid=?
+             GROUP BY timewindow.id", $wid, $this->opts->zid);
         if (count($id) == 1 && !$arr) {
             $id = $id[0];
         }
@@ -293,7 +295,7 @@ class Tw extends Monda {
                 MAX(loi::float/(seconds/3600)) AS maxloih,
                 STDDEV(loi) AS stddevloi
             FROM timewindow
-            WHERE id IN (?)", $wids);
+            WHERE id IN (?) AND serverid=?", $wids,$this->opts->zid);
         if (!$zabbix) {
             return($row[0]);
         } else {
@@ -336,7 +338,8 @@ class Tw extends Monda {
             LEFT JOIN timewindow tw5 ON (tw5.parentid=tw4.id)
             LEFT JOIN timewindow tw6 ON (tw6.parentid=tw5.id)
             WHERE tw2.id IN (?) OR tw3.id IN (?) OR tw4.id IN (?) OR tw5.id IN (?)
-            ORDER BY tw1.tfrom,tw2.tfrom,tw3.tfrom,tw4.tfrom", $twids, $twids, $twids, $twids);
+            AND tw1.serverid=? AND tw2.serverid=? AND tw3.serverid=? AND tw4.serverid=?
+            ORDER BY tw1.tfrom,tw2.tfrom,tw3.tfrom,tw4.tfrom", $twids, $twids, $twids, $twids, $this->opts->zid, $this->opts->zid, $this->opts->zid, $this->opts->zid);
         $treeids = Array();
         foreach ($result as $row) {
             if ($row->id4) {
@@ -381,11 +384,11 @@ class Tw extends Monda {
               AND twchild.seconds<twparent.seconds
               ORDER BY seconds
               LIMIT 1 )
-            WHERE twchild.id IN (?) AND found>0
-            ", $wids);
+            WHERE twchild.id IN (?) AND found>0 AND serverid=?
+            ", $wids,$this->opts->zid);
         $uloi2= Monda::mquery("
-            UPDATE timewindow SET loi=0 WHERE found=0 OR found IS NULL
-                ");
+            UPDATE timewindow SET loi=0 WHERE found=0 OR found IS NULL AND serverid=?
+                ",$this->opts->zid);
         Monda::mcommit();
     }
 

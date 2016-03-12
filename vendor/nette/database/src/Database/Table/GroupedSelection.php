@@ -1,21 +1,20 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Database\Table;
 
 use Nette;
+use Nette\Database\Context;
+use Nette\Database\IConventions;
 
 
 /**
  * Representation of filtered table grouped by some column.
  * GroupedSelection is based on the great library NotORM http://www.notorm.com written by Jakub Vrana.
- *
- * @author     Jakub Vrana
- * @author     Jan Skrasek
  */
 class GroupedSelection extends Selection
 {
@@ -34,15 +33,18 @@ class GroupedSelection extends Selection
 
 	/**
 	 * Creates filtered and grouped table representation.
-	 * @param  Selection  $refTable
+	 * @param  Context
+	 * @param  IConventions
 	 * @param  string  database table name
 	 * @param  string  joining column
+	 * @param  Selection
+	 * @param  Nette\Caching\IStorage|NULL
 	 */
-	public function __construct(Selection $refTable, $table, $column)
+	public function __construct(Context $context, IConventions $conventions, $tableName, $column, Selection $refTable, Nette\Caching\IStorage $cacheStorage = NULL)
 	{
 		$this->refTable = $refTable;
 		$this->column = $column;
-		parent::__construct($refTable->connection, $table, $refTable->reflection, $refTable->cache ? $refTable->cache->getStorage() : NULL);
+		parent::__construct($context, $conventions, $tableName, $cacheStorage);
 	}
 
 
@@ -175,7 +177,7 @@ class GroupedSelection extends Selection
 	{
 		$refObj = $this->refTable;
 		$refPath = $this->name . '.';
-		while ($refObj instanceof GroupedSelection) {
+		while ($refObj instanceof self) {
 			$refPath .= $refObj->name . '.';
 			$refObj = $refObj->refTable;
 		}
@@ -188,15 +190,21 @@ class GroupedSelection extends Selection
 	{
 		$hash = $this->getSpecificCacheKey();
 		$referencing = & $this->refCache['referencing'][$this->getGeneralCacheKey()];
-		$this->observeCache      = & $referencing['observeCache'];
-		$this->refCacheCurrent   = & $referencing[$hash];
-		$this->accessedColumns   = & $referencing[$hash]['accessed'];
-		$this->specificCacheKey  = & $referencing[$hash]['specificCacheKey'];
-		$this->rows              = & $referencing[$hash]['rows'];
+		$this->observeCache = & $referencing['observeCache'];
+		$this->refCacheCurrent = & $referencing[$hash];
+		$this->accessedColumns = & $referencing[$hash]['accessed'];
+		$this->specificCacheKey = & $referencing[$hash]['specificCacheKey'];
+		$this->rows = & $referencing[$hash]['rows'];
 
 		if (isset($referencing[$hash]['data'][$this->active])) {
 			$this->data = & $referencing[$hash]['data'][$this->active];
 		}
+	}
+
+
+	protected function emptyResultSet($saveCache = TRUE, $deleteRererencedCache = TRUE)
+	{
+		parent::emptyResultSet($saveCache, FALSE);
 	}
 
 

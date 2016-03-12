@@ -5,18 +5,17 @@ namespace App\Presenters;
 
 use Nette\Application\Responses\TextResponse,
     Nette\Security\AuthenticationException,
+    App\Model\CliDebug,
+    Tracy\Debugger,
     Model, Nette\Application\UI,
         Nette\Utils\DateTime as DateTime;
 
 class DefaultPresenter extends BasePresenter
 {
-    function startup() {
-        parent::startup();
-    }
-    
+
     public function Help()
     {
-        \App\Model\CliDebug::warn("
+        CliDebug::warn("
      Monitoring system data analysis
      
      You can use one of this commands:
@@ -33,11 +32,12 @@ class DefaultPresenter extends BasePresenter
      Hint: Divide more ids by comma ( like 1,3,45)
      Hint: You can negate option by -_option (like -_m) 
     \n");
-       self::helpOpts();
+       parent::helpOpts(); 
        echo "\n";
-       if (array_key_exists("exception",$this->params) && $this->params["exception"]->getCode()==404) {
-           echo "\nUnknown action! \n\n";
-       }
+    }
+    
+    public function renderDefault() {
+        self::Help();
     }
 }
 

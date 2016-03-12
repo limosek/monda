@@ -20,39 +20,13 @@ class RouterFactory {
         
         $router = new RouteList();
         if (getenv("MONDA_CLI")) {
-            $router[] = new Nette\Application\Routers\CliRouter(
-                    array('help', 'action' => 'Default'
-                    )
-            );
            $router[] = new Nette\Application\Routers\CliRouter(
-                    'taw[:<action>]', ['presenter' => 'Tw', 'action' => 'default']
+                   Array('action' => 'Default:default')
             );
-            $router[] = new Nette\Application\Routers\CliRouter(
-                    array('is', 'action' => 'ItemStat'
-                    )
-            );
-            $router[] = new Nette\Application\Routers\CliRouter(
-                    array('ic', 'action' => 'Ic'
-                    )
-            );
-            $router[] = new Nette\Application\Routers\CliRouter(
-                    array('hs', 'action' => 'HostStat'
-                    )
-            );
-            $router[] = new Nette\Application\Routers\CliRouter(
-                    array('gm', 'action' => 'Gm'
-                    )
-            );
-            $router[] = new Nette\Application\Routers\CliRouter(
-                    array('ec', 'action' => 'Ec'
-                    )
-            );
-            $router[] = new Nette\Application\Routers\CliRouter(
-                    array('cron', 'action' => 'Cron'
-                    )
-            );
+        } else {
+            $router[] = new Route('index.php', 'Default:default', Route::ONE_WAY);
+            $router[] = new Route('<presenter>/<action>', 'Default:default');
         }
-
         return $router;
     }
 

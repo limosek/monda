@@ -1,8 +1,8 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Database\Drivers;
@@ -12,18 +12,13 @@ use Nette;
 
 /**
  * Supplemental MS SQL database driver.
- *
- * @author     David Grudl
  */
 class MsSqlDriver extends Nette\Object implements Nette\Database\ISupplementalDriver
 {
-	/** @var Nette\Database\Connection */
-	private $connection;
 
-
-	public function __construct(Nette\Database\Connection $connection, array $options)
+	public function convertException(\PDOException $e)
 	{
-		$this->connection = $connection;
+		return Nette\Database\DriverException::from($e);
 	}
 
 
@@ -35,7 +30,7 @@ class MsSqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 	 */
 	public function delimite($name)
 	{
-		// @see http://msdn.microsoft.com/en-us/library/ms176027.aspx
+		// @see https://msdn.microsoft.com/en-us/library/ms176027.aspx
 		return '[' . str_replace(array('[', ']'), array('[[', ']]'), $name) . ']';
 	}
 
@@ -59,6 +54,15 @@ class MsSqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 
 
 	/**
+	 * Formats date-time interval for use in a SQL statement.
+	 */
+	public function formatDateInterval(\DateInterval $value)
+	{
+		throw new Nette\NotSupportedException;
+	}
+
+
+	/**
 	 * Encodes string for use in a LIKE statement.
 	 */
 	public function formatLike($value, $pos)
@@ -73,15 +77,17 @@ class MsSqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 	 */
 	public function applyLimit(& $sql, $limit, $offset)
 	{
-		if ($limit >= 0) {
-			$sql = preg_replace('#^\s*(SELECT|UPDATE|DELETE)#i', '$0 TOP ' . (int) $limit, $sql, 1, $count);
+		if ($offset) {
+			throw new Nette\NotSupportedException('Offset is not supported by this database.');
+
+		} elseif ($limit < 0) {
+			throw new Nette\InvalidArgumentException('Negative offset or limit.');
+
+		} elseif ($limit !== NULL) {
+			$sql = preg_replace('#^\s*(SELECT(\s+DISTINCT|\s+ALL)?|UPDATE|DELETE)#i', '$0 TOP ' . (int) $limit, $sql, 1, $count);
 			if (!$count) {
 				throw new Nette\InvalidArgumentException('SQL query must begin with SELECT, UPDATE or DELETE command.');
 			}
-		}
-
-		if ($offset) {
-			throw new Nette\NotSupportedException('Offset is not supported by this database.');
 		}
 	}
 

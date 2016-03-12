@@ -1,20 +1,18 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Iterators;
 
-use Nette,
-	Nette\Utils\ObjectMixin;
+use Nette;
+use Nette\Utils\ObjectMixin;
 
 
 /**
  * Smarter caching iterator.
- *
- * @author     David Grudl
  *
  * @property-read bool $first
  * @property-read bool $last
@@ -24,9 +22,6 @@ use Nette,
  * @property-read int $counter
  * @property-read mixed $nextKey
  * @property-read mixed $nextValue
- * @property-read $innerIterator
- * @property   $flags
- * @property-read $cache
  */
 class CachingIterator extends \CachingIterator implements \Countable
 {
@@ -39,14 +34,15 @@ class CachingIterator extends \CachingIterator implements \Countable
 		if (is_array($iterator) || $iterator instanceof \stdClass) {
 			$iterator = new \ArrayIterator($iterator);
 
-		} elseif ($iterator instanceof \Traversable) {
-			if ($iterator instanceof \IteratorAggregate) {
+		} elseif ($iterator instanceof \IteratorAggregate) {
+			do {
 				$iterator = $iterator->getIterator();
+			} while ($iterator instanceof \IteratorAggregate);
 
-			} elseif (!$iterator instanceof \Iterator) {
+		} elseif ($iterator instanceof \Traversable) {
+			if (!$iterator instanceof \Iterator) {
 				$iterator = new \IteratorIterator($iterator);
 			}
-
 		} else {
 			throw new Nette\InvalidArgumentException(sprintf('Invalid argument passed to %s; array or Traversable expected, %s given.', __CLASS__, is_object($iterator) ? get_class($iterator) : gettype($iterator)));
 		}

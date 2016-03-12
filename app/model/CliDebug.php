@@ -40,7 +40,7 @@ class CliDebug {
                 if (isset(Monda::$debuglevel)) {
                     $level=Monda::$debuglevel;
                 } else {
-                    $level="info";
+                    $level="warning";
                 }
             }
         }
@@ -51,7 +51,7 @@ class CliDebug {
         }
     }
     
-    public function getLevel() {
+    static public function getLevel() {
         return(self::$level);
     }
             

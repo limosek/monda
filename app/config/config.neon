@@ -9,7 +9,8 @@ parameters:
 
 nette:
 	application:
-		errorPresenter: Default
+		errorPresenter: Error
+		catchExceptions: yes
 		mapping:
 			*: App\*Module\Presenters\*Presenter
 

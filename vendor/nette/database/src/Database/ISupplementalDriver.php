@@ -1,19 +1,15 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Database;
 
-use Nette;
-
 
 /**
  * Supplemental PDO database driver.
- *
- * @author     David Grudl
  */
 interface ISupplementalDriver
 {
@@ -21,7 +17,13 @@ interface ISupplementalDriver
 		SUPPORT_SELECT_UNGROUPED_COLUMNS = 'ungrouped_cols',
 		SUPPORT_MULTI_INSERT_AS_SELECT = 'insert_as_select',
 		SUPPORT_MULTI_COLUMN_AS_OR_COND = 'multi_column_as_or',
-		SUPPORT_SUBSELECT = 'subselect';
+		SUPPORT_SUBSELECT = 'subselect',
+		SUPPORT_SCHEMA = 'schema';
+
+	/**
+	 * @return DriverException
+	 */
+	function convertException(\PDOException $e);
 
 	/**
 	 * Delimites identifier for use in a SQL statement.
@@ -44,6 +46,12 @@ interface ISupplementalDriver
 	function formatDateTime(/*\DateTimeInterface*/ $value);
 
 	/**
+	 * Formats date-time interval for use in a SQL statement.
+	 * @return string
+	 */
+	//function formatDateInterval(\DateInterval $value);
+
+	/**
 	 * Encodes string for use in a LIKE statement.
 	 * @param  string
 	 * @param  int
@@ -54,8 +62,8 @@ interface ISupplementalDriver
 	/**
 	 * Injects LIMIT/OFFSET to the SQL query.
 	 * @param  string  SQL query that will be modified.
-	 * @param  int
-	 * @param  int
+	 * @param  int|NULL
+	 * @param  int|NULL
 	 * @return void
 	 */
 	function applyLimit(& $sql, $limit, $offset);

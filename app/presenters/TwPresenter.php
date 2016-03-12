@@ -147,6 +147,9 @@ class TwPresenter extends BasePresenter
      
     [common opts]
      \n");
+        $this->opts=self::getOpts($this->opts);
+       self::helpOpts();
+       echo "\n";
         self::helpOpts();
     }
     

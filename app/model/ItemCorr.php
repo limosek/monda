@@ -140,8 +140,7 @@ class ItemCorr extends Monda {
             $loisql="";
         }
         $rows=self::mquery(
-                "SELECT
-                        windowid1,windowid2,itemid1,itemid2,corr,ic.cnt,ic.loi AS icloi
+                "SELECT windowid1,windowid2,itemid1,itemid2,corr,ic.cnt,ic.loi AS icloi
                  FROM itemcorr ic
                  JOIN itemstat is1 ON (ic.itemid1=is1.itemid AND ic.windowid1=is1.windowid)
                  JOIN itemstat is2 ON (ic.itemid2=is2.itemid AND ic.windowid2=is2.windowid)
@@ -321,7 +320,8 @@ class ItemCorr extends Monda {
                     SELECT  h1.itemid AS itemid1,
                             h2.itemid AS itemid2,
                             COUNT(*) AS cnt,
-                            CORR(h1.value,h2.value) AS corr
+                            AVG(h1.value*h2.value)-AVG(h1.value)*AVG(h2.value) AS cov,
+                            STDDEV(h1.value) AS stddev1, STDDEV(h2.value) AS stddev2
                     FROM history h1
                     JOIN history h2 ON (ABS(h1.clock-h2.clock+(?))<? AND h2.itemid IN (?))
                     WHERE h1.itemid IN (?)
@@ -335,7 +335,8 @@ class ItemCorr extends Monda {
                      SELECT  h1.itemid AS itemid1,
                             h2.itemid AS itemid2,
                             COUNT(*) AS cnt,
-                            CORR(h1.value,h2.value) AS corr
+                            AVG(h1.value*h2.value)-AVG(h1.value)*AVG(h2.value) AS cov,
+                            STDDEV(h1.value) AS stddev1, STDDEV(h2.value) AS stddev2
                     FROM history_uint h1
                     JOIN history_uint h2 ON (ABS(h1.clock-h2.clock+(?))<? AND h2.itemid IN (?))
                     WHERE h1.itemid IN (?)
@@ -352,11 +353,20 @@ class ItemCorr extends Monda {
 
                     $icrow->windowid1 = $wid1;
                     $icrow->windowid2 = $wid2;
+                    if ($icrow->stddev1 * $icrow->stddev2 >0) {
+                        $icrow->corr=$icrow->cov/($icrow->stddev1 * $icrow->stddev2);
+                    } else {
+                        $icrow->corr=0;
+                    }
                     if ($icrow->corr === null || $icrow->cnt < $opts->min_icvalues) {
                         $icrow->corr = 0;
                     }
                     if (abs($icrow->corr) > 1) {
-                        CliDebug::warn(sprintf("Bad correlation %dx%d=%f! Ignoring.\n", $icrow->itemid1, $icrow->itemid2, $icrow->corr));
+                        if (abs($icrow->corr) > 1.1) {
+                            CliDebug::err(sprintf("Bad correlation %dx%d=%f! Ignoring.\n", $icrow->itemid1, $icrow->itemid2, $icrow->corr));
+                        } else {
+                            $icrow->corr=round($icrow->corr);
+                        }
                         continue;
                     }
                     $mincorr = min($mincorr, abs($icrow->corr));

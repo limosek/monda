@@ -1,8 +1,8 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Database\Drivers;
@@ -12,8 +12,6 @@ use Nette;
 
 /**
  * Supplemental SQLite3 database driver.
- *
- * @author     David Grudl
  */
 class SqliteDriver extends Nette\Object implements Nette\Database\ISupplementalDriver
 {
@@ -28,7 +26,35 @@ class SqliteDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	{
 		$this->connection = $connection;
 		$this->fmtDateTime = isset($options['formatDateTime']) ? $options['formatDateTime'] : 'U';
-		//$connection->query('PRAGMA foreign_keys = ON');
+	}
+
+
+	public function convertException(\PDOException $e)
+	{
+		$code = isset($e->errorInfo[1]) ? $e->errorInfo[1] : NULL;
+		$msg = $e->getMessage();
+		if ($code !== 19) {
+			return Nette\Database\DriverException::from($e);
+
+		} elseif (strpos($msg, 'must be unique') !== FALSE
+			|| strpos($msg, 'is not unique') !== FALSE
+			|| strpos($msg, 'UNIQUE constraint failed') !== FALSE
+		) {
+			return Nette\Database\UniqueConstraintViolationException::from($e);
+
+		} elseif (strpos($msg, 'may not be NULL') !== FALSE
+			|| strpos($msg, 'NOT NULL constraint failed') !== FALSE
+		) {
+			return Nette\Database\NotNullConstraintViolationException::from($e);
+
+		} elseif (strpos($msg, 'foreign key constraint failed') !== FALSE
+			|| strpos($msg, 'FOREIGN KEY constraint failed') !== FALSE
+		) {
+			return Nette\Database\ForeignKeyConstraintViolationException::from($e);
+
+		} else {
+			return Nette\Database\ConstraintViolationException::from($e);
+		}
 	}
 
 
@@ -63,6 +89,15 @@ class SqliteDriver extends Nette\Object implements Nette\Database\ISupplementalD
 
 
 	/**
+	 * Formats date-time interval for use in a SQL statement.
+	 */
+	public function formatDateInterval(\DateInterval $value)
+	{
+		throw new Nette\NotSupportedException;
+	}
+
+
+	/**
 	 * Encodes string for use in a LIKE statement.
 	 */
 	public function formatLike($value, $pos)
@@ -77,8 +112,12 @@ class SqliteDriver extends Nette\Object implements Nette\Database\ISupplementalD
 	 */
 	public function applyLimit(& $sql, $limit, $offset)
 	{
-		if ($limit >= 0 || $offset > 0) {
-			$sql .= ' LIMIT ' . (int) $limit . ($offset > 0 ? ' OFFSET ' . (int) $offset : '');
+		if ($limit < 0 || $offset < 0) {
+			throw new Nette\InvalidArgumentException('Negative offset or limit.');
+
+		} elseif ($limit !== NULL || $offset) {
+			$sql .= ' LIMIT ' . ($limit === NULL ? '-1' : (int) $limit)
+				. ($offset ? ' OFFSET ' . (int) $offset : '');
 		}
 	}
 
@@ -237,7 +276,7 @@ class SqliteDriver extends Nette\Object implements Nette\Database\ISupplementalD
 			$meta = $statement->getColumnMeta($col);
 			if (isset($meta['sqlite:decl_type'])) {
 				if ($meta['sqlite:decl_type'] === 'DATE') {
-					$types[$meta['name']] = Nette\Database\IReflection::FIELD_UNIX_TIMESTAMP;
+					$types[$meta['name']] = Nette\Database\IStructure::FIELD_UNIX_TIMESTAMP;
 				} else {
 					$types[$meta['name']] = Nette\Database\Helpers::detectType($meta['sqlite:decl_type']);
 				}

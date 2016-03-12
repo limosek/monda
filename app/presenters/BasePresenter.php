@@ -4,6 +4,8 @@ namespace App\Presenters;
 
 use \Exception,Nette,
 	App\Model,
+        Tracy\Debugger,
+        App\Model\CliDebug,
         Nette\Utils\DateTime as DateTime;
 
 /**
@@ -41,43 +43,30 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
     
     function mexit($code = 0, $msg = "") {
-        if ($code != 0 || \App\Model\CliDebug::getLevel() == "debug") {
-            if (\App\Model\CliDebug::getLevel() == "debug") {
-                \App\Model\CliDebug::log("Used params: " . print_r($this->params,true));
-            } else {
-                \App\Model\CliDebug::log(sprintf("Used action: %s:%s:%s\n\n", $this->request->getMethod(), $this->request->getPresenterName(), $this->action));
-            }
-            if (isset($this->params["exception"])) {
-                \App\Model\CliDebug::log($this->params["exception"]->getMessage() . "\n");
+        if (!$msg) {
+            if (array_key_exists("exception", $this->params)) {
+                $msg = $this->params["exception"]->getMessage() . "\n";
+                $code = $this->params["exception"]->getCode();
+                CliDebug::dbg("Used params: " . print_r($this->params, true));
+                echo Debugger::getBlueScreen()->render($this->params["exception"]);
+                echo Debugger::getBar()->render();
             }
         }
         if ($code == 0) {
-            if (!$msg) {
-                if (array_key_exists("exception",$this->params)) {
-                    $msg=$this->params["exception"]->getMessage()."\n";
-                    $code=$this->params["exception"]->getCode();
-                }
-            }
-            Model\CliDebug::warn($msg);
+            CliDebug::warn($msg);
         } else {
-            Model\CliDebug::err($msg);
+            CliDebug::err($msg);
         }
         if (!getenv("MONDA_CHILD")) {
             $this->wait();
         }
         if (!getenv("MONDA_CLI")) {
-            throw New Exception("Error #$code: $msg");
+            //throw New Exception("Error #$code: $msg");
         } else {
             exit($code);
         }
     }
-
-    public function renderDefault() {
-        if (!isset($this->params["exception"])) {
-            $this->Help();
-        }
-        self::mexit();
-    }    
+    
     public function __call($name, $args) {
         parent::__call($name, $args);
     }
@@ -108,15 +97,14 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             return(date_format($dte, "U"));
         }
     }
-    
+        
     function startup() {
-        global $container;
         
         if (!isset($this->opts)) {
             $this->opts=New \stdClass();
         }
         $this->opts=$this->getOpts($this->opts);
-        if ($this->opts->help) {
+        if ($this->opts->help || $this->opts->xhelp) {
             $this->opts->zapi=false;
         }
         $this->opts=self::readCfg($this->opts);
@@ -143,10 +131,10 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             $fopts = parse_ini_file(getenv("MONDARC"), true);
             $foptions = Array();
             foreach ($contexts as $context) {
-                Model\CliDebug::dbg("Want to read INI context $context.\n");
+                CliDebug::dbg("Want to read INI context $context.\n");
                 if (array_key_exists($context,$fopts) && !array_key_exists($context,$ctxs)) {
                     $foptions = array_merge($foptions, $fopts[$context]);
-                    Model\CliDebug::info("Got config from INI context $context.\n");
+                    CliDebug::info("Got config from INI context $context.\n");
                     $ctxs[$context]=1;
                 }
             }
@@ -158,10 +146,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
 
     function __construct() {
-        global $container;
-        
-        $c = $container;
-        $this->dbg=New Model\CliDebug();
+        $this->dbg=New CliDebug();
         $this->apicache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_APICACHEDIR")));
         $this->sqlcache = New Nette\Caching\Cache(
@@ -210,7 +195,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             }
         }
         if (is_object($this->dbg) && isset($obj->$key)) {
-            Model\CliDebug::info("Setting option $long($desc) to " . strtr(\Nette\Diagnostics\Debugger::dump($obj->$key, true), "\n", " ") . "\n");
+            CliDebug::info("Setting option $long($desc) to " . strtr(Debugger::dump($obj->$key, true), "\n", " ") . "\n");
         }
         return($obj);
     }
@@ -222,12 +207,12 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 if (true) {
                     $set=true;
                     $obj->$k=$value;
-                    Model\CliDebug::dbg("Setting INI option $key to " . strtr(\Nette\Diagnostics\Debugger::dump($value, true), "\n", " ") . "\n");
+                    CliDebug::dbg("Setting INI option $key to " . strtr(Debugger::dump($value, true), "\n", " ") . "\n");
                 }
             }
         }
         if (!$set) {
-            Model\CliDebug::warn("INI option $key unknown!\n"); 
+            CliDebug::warn("INI option $key unknown!\n"); 
         }
         return($obj);
     }
@@ -245,36 +230,59 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
     
     function helpOpts() {
-        Model\CliDebug::warn(sprintf("[Common options for %s]:\n",$this->getName()));
-        $opts=$this->getopts;
-        if (!$this->opts->xhelp) {
+        CliDebug::warn(sprintf("[Common options for %s]:\n", $this->getName()));
+        $opts = self::getOpts($this->opts);
+        if (!$opts->xhelp && !$opts->help) {
+            if (!$opts->help) {
+                CliDebug::warn("Use -h to get more info about parameters.\n");
+            }
             return;
         }
-        foreach ($opts as $key=>$opt) {
+        foreach ($this->getopts as $key => $opt) {
             if (!$opt["defaulthelp"]) {
-                $opt["defaulthelp"]=$opt["default"];
+                $opt["defaulthelp"] = $opt["default"];
             }
-            if (array_key_exists("choices",$opt) && is_array($opt["choices"])) {
-                $choicesstr="Choices: {".join("|",$opt["choices"])."}\n";
+            if (array_key_exists("choices", $opt) && is_array($opt["choices"])) {
+                $choicesstr = "Choices: {" . join("|", $opt["choices"]) . "}\n";
             } else {
-                $choicesstr="";
+                $choicesstr = "";
             }
-            if (self::isOptDefault($key)) {
-                $avalue="Default";
+            if (is_array($opts->$key)) {
+                $avalue = join(",", $opts->$key);
+            } elseif (is_bool($opts->$key)) {
+                $avalue = sprintf("%b", $opts->$key);
             } else {
-                if (is_array($this->opts->$key)) {
-                    $avalue=join(",",$this->opts->$key);
-                } elseif (is_bool($this->opts->$key)) {
-                    $avalue=sprintf("%b",$this->opts->$key);    
-                } else {
-                    $avalue=$this->opts->$key;
-                }
+                $avalue = $opts->$key;
             }
-            Model\CliDebug::warn(sprintf("-%s|--%s 'value':\n   %s\n   Default: <%s>\n   Actual value: %s\n   %s\n",
-                    $opt["short"],$opt["long"],     $opt["description"],    $opt["defaulthelp"], $avalue, $choicesstr));
+            if ($opt["short"]) {
+                $short = "-" . $opt["short"] . "|";
+            } else {
+                $short = "";
+            }
+            if ($opts->xhelp) {
+                CliDebug::warn(sprintf("%s--%s 'value':\n   %s\n   Default: <%s>\n   Actual value: %s\n   %s\n", $short, $opt["long"], $opt["description"], $opt["defaulthelp"], $avalue, $choicesstr));
+            } else {
+                CliDebug::warn(sprintf("%s--%s %s\n", $short, $opt["long"], $opt["description"]));
+            }
+        }
+        self::showOpts();
+        if (!$opts->xhelp) {
+             CliDebug::warn("Use -xh to get more info about parameters.\n");
         }
     }
     
+    function showOpts() {
+        CliDebug::warn(sprintf("[Options read from INI, environment and args]:\n", $this->getName()));
+        $opts = self::getOpts($this->opts);
+        
+        foreach ($this->getopts as $key => $opt) {
+            if (!$opt["defaulthelp"]) {
+                $opt["defaulthelp"] = $opt["default"];
+            }
+            CliDebug::warn(sprintf("%s--%s 'value':",$opts->$opt));
+        }
+    }
+
     function zabbixGraphUrl1($itemids, $start, $seconds) {
         if ($itemids) {
             $itemidsstr = "";
@@ -319,29 +327,42 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 false
                 );
         $ret=self::parseOpt($ret,
+                "ctest",
+                "C","config_test",
+                "Show config options read from INI, env and args",
+                false
+                );
+        $ret=self::parseOpt($ret,
                 "debug",
                 "D","debug",
                 "Debug level (debug,info,warning,error,critical)",
-                "info"
+                "warning"
                 );
-        foreach ($argv as $i=>$a) {
-            if (!strcmp($a, "--help") ||
-                    !strcmp($a, "-h")
-            ) {
-                $ret->help = true;
-            }
-            if (!strcmp($a, "-xh") ||
-                    !strcmp($a, "--xhelp")
-            ) {
-                $ret->xhelp = true;
-            }
-            if (!strcmp($a, "-D") ||
-                    !strcmp($a, "--debug")
-            ) {
-                $ret->debug = $argv[$i+1];
+        if (getenv("MONDA_CLI")) {
+            foreach ($argv as $i => $a) {
+                if (!strcmp($a, "--help") ||
+                        !strcmp($a, "-h")
+                ) {
+                    $ret->help = true;
+                }
+                if (!strcmp($a, "-xh") ||
+                        !strcmp($a, "--xhelp")
+                ) {
+                    $ret->xhelp = true;
+                }
+                if (!strcmp($a, "-D") ||
+                        !strcmp($a, "--debug")
+                ) {
+                    $ret->debug = $argv[$i + 1];
+                }
             }
         }
-        $this->dbg=New Model\CliDebug($ret->debug);
+        $this->dbg=New CliDebug($ret->debug);
+        if ($ret->debug=="debug") {
+            Debugger::enable(Debugger::DEVELOPMENT);
+        } else {
+            Debugger::enable(Debugger::PRODUCTION);
+        }
         $ret=self::parseOpt($ret,
                 "dry",
                 "R","dry_run",
@@ -433,8 +454,8 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "zalias",
                 false,"zabbix_alias",
                 "Use this zabbix server alias",
-                false,
-                false
+                getenv("MONDA_ZABBIX_ALIAS"),
+                "\${MONDA_ZABBIX_ALIAS}"
                 );
         $ret=self::parseOpt($ret,
                 "mdsn",
@@ -605,8 +626,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         self::mexit();
     }
     
-    function renderShow($var) {
-        $this->exportdata=$var;
+    function renderShow() {
         switch ($this->opts->outputmode) {
             case "cli":
                 self::renderCli();

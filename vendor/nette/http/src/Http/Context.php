@@ -1,8 +1,8 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Http;
@@ -12,12 +12,6 @@ use Nette;
 
 /**
  * HTTP-specific tasks.
- *
- * @author     David Grudl
- *
- * @property-read bool $modified
- * @property-read IRequest $request
- * @property-read IResponse $response
  */
 class Context extends Nette\Object
 {
@@ -37,14 +31,14 @@ class Context extends Nette\Object
 
 	/**
 	 * Attempts to cache the sent entity by its last modification date.
-	 * @param  string|int|DateTime  last modified time
+	 * @param  string|int|\DateTime  last modified time
 	 * @param  string  strong entity tag validator
 	 * @return bool
 	 */
 	public function isModified($lastModified = NULL, $etag = NULL)
 	{
 		if ($lastModified) {
-			$this->response->setHeader('Last-Modified', $this->response->date($lastModified));
+			$this->response->setHeader('Last-Modified', Helpers::formatDate($lastModified));
 		}
 		if ($etag) {
 			$this->response->setHeader('ETag', '"' . addslashes($etag) . '"');

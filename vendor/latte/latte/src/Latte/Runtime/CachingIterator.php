@@ -1,8 +1,8 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Latte (https://latte.nette.org)
+ * Copyright (c) 2008 David Grudl (https://davidgrudl.com)
  */
 
 namespace Latte\Runtime;
@@ -13,8 +13,6 @@ use Latte;
 /**
  * Smarter caching iterator.
  *
- * @author     David Grudl
- *
  * @property-read bool $first
  * @property-read bool $last
  * @property-read bool $empty
@@ -23,9 +21,7 @@ use Latte;
  * @property-read int $counter
  * @property-read mixed $nextKey
  * @property-read mixed $nextValue
- * @property-read $innerIterator
- * @property   $flags
- * @property-read $cache
+ * @internal
  */
 class CachingIterator extends \CachingIterator implements \Countable
 {
@@ -38,14 +34,15 @@ class CachingIterator extends \CachingIterator implements \Countable
 		if (is_array($iterator) || $iterator instanceof \stdClass) {
 			$iterator = new \ArrayIterator($iterator);
 
-		} elseif ($iterator instanceof \Traversable) {
-			if ($iterator instanceof \IteratorAggregate) {
+		} elseif ($iterator instanceof \IteratorAggregate) {
+			do {
 				$iterator = $iterator->getIterator();
+			} while ($iterator instanceof \IteratorAggregate);
 
-			} elseif (!$iterator instanceof \Iterator) {
+		} elseif ($iterator instanceof \Traversable) {
+			if (!$iterator instanceof \Iterator) {
 				$iterator = new \IteratorIterator($iterator);
 			}
-
 		} else {
 			throw new \InvalidArgumentException(sprintf('Invalid argument passed to foreach; array or Traversable expected, %s given.', is_object($iterator) ? get_class($iterator) : gettype($iterator)));
 		}
@@ -199,7 +196,7 @@ class CachingIterator extends \CachingIterator implements \Countable
 			$ret = $this->$m();
 			return $ret;
 		}
-		throw new \LogicException(sprintf('Cannot read an undeclared property %s::$%s.', get_class($this), $name));
+		throw new \LogicException(sprintf('Attempt to read undeclared property %s::$%s.', get_class($this), $name));
 	}
 
 
@@ -209,7 +206,7 @@ class CachingIterator extends \CachingIterator implements \Countable
 	 */
 	public function __set($name, $value)
 	{
-		throw new \LogicException(sprintf('Cannot write to an undeclared property %s::$%s.', get_class($this), $name));
+		throw new \LogicException(sprintf('Attempt to write to undeclared property %s::$%s.', get_class($this), $name));
 	}
 
 
@@ -229,7 +226,7 @@ class CachingIterator extends \CachingIterator implements \Countable
 	 */
 	public function __unset($name)
 	{
-		throw new \LogicException(sprintf('Cannot unset the property %s::$%s.', get_class($this), $name));
+		throw new \LogicException(sprintf('Attempt to unset undeclared property %s::$%s.', get_class($this), $name));
 	}
 
 }

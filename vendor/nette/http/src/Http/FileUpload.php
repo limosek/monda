@@ -1,8 +1,8 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Http;
@@ -13,18 +13,14 @@ use Nette;
 /**
  * Provides access to individual files that have been uploaded by a client.
  *
- * @author     David Grudl
- *
  * @property-read string $name
  * @property-read string $sanitizedName
- * @property-read string $contentType
+ * @property-read string|NULL $contentType
  * @property-read int $size
  * @property-read string $temporaryFile
  * @property-read int $error
  * @property-read bool $ok
- * @property-read bool $image
- * @property-read array $imageSize
- * @property-read string $contents
+ * @property-read string|NULL $contents
  */
 class FileUpload extends Nette\Object
 {
@@ -81,7 +77,7 @@ class FileUpload extends Nette\Object
 
 	/**
 	 * Returns the MIME content type of an uploaded file.
-	 * @return string
+	 * @return string|NULL
 	 */
 	public function getContentType()
 	{
@@ -154,7 +150,7 @@ class FileUpload extends Nette\Object
 		if (!call_user_func(is_uploaded_file($this->tmpName) ? 'move_uploaded_file' : 'rename', $this->tmpName, $dest)) {
 			throw new Nette\InvalidStateException("Unable to move uploaded file '$this->tmpName' to '$dest'.");
 		}
-		chmod($dest, 0666);
+		@chmod($dest, 0666); // @ - possible low permission to chmod
 		$this->tmpName = $dest;
 		return $this;
 	}
@@ -173,6 +169,7 @@ class FileUpload extends Nette\Object
 	/**
 	 * Returns the image.
 	 * @return Nette\Utils\Image
+	 * @throws Nette\Utils\ImageException
 	 */
 	public function toImage()
 	{
@@ -182,7 +179,7 @@ class FileUpload extends Nette\Object
 
 	/**
 	 * Returns the dimensions of an uploaded image as array.
-	 * @return array
+	 * @return array|NULL
 	 */
 	public function getImageSize()
 	{
@@ -192,7 +189,7 @@ class FileUpload extends Nette\Object
 
 	/**
 	 * Get file contents.
-	 * @return string
+	 * @return string|NULL
 	 */
 	public function getContents()
 	{

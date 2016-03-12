@@ -3,45 +3,17 @@
 if (getenv("MONDA_TMP")) {
     $tmpdir=getenv("MONDA_TMP");
 } else {
-    if (is_writable(__DIR__ . "/../temp")) {
-        $tmpdir=__DIR__ . "/../temp";
-    } else {
-        $tmpdir=__DIR__ . "/../temp/web";
-    }
+    $tmpdir=__DIR__ . "/../temp";
 }
-
-if (getenv("MONDA_LOG")) {
-    $logdir=getenv("MONDA_LOG");
-} else {
-    if (is_writable(__DIR__ . "/../log")) {
-        $logdir=__DIR__ . "/../log";
-    } else {
-        $logdir=__DIR__ . "/../log/web";
-    }
-}
-
 $cachedir="$tmpdir/cache";
 $sqlcachedir="$cachedir/sql";
 $apicachedir="$cachedir/api";
 
-if (!getenv("MONDA_TMP")) {
-    putenv("MONDA_TMP=$tmpdir");
-}
-
-if (!getenv("MONDA_LOG")) {
-    putenv("MONDA_LOG=$logdir");
-}
-
-if (getenv("MONDARC")) {
-    $cfgf=getenv("MONDARC");
+if (getenv("MONDA_LOGDIR")) {
+    $logdir=getenv("MONDA_LOGDIR");
 } else {
-    $cfgf=__DIR__."/../app/config/monda.rc";
+    $logdir=__DIR__ . "/../log";
 }
-
-putenv("MONDARC=$cfgf");
-putenv("MONDA_CACHEDIR=$cachedir");
-putenv("MONDA_SQLCACHEDIR=$sqlcachedir");
-putenv("MONDA_APICACHEDIR=$apicachedir");
 
 if (!file_exists($sqlcachedir)) {
     mkdir($sqlcachedir,0700,true);
@@ -50,8 +22,16 @@ if (!file_exists($apicachedir)) {
     mkdir($apicachedir,0700,true);
 }
 
+putenv("MONDA_CACHEDIR=$cachedir");
+putenv("MONDA_SQLCACHEDIR=$sqlcachedir");
+putenv("MONDA_APICACHEDIR=$apicachedir");
+putenv("MONDA_TMP=$tmpdir");
+putenv("MONDA_LOGDIR=$logdir");
+
+putenv("MONDA_WWW=1");
+if (!getenv("MONDARC")) {
+    putenv("MONDARC=" . __DIR__ . "../app/config/mondarc");
+}
+
 $container = require __DIR__ . '/../app/bootstrap.php';
-
-Nette\Diagnostics\Debugger::$strictMode = false;
-
-$container->getService('application')->run();
+$container->getByType('Nette\Application\Application')->run();

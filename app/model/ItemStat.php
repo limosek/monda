@@ -266,7 +266,8 @@ class ItemStat extends Monda {
             }
         }
         if (Monda::sget("found")>0) {
-            Monda::mquery("UPDATE timewindow
+            if ($wid) {
+                Monda::mquery("UPDATE timewindow
                     SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?
                     WHERE id=?",
                     New DateTime(),
@@ -278,7 +279,7 @@ class ItemStat extends Monda {
                     Monda::sget("lowstddev"),
                     Monda::sget("lowcv"),
                     $wid);
-            
+            }          
             $ret=Monda::sget();
         } else {
             $ret=false;
@@ -298,11 +299,11 @@ class ItemStat extends Monda {
         }
         $g = 600;
         $hist = Monda::zcquery("                
-              SELECT itemid,(clock/$g)::bigint*$g AS c,AVG(value) AS v FROM history WHERE (false $timesql) AND itemid IN (?)
-                GROUP BY itemid,(clock/$g)::bigint*$g
+              SELECT itemid,CAST((clock/$g) AS INTEGER)*$g AS c,AVG(value) AS v FROM history WHERE (false $timesql) AND itemid IN (?)
+                GROUP BY itemid,CAST((clock/$g) AS INTEGER)*$g
               UNION ALL 
-              SELECT itemid,(clock/$g)::bigint*$g AS c,AVG(value) AS v FROM history_uint WHERE (false $timesql) AND itemid IN (?)
-                GROUP BY itemid,(clock/$g)::bigint*$g
+              SELECT itemid,CAST((clock/$g) AS INTEGER)*$g AS c,AVG(value) AS v FROM history_uint WHERE (false $timesql) AND itemid IN (?)
+                GROUP BY itemid,CAST((clock/$g) AS INTEGER)*$g
               ORDER BY c,itemid
                 ", $itemids, $itemids);
         $ret = Array();

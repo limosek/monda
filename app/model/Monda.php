@@ -2,11 +2,12 @@
 
 namespace App\Model;
 
-use \ZabbixApi,Nette,
+use ZabbixApi\ZabbixApi,Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
     Nette\Database\Context,
+    Nette\Database\Connection,
     \Exception;
 
 /**
@@ -43,19 +44,30 @@ class Monda extends Nette\Object {
     }
 
     function init_sql() {
-
         CliDebug::dbg("Using Zabbix db (".$this->opts->zdsn.")\n");
+        $c=New Connection(
+                $this->opts->zdsn,
+                $this->opts->zdbuser,
+                $this->opts->zdbpw,
+                array("lazy" => true)
+                );
         $this->zq = New Context(
-                        New Nette\Database\Connection(
-                                $this->opts->zdsn, $this->opts->zdbuser, $this->opts->zdbpw, array("lazy" => true))
-                        );
+                $c,
+                New Nette\Database\Structure($c, New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")))
+                );
         Monda::zlowpri();
         
         CliDebug::dbg("Using Monda db (".$this->opts->mdsn.")\n");
+        $c=New Connection(
+                $this->opts->mdsn,
+                $this->opts->mdbuser,
+                $this->opts->mdbpw,
+                array("lazy" => true)
+                );
         $this->mq = New Context(
-                        New Nette\Database\Connection(
-                                $this->opts->mdsn, $this->opts->mdbuser, $this->opts->mdbpw, array("lazy" => true))
-                        );
+                $c,
+                New Nette\Database\Structure($c, New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")))
+                );
         Monda::mlowpri();
 
         if ($this->zq && $this->mq) {
