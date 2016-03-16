@@ -5,6 +5,7 @@ use Tracy\Debugger;
 require __DIR__ . '/../vendor/autoload.php';
 
 $configurator = new Nette\Configurator;
+$configurator->setDebugMode(true);
 $configurator->setTempDirectory(getenv("MONDA_TMP"));
 $configurator->enableDebugger(getenv("MONDA_LOGDIR"));
 

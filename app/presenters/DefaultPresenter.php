@@ -3,9 +3,7 @@
 
 namespace App\Presenters;
 
-use Nette\Application\Responses\TextResponse,
-    Nette\Security\AuthenticationException,
-    App\Model\CliDebug,
+use App\Model\CliDebug, App\Model\Opts,
     Tracy\Debugger,
     Model, Nette\Application\UI,
         Nette\Utils\DateTime as DateTime;
@@ -32,13 +30,13 @@ class DefaultPresenter extends BasePresenter
      Hint: Divide more ids by comma ( like 1,3,45)
      Hint: You can negate option by -_option (like -_m) 
     \n");
-       parent::helpOpts(); 
+       parent::startup();
+       Opts::helpOpts(); 
+       Opts::showOpts();
        echo "\n";
+       self::mexit();
     }
-    
-    public function renderDefault() {
-        self::Help();
-    }
+
 }
 
 ?>

@@ -5,7 +5,7 @@ namespace App\Model;
 use ZabbixApi\ZabbixApi,Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
-    Nette\Diagnostics\Debugger,
+    Tracy\Debugger,
     Nette\Database\Context,
     Nette\Database\Connection,
     \Exception;
@@ -15,7 +15,6 @@ use ZabbixApi\ZabbixApi,Nette,
  */
 class Monda extends Nette\Object {
     
-    public static $debuglevel;
     const _1HOUR=3600;
     const _1DAY=86400;
     const _1WEEK=604800;
@@ -24,80 +23,85 @@ class Monda extends Nette\Object {
     const _1MONTH30=2592000;
     const _1MONTH31=2678400;
     const _1YEAR=31536000;
+    static $cache; // Cache
+    static $apicache; // Cache for zabbix api
+    static $sqlcache;
+    static $api;   // ZabbixApi class
+    static $zq;    // Zabbix query link id
+    static $mq;    // Monda query link id
+    static $lastsql;
 
-    function init_api() {
-        if ($this->opts->zapi && !$this->opts->help) {
-            if ($this->opts->zapiurl && $this->opts->zapiuser && $this->opts->zapipw) {
-                Debugger::log("Initialising Zabbix API\n", Debugger::DEBUG);
+    static function init_api() {
+        if (Opts::getOpt("zapi") && !Opts::getOpt("help")) {
+            if (Opts::getOpt("zapiurl") && Opts::getOpt("zapiuser") && Opts::getOpt("zapipw")) {
+                CliDebug::dbg("Initialising Zabbix API\n", Debugger::DEBUG);
                 try {
-                    $this->api = new ZabbixApi($this->opts->zapiurl, $this->opts->zapiuser, $this->opts->zapipw);
+                    self::$api = new ZabbixApi(Opts::getOpt("zapiurl"), Opts::getOpt("zapiuser"), Opts::getOpt("zapipw"));
                 } catch (Exception $e) {
                     CliDebug::log($e,Debugger::ERROR);
                 }
             } else {
                 throw New \Exception("Undefined parameters!");
             }
-            return($this->api);
+            return(self::$api);
         } else {
             return(false);
         }
     }
 
-    function init_sql() {
-        CliDebug::dbg("Using Zabbix db (".$this->opts->zdsn.")\n");
+    static function init_sql() {
+        CliDebug::dbg("Using Zabbix db (".Opts::getOpt("zdsn").")\n");
         $c=New Connection(
-                $this->opts->zdsn,
-                $this->opts->zdbuser,
-                $this->opts->zdbpw,
+                Opts::getOpt("zdsn"),
+                Opts::getOpt("zdbuser"),
+                Opts::getOpt("zdbpw"),
                 array("lazy" => true)
                 );
-        $this->zq = New Context(
+        self::$zq = New Context(
                 $c,
                 New Nette\Database\Structure($c, New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")))
                 );
-        Monda::zlowpri();
         
-        CliDebug::dbg("Using Monda db (".$this->opts->mdsn.")\n");
+        CliDebug::dbg("Using Monda db (".Opts::getOpt("mdsn").")\n");
         $c=New Connection(
-                $this->opts->mdsn,
-                $this->opts->mdbuser,
-                $this->opts->mdbpw,
+                Opts::getOpt("mdsn"),
+                Opts::getOpt("mdbuser"),
+                Opts::getOpt("mdbpw"),
                 array("lazy" => true)
                 );
-        $this->mq = New Context(
+        self::$mq = New Context(
                 $c,
                 New Nette\Database\Structure($c, New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")))
                 );
-        Monda::mlowpri();
 
-        if ($this->zq && $this->mq) {
+        if (self::$zq && self::$mq) {
             return(true);
         } else {
             throw Exception("Cannot connect to monda or zabbix db");
         }
     }
     
-    function apiCmd($cmd,$req) {
+    static function apiCmd($cmd,$req) {
         $ckey=$cmd.serialize($req);
-        $ret = $this->apicache->load($ckey);
-        if ($ret === NULL || $this->opts->apicacheexpire==0) {
-            if (!isset($this->api)) {
+        $ret = self::$apicache->load($ckey);
+        if ($ret === NULL || Opts::getOpt("apicacheexpire")==0) {
+            if (!isset(self::$api)) {
                 if (!self::init_api()) {
                     CliDebug::warn("Zabbix Api query ignored (zapi=false)! ($cmd)\n");
                     return(Array());
                 }
             }
             CliDebug::dbg("Zabbix Api query ($cmd)\n");
-            $ret = $this->api->$cmd($req);
-            $this->apicache->save($ckey, $ret, array(
-                Nette\Caching\Cache::EXPIRE => $this->opts->apicacheexpire,
+            $ret = self::$api->$cmd($req);
+            self::$apicache->save($ckey, $ret, array(
+                Nette\Caching\Cache::EXPIRE => Opts::getOpt("apicacheexpire"),
             ));
         }
         return($ret);
     }
     
-    function zquery($query) {
-        if (!$this->zq) {
+    static function zquery($query) {
+        if (!self::$zq) {
              Monda::init_sql();
         }
         if (!is_array($query)) {
@@ -105,59 +109,33 @@ class Monda extends Nette\Object {
         } else {
             $args=$query;
         }
-        $psql=new \Nette\Database\SqlPreprocessor($this->zq->connection);
+        $psql=new \Nette\Database\SqlPreprocessor(self::$zq->connection);
         List($sql)=$psql->process($args);
         CliDebug::dbg("zquery(\n$sql\n)=\n");
-        $ret=$this->zq->queryArgs(array_shift($args),$args);
+        $ret=self::$zq->queryArgs(array_shift($args),$args);
         CliDebug::dbg(sprintf("%d\n",count($ret)));
-        $this->lastsql=$sql;
+        self::$lastsql=$sql;
         return($ret);
     }
     
-    function zcquery($query) {
+    static function zcquery($query) {
         $args = func_get_args();
         $ckey=serialize($args);
-        $ret=$this->sqlcache->load($ckey);
-        if ($ret===null || $this->opts->sqlcacheexpire==0) {
+        $ret=self::$sqlcache->load($ckey);
+        if ($ret===null || Opts::getOpt("sqlcacheexpire")==0) {
             $ret=self::zquery($args)->fetchAll();
-            $this->sqlcache->save($ckey,
+            self::$sqlcache->save($ckey,
                     $ret,
                     array(
-                        Nette\Caching\Cache::EXPIRE => $this->opts->sqlcacheexpire,
+                        Nette\Caching\Cache::EXPIRE => Opts::getOpt("sqlcacheexpire"),
                         )
                     );
         }
         return($ret);
     }
-    
-    function zlowpri() {
-        $db=preg_split("/:/",$this->opts->zdsn);
-        switch ($db[0]) {
-            case "pgsql":
-                try {
-                    Monda::zquery("SELECT set_backend_priority(pg_backend_pid(), 19);");
-                } catch (Exception $e) {
-                    CliDebug::dbg("Missing set_backend_priority extension on Zabbix DB.\n");  
-                }
-                break;
-        }
-    }
-    
-    function mlowpri() {
-        $db=preg_split("/:/",$this->opts->mdsn);
-        switch ($db[0]) {
-            case "pgsql":
-                try {
-                    Monda::mquery("SELECT set_backend_priority(pg_backend_pid(), 19);");
-                } catch (Exception $e) {
-                    CliDebug::dbg("Missing set_backend_priority extension on Monda DB.\n");  
-                }
-                break;
-        }
-    }
    
-    function mquery($query) {
-        if (!$this->mq) {
+    static function mquery($query) {
+        if (!self::$mq) {
              Monda::init_sql();
         }
         if (!is_array($query)) {
@@ -165,48 +143,48 @@ class Monda extends Nette\Object {
         } else {
             $args=$query;
         }
-        $psql=new \Nette\Database\SqlPreprocessor($this->mq->connection);
+        $psql=new \Nette\Database\SqlPreprocessor(self::$mq->connection);
         List($sql)=$psql->process($args);
         CliDebug::dbg("mquery(\n$sql\n)\n");
-        $ret=$this->mq->queryArgs(array_shift($args),$args);
-        $this->lastsql=$sql;
+        $ret=self::$mq->queryArgs(array_shift($args),$args);
+        self::$lastsql=$sql;
         return($ret);
     }
     
-    function mcquery($query) {
+    static function mcquery($query) {
         $args = func_get_args();
         $ckey=serialize($args);
-        $ret=$this->sqlcache->load($ckey);
-        if ($ret===null || $this->opts->sqlcacheexpire==0) {
+        $ret=self::$sqlcache->load($ckey);
+        if ($ret===null || Opts::getOpt("sqlcacheexpire")==0) {
             $ret=self::mquery($args)->fetchAll();
-            $this->sqlcache->save($ckey,
+            self::$sqlcache->save($ckey,
                     $ret,
                     array(
-                        Nette\Caching\Cache::EXPIRE => $this->opts->sqlcacheexpire,
+                        Nette\Caching\Cache::EXPIRE => Opts::getOpt("sqlcacheexpire"),
                         )
                     );
         }
         return($ret);
     }
     
-    function mbegin() {
-        if (!$this->mq || !$this->mq->getConnection()->getPdo()) {
+    static function mbegin() {
+        if (!self::$mq || !self::$mq->getConnection()->getPdo()) {
              Monda::init_sql();
         }
-        $this->mq->beginTransaction();
+        self::$mq->beginTransaction();
     }
     
-    function mcommit() {
-        if ($this->opts->dry) {
+    static function mcommit() {
+        if (Opts::getOpt("dry")) {
             CliDebug::warn("Rolling back changes. Dry run requested!\n");
-            $this->mq->rollBack();
+            self::$mq->rollBack();
         } else {
             CliDebug::dbg("Commiting changes\n");
-            $this->mq->commit();
+            self::$mq->commit();
         }
     }
     
-    function extractIds($array,$keys) {
+    static function extractIds($array,$keys) {
         $ret=Array();
         foreach ($keys as $k) {
             foreach ($array as $a) {
@@ -219,7 +197,7 @@ class Monda extends Nette\Object {
         return($ret);
     }
     
-    function IdsSearch($ids,$array) {
+    static function IdsSearch($ids,$array) {
         foreach ($array as $a) {
             $ret=true;
             foreach ($ids as $key=>$value) {
@@ -232,39 +210,39 @@ class Monda extends Nette\Object {
         return(false);
     }
 
-    function historyinfo() {
+    static function historyinfo() {
         $hi = Monda::zquery("SELECT min(clock),max(clock),COUNT(*)
                 FROM history
                 GROUP BY itemid
                 WHERE clock>?",
-                time() - $this->opts->start);
+                time() - Opts::getOpt("start"));
     }
     
-    function sadd($key) {
-        if (array_key_exists($key,$this->stats)) {
-            $this->stats[$key]++;
+    static function sadd($key) {
+        if (array_key_exists($key,self::$stats)) {
+            self::$stats[$key]++;
         } else {
-            $this->stats[$key]=0;
+            self::$stats[$key]=0;
         }
     }
     
-    function sreset() {
-        $this->stats=Array();
+    static function sreset() {
+        self::$stats=Array();
     }
     
-    function sget($stat=false) {
+    static function sget($stat=false) {
         if (!$stat) {
-            return($this->stats);
+            return(self::$stats);
         }
-        if (array_key_exists($stat,$this->stats)) {
-            return($this->stats[$stat]);
+        if (array_key_exists($stat,self::$stats)) {
+            return(self::$stats[$stat]);
         } else {
             return(0);
         }
     }
     
-    function statinfo() {
-        foreach ($this->stats as $key=>$value) {
+    static function statinfo() {
+        foreach (self::$stats as $key=>$value) {
             if (!preg_match("/\./",$key)) {
                 echo "$key:$value,";
             }
@@ -272,29 +250,29 @@ class Monda extends Nette\Object {
         echo "\n";
     }
     
-    function profile($msg="") {
-        if (!$this->lastns) {
-            $this->lastns=microtime(true);
+    static function profile($msg="") {
+        if (!self::$lastns) {
+            self::$lastns=microtime(true);
         } else {
-            echo sprintf("$msg%.2f\n",microtime(true)-$this->lastns);
-            $this->lastns=microtime(true);
+            echo sprintf("$msg%.2f\n",microtime(true)-self::$lastns);
+            self::$lastns=microtime(true);
         }
     }
     
-    function systemStats($secs=false) {
-        if ($secs || !isset($this->cpustatsstamp)) {
+    static function systemStats($secs=false) {
+        if ($secs || !isset(self::$cpustatsstamp)) {
             if (!$secs) $secs=1;
             CliDebug::dbg("Collecting system stats for $secs seconds\n");
             $stat1 = file('/proc/stat');
             $info1 = explode(" ", preg_replace("!cpu +!", "", $stat1[0]));
             sleep($secs);
         } else {
-            if (microtime(true)-$this->cpustatsstamp<1) {
+            if (microtime(true)-self::$cpustatsstamp<1) {
                 return(Monda::systemStats(1));
             } else {
-                CliDebug::dbg(sprintf("Collected system stats for last %.2f seconds\n",microtime(true)-$this->cpustatsstamp));                
+                CliDebug::dbg(sprintf("Collected system stats for last %.2f seconds\n",microtime(true)-self::$cpustatsstamp));                
             }
-            $info1 = $this->cpustats;
+            $info1 = self::$cpustats;
         }
         $stat2 = file('/proc/stat');
         $info2 = explode(" ", preg_replace("!cpu +!", "", $stat2[0]));
@@ -309,11 +287,11 @@ class Monda extends Nette\Object {
         $cpu = array();
         foreach ($dif as $x => $y)
             $cpu[$x] = round($y / $total * 100, 1);
-        if (microtime(true)-$this->cpustatsstamp>1) {
-            $this->cpustats=$info2;
-            $this->cpustatsstamp=microtime(true);
+        if (microtime(true)-self::$cpustatsstamp>1) {
+            self::$cpustats=$info2;
+            self::$cpustatsstamp=microtime(true);
         }
-        $this->jobstats=$cpu;
+        self::$jobstats=$cpu;
         return($cpu);
     }
  

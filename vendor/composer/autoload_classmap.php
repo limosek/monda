@@ -34,6 +34,7 @@ return array(
     'Latte\\Token' => $vendorDir . '/latte/latte/src/Latte/Token.php',
     'Latte\\TokenIterator' => $vendorDir . '/latte/latte/src/Latte/TokenIterator.php',
     'Latte\\Tokenizer' => $vendorDir . '/latte/latte/src/Latte/Tokenizer.php',
+    'NetteExtras\\XDebugHelper' => $vendorDir . '/jsmitka/nette-xdebug-helper/XDebugHelper.php',
     'NetteModule\\ErrorPresenter' => $vendorDir . '/nette/application/src/Application/ErrorPresenter.php',
     'NetteModule\\MicroPresenter' => $vendorDir . '/nette/application/src/Application/MicroPresenter.php',
     'Nette\\Application\\AbortException' => $vendorDir . '/nette/application/src/Application/exceptions.php',

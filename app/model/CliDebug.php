@@ -4,7 +4,7 @@ namespace App\Model;
 use Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
-    Nette\Diagnostics\Debugger,
+    Tracy\Debugger,
     Nette\Database\Context,
     \ZabbixApi;
 
@@ -31,17 +31,13 @@ class CliDebug {
         }
         return($l1>=$l2);
     }
-  
-    public function __construct($level=false) {
+    
+    static public function startup($level=false) {
         if (!$level) {
             if (getenv("MONDA_DEBUG")) {
                 $level=getenv("MONDA_DEBUG");
             } else {
-                if (isset(Monda::$debuglevel)) {
-                    $level=Monda::$debuglevel;
-                } else {
-                    $level="warning";
-                }
+                $level="warning";
             }
         }
         if (!array_key_exists($level, self::$levels)) {
@@ -53,6 +49,10 @@ class CliDebug {
     
     static public function getLevel() {
         return(self::$level);
+    }
+    
+    static public function setLevel($level) {
+       self::$level=$level;
     }
             
     static function log($message,$priority=Debugger::INFO) {

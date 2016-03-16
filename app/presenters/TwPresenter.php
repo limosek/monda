@@ -2,119 +2,85 @@
 
 namespace App\Presenters;
 
-use \Exception,Nette,
-	App\Model,
-        App\Model\Tw,
-        Nette\Utils\DateTime as DateTime;
+use \Exception,
+    Nette,
+    App\Model,
+    App\Model\Opts,
+    App\Model\CliDebug,
+    App\Model\Util,
+    App\Model\Tw,
+    App\Model\Monda,
+    Tracy\Debugger,
+    Nette\Utils\DateTime as DateTime;
 
-class TwPresenter extends BasePresenter
-{
-    
+class TwPresenter extends BasePresenter {
+
     public function renderTw() {
         self::Help();
         self::mexit();
     }
-    
-    public function getOpts($ret) {
-        $ret=parent::getOpts($ret);
-        $ret=self::parseOpt($ret,
-                "start",
-                "s","start",
-                "Start time of analysis.",
-                date_format(New DateTime(date("Y-01-01 00:00P")),"U"),
-                date("Y-01-01 00:00")
-                );
-        $ret=self::parseOpt($ret,
-                "end",
-                "e","end",
-                "End time of analysis.",
-                $this->roundtime(time()-3600),
-                "-1 hour"
-                );
-        $ret->end=self::timetoseconds($ret->end);
-        $ret=self::parseOpt($ret,
-                "description",
-                "d","window-description",
-                "Window description.",
-                ""
-                );
-        $ret=self::parseOpt($ret,
-                "length",
-                "l","window_length",
-                "Window length. Leave empty to get all lengths.",
-                false,
-                "All"
-                );
-        $ret=self::parseOpt($ret,
-                "wsort",
-                "ws","windows_sort",
-                "Sort order of windows to select ({random|start|length|loi|loih|updated}/{+|-}",
-                "loi/-",
-                "loi/-"
-                );
-        $ret=self::parseOpt($ret,
-                "empty",
-                "m","only_empty_results",
-                "Work only on results which are empty (skip already computed objects)",
-                false,
-                "no"
-                );
-        $ret=self::parseOpt($ret,
-                "createdonly",
-                "c","only_just_created_windows",
-                "Select only windows which were just created and contains no data",
-                false,
-                "no"
-                );
-        $ret=self::parseOpt($ret,
-                "updated",
-                "u","windows_updated_before",
-                "Select only windows which were updated less than datetime",
-                false,
-                "no care"
-                );
-        $ret=self::parseOpt($ret,
-                "wids",
-                "w","window_ids",
-                "Select only windows with this ids",
-                false,
-                "no care"
-                );
-        $ret=self::parseOpt($ret,
-                "chgloi",
-                "Cl","change_loi",
-                "Change loi of selected windows. Can be number, +number or -number",
-                false,
-                "None"
-                );
-        $ret=self::parseOpt($ret,
-                "rename",
-                "Rn","rename",
-                "Rename selected window(s). Can contain macros %Y, %M, %d, %H, %i, %l, %F",
-                false,
-                "None"
-                );
-        $ret=self::readCfg($ret);
-        if ($ret->length) {
-            $ret->length=preg_split("/,/",$ret->length);
-                foreach ($ret->length as $id=>$length) {
-                if (!is_numeric($length)) {
-                    $ret->length[$id]=self::timetoseconds($length)-time();
-                }
-            }
-        }
-        $ret->start=self::timetoseconds($ret->start);
-        if ($ret->start<631148400) {
-            self::mexit(4,sprintf("Bad start time (%d)?!\n",date("Y-m-d",$ret->start)));
-        }
-        if ($ret->wids) {
-            $ret->wids=preg_split("/,/",$ret->wids);
-        }
-        return($ret);
+
+    public function startup() {
+        parent::startup();
+        Opts::addOpt(
+                "s", "start", "Start time of analysis.", date_format(New DateTime(date("Y-01-01 00:00P")), "U"), date("Y-01-01 00:00")
+        );
+        Opts::addOpt(
+                "e", "end", "End time of analysis.", Util::roundtime(time() - 3600), "-1 hour"
+        );
+        Opts::addOpt(
+                "d", "window_description", "Window description.", "", ""
+        );
+        Opts::addOpt(
+                "l", "window_length", "Window length. Leave empty to get all lengths.", false, "All"
+        );
+        Opts::addOpt(
+                "ws", "window_sort", "Sort order of windows to select ({random|start|length|loi|loih|updated}/{+|-}", "loi/-", "loi/-"
+        );
+        Opts::addOpt(
+                "u", "window_updated_before", "Select only windows which were updated less than datetime", false, "no care"
+        );
+        Opts::addOpt(
+                "w", "window_ids", "Select only windows with this ids", false, "no care"
+        );
+        Opts::addOpt(
+                "Cl", "window_change_loi", "Change loi of selected windows. Can be number, +number or -number", false, "None"
+        );
+        Opts::addOpt(
+                "Rn", "window_rename", "Rename selected window(s). Can contain macros %Y, %M, %d, %H, %i, %l, %F", false, "None"
+        );
+        
+        Opts::setDefaults();
+        Opts::readCfg(Array("global", "Tw"));
+        Opts::readOpts($this->params);
+        $this->postCfg();
     }
     
+    public function postCfg() {
+        parent::postCfg();
+        if (!Opts::isDefault("start")) Opts::setOpt("start", Util::timetoseconds(Opts::getOpt("start")));
+        Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("end")));
+        
+        if (Opts::isOpt("window_length")) {
+            $lengths = Array();
+            $length = preg_split("/,/", Opts::getOpt("length"));
+            foreach ($length as $id => $l) {
+                if (!is_numeric($l)) {
+                    $lengths[$id] = Util::timetoseconds($l) - time();
+                }
+            }
+            Opts::setOpt("length", $lengths);
+        }
+        if (Opts::getOpt("start") < 631148400) {
+            self::mexit(4, sprintf("Bad start time (%d)?!\n", date("Y-m-d", Opts::getOpt("start"))));
+        }
+        if (Opts::isOpt("window_ids")) {
+            Opts::setOpt("window_ids", preg_split("/,/", Opts::getOpt("window_ids")));
+        }
+    }
+
     public function Help() {
-        \App\Model\CliDebug::warn("
+        CliDebug::warn("
      Time Window operations
      
      tw:create [common opts]
@@ -147,61 +113,62 @@ class TwPresenter extends BasePresenter
      
     [common opts]
      \n");
-        $this->opts=self::getOpts($this->opts);
-       self::helpOpts();
-       echo "\n";
-        self::helpOpts();
+       Opts::helpOpts(); 
+       Opts::showOpts();
+        echo "\n";
+        self::mexit();
     }
-    
+
     public function expandTw($wid) {
-        $w= Tw::twGet($wid);
-        $wstr=sprintf("%s/%d(%s)",$w->tfrom,$w->seconds,$w->description);
+        $w = Tw::twGet($wid);
+        $wstr = sprintf("%s/%d(%s)", $w->tfrom, $w->seconds, $w->description);
         return($wstr);
     }
-    
+
     public function renderShow() {
-        $windows=Tw::twSearch($this->opts);
-        $this->exportdata=$windows->fetchAll();
+        $windows = Tw::twSearch();
+        $this->exportdata = $windows->fetchAll();
         parent::renderShow($this->exportdata);
         self::mexit();
     }
-    
+
     public function renderStats() {
-        $this->exportdata=Array(Tw::twStats($this->opts));
+        $this->exportdata = Array(Tw::twStats());
         parent::renderShow($this->exportdata);
         self::mexit();
     }
-    
+
     public function renderZStats() {
-        $this->exportdata=Tw::twZstats($this->opts);
+        $this->exportdata = Tw::twZstats();
         parent::renderShow($this->exportdata);
         self::mexit();
     }
-    
+
     public function renderLoi() {
-        Tw::twLoi($this->opts);
+        Tw::twLoi();
         self::mexit();
     }
-    
+
     public function renderModify() {
-        Tw::twModify($this->opts);
+        Tw::twModify();
         self::mexit();
     }
-    
+
     public function renderCreate() {
-        if (!Tw::twMultiCreate($this->opts)) {
-            self::mexit(5,"No window lengths specified! Use -l!\n");
+        if (!Tw::twMultiCreate()) {
+            self::mexit(5, "No window lengths specified! Use -l!\n");
         }
         self::mexit();
     }
-    
+
     public function renderDelete() {
-        Tw::twDelete($this->opts);
+        Tw::twDelete();
         self::mexit();
     }
-    
+
     public function renderEmpty() {
-        Tw::twEmpty($this->opts);
+        Tw::twEmpty();
         self::mexit();
     }
+
 }

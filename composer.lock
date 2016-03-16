@@ -4,8 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "15cafb4e315fe250d2fc4ba2ff9df08e",
-    "content-hash": "ec489d05410562e861b2980f3ce5d487",
+    "hash": "e759408990e2f8670437145975c404a1",
+    "content-hash": "676ba99c5e7c505df89613751084e4f0",
     "packages": [
         {
             "name": "confirm-it-solutions/php-zabbix-api",
@@ -52,6 +52,46 @@
                 "issues": "https://github.com/confirm/PhpZabbixApi/issues"
             },
             "time": "2015-06-03 14:40:35"
+        },
+        {
+            "name": "jsmitka/nette-xdebug-helper",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/jsmitka/Nette-XDebug-Helper.git",
+                "reference": "47124285a91d93af0056e986556887dfc8692546"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/jsmitka/Nette-XDebug-Helper/zipball/47124285a91d93af0056e986556887dfc8692546",
+                "reference": "47124285a91d93af0056e986556887dfc8692546",
+                "shasum": ""
+            },
+            "require": {
+                "nette/nette": "2.*",
+                "php": ">= 5.3.0"
+            },
+            "require-dev": {
+                "ext-xdebug": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "XDebugHelper.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jan Smitka",
+                    "email": "jan.smitka@lynt.cz"
+                }
+            ],
+            "description": "Simple extension for Nette Framework, which integrates into the Debug Bar and enables you to easily start and stop a Xdebug session.",
+            "time": "2013-06-21 07:47:09"
         },
         {
             "name": "latte/latte",
@@ -1299,7 +1339,9 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "jsmitka/nette-xdebug-helper": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

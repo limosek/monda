@@ -22,10 +22,10 @@ class RouterFactory {
         if (getenv("MONDA_CLI")) {
            $router[] = new Nette\Application\Routers\CliRouter(
                    Array('action' => 'Default:default')
-            );
+                    );
         } else {
             $router[] = new Route('index.php', 'Default:default', Route::ONE_WAY);
-            $router[] = new Route('<presenter>/<action>', 'Default:default');
+            $router[] = new Route('/<presenter>/<action>', 'Default:default');
         }
         return $router;
     }

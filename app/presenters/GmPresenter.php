@@ -76,7 +76,9 @@ class GmPresenter extends MapPresenter {
     }
 
     function renderIcw() {
-        $opts=IcPresenter::getOpts($this->opts);
+        $opts=TwPresenter::getOpts($this->opts);
+        $opts=IsPresenter::getOpts($opts);
+        $opts=IcPresenter::getOpts($opts);
         $this->setLayout(false);
         $this->template->title = "Monda Correlations";
         $tws=Model\Tw::twToIds($this->opts);

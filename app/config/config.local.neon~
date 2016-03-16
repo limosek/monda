@@ -1,19 +1,26 @@
+#
+# SECURITY WARNING: it is CRITICAL that this file & directory are NOT accessible directly via a web browser!
+#
+# If you don't protect this directory from direct web access, anybody will be able to see your passwords.
+# http://nette.org/security-warning
+#
 parameters:
-	zabbix:
-		url:	https://zabcon:mocneheslo334@zabbix.opf.slu.cz/api_jsonrpc2.php
-		user:	zabcon
-		password: mocneheslo334
-		dsn: 'pgsql:host=127.0.0.1;port=5433;dbname=zabbix'
-		dbuser: zabbix
-		dbpassword: ZAbit
-		max_time_back: 2592000
 
-	monda:
-		dsn: 'pgsql:host=127.0.0.1;port=5434;dbname=monda'
-		dbuser: monda
-		dbpassword: M0nda
 
 nette:
-	database:
+	application:
+#		errorPresenter: Error
+		catchExceptions: yes
+		mapping:
+			*: App\*Module\Presenters\*Presenter
 
-	
+	database:
+		default:
+		debugger: true
+
+	session:
+		expiration: 14 days
+
+services:
+	- App\RouterFactory
+#	router: @App\RouterFactory::createRouter
