@@ -36,6 +36,10 @@ class DefaultPresenter extends BasePresenter
        echo "\n";
        self::mexit();
     }
+    
+    public function renderDefault() {
+        $this->Help();
+    }
 
 }
 

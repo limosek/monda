@@ -32,7 +32,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             CliDebug::err($msg);
         }
         if (!getenv("MONDA_CLI")) {
-            throw New Exception("Error #$code: $msg");
+            $this->terminate();
         } else {
             exit($code);
         }
@@ -46,7 +46,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")));
         Monda::$cache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_CACHEDIR")));
-        Opts::startup();
+        
         Opts::addOpt(
                 "R", "dry", "Only show what would be done. Do not touch db.", false, "no"
         );
@@ -120,9 +120,6 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Im", "max_rows", "Maximum number of rows to get (LIMIT for SELECT)", 300, 300
         );
         Opts::addOpt(
-                false, "min_loi", "Select only objects which have loi bbigger than this", 0, 0
-        );
-        Opts::addOpt(
                 "Sce", "sql_cache_expire", "Maximum time to cache sql requests. Use 0 to not cache.", "1 hour", "1 hour"
         );
         Opts::addOpt(
@@ -133,8 +130,8 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         );
         parent::startup();
     }
-    
-    public function postCfg() {
+            
+    static public function postCfg() {
         Opts::setOpt("csv_separator", htmlspecialchars_decode(Opts::getOpt("csv_separator")),"default");
         Opts::setOpt("csv_field_enclosure", htmlspecialchars_decode(Opts::getOpt("csv_field_enclosure")),"default");
         if (!Opts::isDefault("csv_fields")) {
@@ -144,8 +141,8 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             Opts::setOpt("sql_cache_expire", 0, "default");
             Opts::setOpt("api_cache_expire", 0, "default");
         }
-        if (Opts::isOpt("help") || Opts::isOpt("xhelp") || Opts::isOpt("config_test")) {
-            $this->Help();
+        if (Opts::isOpt("zabbix_alias")) {
+            Opts::readCfg(Array("zabbix-" . Opts::getOpt("zabbix_alias")));
         }
     }
     
@@ -164,9 +161,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     function renderCsv() {
         $i = 0;
         foreach ((array) $this->exportdata as $id => $row) {
-            if ($i == 0 && Opts::getOpt("csvheader")) {
+            if ($i == 0 && Opts::getOpt("csv_header")) {
                 foreach ($row as $r => $v) {
-                    echo sprintf('%s%s%s%s',Opts::getOpt("csvfield"),$r,Opts::getOpt("csvfield"),Opts::getOpt("csvsep"));
+                    echo sprintf('%s%s%s%s',Opts::getOpt("csv_field_enclosure"),$r,Opts::getOpt("csv_field_enclosure"),Opts::getOpt("csv_separator"));
                 }
                 echo "\n";
             }
@@ -178,14 +175,14 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                     }
                 }
                 $print=true;
-                if (is_array(Opts::getOpt("csvfields"))) {
-                    if (array_key_exists($col,Opts::getOpt("csvfields")) ||array_key_exists($r,Opts::getOpt("csvfields"))) {
+                if (is_array(Opts::getOpt("csv_fields"))) {
+                    if (array_key_exists($col,Opts::getOpt("csv_fields")) ||array_key_exists($r,Opts::getOpt("csv_fields"))) {
                         $print=true;
                     } else {
                         $print=false;
                     }
                 }
-                if ($print) echo sprintf('%s%s%s%s',Opts::getOpt("csvfield"),$v,Opts::getOpt("csvfield"),Opts::getOpt("csvsep"));
+                if ($print) echo sprintf('%s%s%s%s',Opts::getOpt("csv_field_enclosure"),$v,Opts::getOpt("csv_field_enclosure"),Opts::getOpt("csv_separator"));
                 $col++;
             }
             echo "\n";
@@ -200,7 +197,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     }
     
     function renderShow() {
-        switch (Opts::getOpt("outputmode")) {
+        switch (Opts::getOpt("output_mode")) {
             case "cli":
                 self::renderCli();
                 break;

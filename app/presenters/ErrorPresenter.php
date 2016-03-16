@@ -31,10 +31,9 @@ class ErrorPresenter extends DefaultPresenter implements Nette\Application\IPres
 		}
 
 		$this->logger->log($e, ILogger::EXCEPTION);
-                debug_print_backtrace();
+                //debug_print_backtrace();
 		BasePresenter::mexit($e->getCode(),$e->getMessage()."\n");
 	}
-
 }
 
 class Error4xxPresenter extends ErrorPresenter {

@@ -5,6 +5,7 @@ namespace App\Model;
 use Nette,
     Nette\Utils\Strings,
     Nette\Utils\DateTime as DateTime,
+    \Exception,
     Tracy\Debugger;
 
 /**
@@ -12,14 +13,13 @@ use Nette,
  */
 class Opts extends Nette\Object {
 
-    private static $data;
-    private static $opts;
-    private static $setfrom;
+    private static $data=Array();
+    private static $opts=Array();
+    private static $setfrom=Array();
+    private static $cfgread=Array();
 
     public static function startup() {
-        Opts::$opts = Array();
-        Opts::$data = Array();
-        Opts::$setfrom = Array();
+        
         Opts::addOpt(
                 "h", "help", "Help. If used with module, help will be module specific", false, false
         );
@@ -40,7 +40,12 @@ class Opts extends Nette\Object {
             $fopts = parse_ini_file(getenv("MONDARC"), true);
             $foptions = Array();
             foreach ($contexts as $context) {
+                if (array_key_exists($context, Opts::$cfgread)) {
+                    continue;
+                }
+
                 CliDebug::dbg("Want to read INI context $context.\n");
+                Opts::$cfgread[$context]=true;
                 if (array_key_exists($context, $fopts)) {
                     $foptions = array_merge($foptions, $fopts[$context]);
                     CliDebug::info("Got config from INI context $context.\n");
@@ -64,6 +69,7 @@ class Opts extends Nette\Object {
     public static function preReadOpts() {
         global $argv;
 
+        $configurator = new Nette\Configurator;
         if (getenv("MONDA_CLI")) {
             foreach ($argv as $i => $a) {
                 if (!strcmp($a, "--help") ||
@@ -88,10 +94,10 @@ class Opts extends Nette\Object {
                 }
             }
         }
-        if (Opts::getOpt("debug") == "debug") {
-            Debugger::enable(Debugger::DEVELOPMENT);
+        if (Opts::getOpt("debug") == "debug" || !getenv("MONDA_CLI")) {
+            $configurator->setDebugMode(true);
         } else {
-            Debugger::enable(Debugger::PRODUCTION);
+            $configurator->setDebugMode(false);
         }
         CliDebug::startup(Opts::getOpt("debug"));
     }
@@ -143,6 +149,20 @@ class Opts extends Nette\Object {
             return(false);
         }
     }
+    
+    public static function optToArray($param,$sep=",") {
+        if (preg_match("/$sep/",Opts::getOpt($param))) {
+            $arr = preg_split("/$sep/", Opts::getOpt($param));
+        } else {
+            if (Opts::isOpt($param)) {
+                $arr=Array(Opts::getOpt($param));
+            } else {
+                return(false);
+            }
+        }
+        Opts::setOpt($param,$arr);
+        return($arr);
+    }
 
     public static function isOpt($opt) {
         if (!array_key_exists($opt, Opts::$data)) {
@@ -174,9 +194,6 @@ class Opts extends Nette\Object {
                 Opts::$opts[$key]["defaults"] = true;
             }
         }
-        if (Opts::isOpt("zabbix_alias")) {
-            $contexts[] = "zabbix-" . Opts::getOpt("zabbix_alias");
-        }
     }
 
     public static function addOpt($short = false, $long, $description, $default, $info_default, $choices = false) {
@@ -192,7 +209,8 @@ class Opts extends Nette\Object {
             );
             return(true);
         } else {
-           throw New Exception("Same parameter added!");
+           //throw New Exception("Same parameter '$long' added!");
+           CliDebug::dbg("Same parameter '$long' added!\n");
         }
     }
 

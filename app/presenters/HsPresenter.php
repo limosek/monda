@@ -2,17 +2,20 @@
 
 namespace App\Presenters;
 
-use Nette\Application\Responses\TextResponse,
-    Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI,
-        Nette\Utils\DateTime as DateTime;
+use App\Model\ItemStat,
+    App\Model\HostStat,
+    App\Model\Monda,
+    Tracy\Debugger,
+    App\Model\Opts,
+    App\Model\CliDebug,
+    Nette\Utils\DateTime as DateTime;
 
-class HsPresenter extends BasePresenter
-{
+class HsPresenter extends BasePresenter {
+
     private $hs;
-    
+
     public function Help() {
-        \App\Model\CliDebug::warn("
+        CliDebug::warn("
      Host operations
             
      hs:show [common opts]
@@ -25,65 +28,52 @@ class HsPresenter extends BasePresenter
      
     [common opts]
     \n");
-        self::helpOpts();
-    }
-    
-    public function getOpts($ret) {
-        $ret=parent::getOpts($ret);
-        $ret=TwPresenter::getOpts($ret);
-        $ret=self::parseOpt($ret,
-                "hostids",
-                "Hi","hostids",
-                "Hostids to get",
-                false,
-                "All"
-                );
-        
-        $ret=self::parseOpt($ret,
-                "hostgroups",
-                "Hg","hostgroup",
-                "Hostgroups to get",
-                "monda",
-                "monda"
-                );
-        
-        $ret=self::parseOpt($ret,
-                "hosts",
-                "Hh","hosts",
-                "Hostnames to get",
-                false,
-                "All"
-                );
-        $ret=self::readCfg($ret,Array("Tw"));
-        if ($ret->hostgroups) {
-            $ret->hostgroups=preg_split("/,/",$ret->hostgroups);
-        }
-        if ($ret->hostids) {
-            $ret->hostids=preg_split("/,/",$ret->hostids);
-        }
-        if ($ret->hosts) {
-            $ret->hosts=preg_split("/,/",$ret->hosts);
-        }
-        $ret=\App\Model\HostStat::hostsToIds($ret);
-        if (is_array($ret->hostids)) {
-            \App\Model\CliDebug::dbg(sprintf("Hostids selected: %s\n",join(",",$ret->hostids)));
-        }
-        return($ret);
-    }
-    
-    public function renderHs() {
-        self::Help();
+        Opts::helpOpts();
+        Opts::showOpts();
+        echo "\n";
         self::mexit();
     }
-    
+
+    public function startup() {
+        parent::startup();
+        $tw = new TwPresenter();
+        $tw->startup();
+        Opts::addOpt(
+                false, "hostids", "Hostids to get", false, "All"
+        );
+
+        Opts::addOpt(
+                false, "hostgroups", "Hostgroups to get", "monda", "monda"
+        );
+
+        Opts::addOpt(
+                false, "hosts", "Hostnames to get", false, "All"
+        );
+        Opts::setDefaults();
+        Opts::readCfg(Array("Hs"));
+        Opts::readOpts($this->params);
+        self::postCfg();
+    }
+
+    static function postCfg() {
+        Opts::optToArray("hostgroups");
+        Opts::optToArray("hostids");
+        Opts::optToArray("hosts");
+        HostStat::hostsToIds();
+        if (is_array(Opts::getOpt("hostids"))) {
+            CliDebug::dbg(sprintf("Hostids selected: %s\n", join(",", $ret->hostids)));
+        }
+        return;
+    }
+
     function expandHost($hostid) {
         $iq = Array(
-                "monitored" => true,
-                "output" => "extend",
-                "hostids" => array($hostid)
-            );
-        $h=\App\Model\Monda::apiCmd("hostGet",$iq);
-        if (count($h)>0) {
+            "monitored" => true,
+            "output" => "extend",
+            "hostids" => array($hostid)
+        );
+        $h = Monda::apiCmd("hostGet", $iq);
+        if (count($h) > 0) {
             return($h[0]->host);
         } else {
             return("unknown");
@@ -91,58 +81,59 @@ class HsPresenter extends BasePresenter
     }
 
     public function renderShow() {
-        $rows=  \App\Model\HostStat::hsSearch($this->opts);
+        $rows = HostStat::hsSearch();
         if ($rows) {
-            $this->exportdata=$rows->fetchAll();
-            if ($this->opts->outputverb=="expanded") {
-                $i=0;
-                foreach ($this->exportdata as $i=>$row) {
+            $this->exportdata = $rows->fetchAll();
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                $i = 0;
+                foreach ($this->exportdata as $i => $row) {
                     $i++;
-                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
-                    $row["host"]=HsPresenter::expandHost($row->hostid);
-                    $this->exportdata[$i]=$row;
+                    CliDebug::dbg(sprintf("Processing %d row of %d          \r", $i, count($this->exportdata)));
+                    $row["host"] = HsPresenter::expandHost($row->hostid);
+                    $this->exportdata[$i] = $row;
                 }
             }
             parent::renderShow($this->exportdata);
         }
         self::mexit();
     }
-    
+
     public function renderStats() {
-        $rows=  \App\Model\HostStat::hsStats($this->opts);
+        $rows = HostStat::hsStats();
         if ($rows) {
-            $this->exportdata=$rows->fetchAll();
-            if ($this->opts->outputverb=="expanded") {
-                $i=0;
-                foreach ($this->exportdata as $i=>$row) {
+            $this->exportdata = $rows->fetchAll();
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                $i = 0;
+                foreach ($this->exportdata as $i => $row) {
                     $i++;
-                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
-                    $row["host"]=HsPresenter::expandHost($row->hostid);
-                    $this->exportdata[$i]=$row;
+                    CliDebug::dbg(sprintf("Processing %d row of %d          \r", $i, count($this->exportdata)));
+                    $row["host"] = HsPresenter::expandHost($row->hostid);
+                    $this->exportdata[$i] = $row;
                 }
             }
             parent::renderShow($this->exportdata);
         }
         self::mexit();
     }
-    
+
     public function renderCompute() {
-        \App\Model\HostStat::hsMultiCompute($this->opts);
+        HostStat::hsMultiCompute();
         self::mexit();
     }
-    
+
     public function renderLoi() {
-        \App\Model\HostStat::hsLoi($this->opts);
+        HostStat::hsLoi();
         self::mexit();
     }
-    
+
     public function renderUpdate() {
-        \App\Model\HostStat::hsUpdate($this->opts);
+        HostStat::hsUpdate();
         self::mexit();
     }
-    
+
     public function renderDelete() {
-        \App\Model\HostStat::hsDelete($this->opts);
+        HostStat::hsDelete();
         self::mexit();
     }
+
 }

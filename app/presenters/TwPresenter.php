@@ -3,8 +3,6 @@
 namespace App\Presenters;
 
 use \Exception,
-    Nette,
-    App\Model,
     App\Model\Opts,
     App\Model\CliDebug,
     App\Model\Util,
@@ -15,13 +13,9 @@ use \Exception,
 
 class TwPresenter extends BasePresenter {
 
-    public function renderTw() {
-        self::Help();
-        self::mexit();
-    }
-
     public function startup() {
         parent::startup();
+        
         Opts::addOpt(
                 "s", "start", "Start time of analysis.", date_format(New DateTime(date("Y-01-01 00:00P")), "U"), date("Y-01-01 00:00")
         );
@@ -33,6 +27,9 @@ class TwPresenter extends BasePresenter {
         );
         Opts::addOpt(
                 "l", "window_length", "Window length. Leave empty to get all lengths.", false, "All"
+        );
+        Opts::addOpt(
+                false, "window_empty", "Work only with empty (non-computed) windows.", false, "All"
         );
         Opts::addOpt(
                 "ws", "window_sort", "Sort order of windows to select ({random|start|length|loi|loih|updated}/{+|-}", "loi/-", "loi/-"
@@ -49,27 +46,28 @@ class TwPresenter extends BasePresenter {
         Opts::addOpt(
                 "Rn", "window_rename", "Rename selected window(s). Can contain macros %Y, %M, %d, %H, %i, %l, %F", false, "None"
         );
-        
+        Opts::addOpt(
+                false, "tw_minloi", "Minimum timewindow loi to search.", 0, 0
+        );
         Opts::setDefaults();
         Opts::readCfg(Array("global", "Tw"));
         Opts::readOpts($this->params);
-        $this->postCfg();
+        self::postCfg();
     }
     
-    public function postCfg() {
+    static public function postCfg() {
         parent::postCfg();
-        if (!Opts::isDefault("start")) Opts::setOpt("start", Util::timetoseconds(Opts::getOpt("start")));
+        Opts::setOpt("start", Util::timetoseconds(Opts::getOpt("start")));
         Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("end")));
         
         if (Opts::isOpt("window_length")) {
-            $lengths = Array();
-            $length = preg_split("/,/", Opts::getOpt("length"));
-            foreach ($length as $id => $l) {
+            $lengths=Opts::optToArray("window_length");
+            foreach ($lengths as $id => $l) {
                 if (!is_numeric($l)) {
                     $lengths[$id] = Util::timetoseconds($l) - time();
                 }
             }
-            Opts::setOpt("length", $lengths);
+            Opts::setOpt("window_length", $lengths);
         }
         if (Opts::getOpt("start") < 631148400) {
             self::mexit(4, sprintf("Bad start time (%d)?!\n", date("Y-m-d", Opts::getOpt("start"))));
@@ -78,7 +76,7 @@ class TwPresenter extends BasePresenter {
             Opts::setOpt("window_ids", preg_split("/,/", Opts::getOpt("window_ids")));
         }
     }
-
+    
     public function Help() {
         CliDebug::warn("
      Time Window operations

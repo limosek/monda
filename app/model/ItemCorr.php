@@ -3,50 +3,47 @@ namespace App\Model;
 
 use Nette,
     Nette\Utils\Strings,
+    App\Model\Opts,
+    App\Model\ItemStat,
+    App\Model\Tw,
     Nette\Security\Passwords,
-    Nette\Diagnostics\Debugger,
+    Tracy\Debugger,
     Nette\Database\Context,
-    \ZabbixApi;
+    \Exception;
 
 /**
  * ItemStat global class
  */
 class ItemCorr extends Monda {
    
-    function icSearch($opts) {
-        $itemids=ItemStat::isToIds($opts);
+    static function icSearch() {
+        $itemids=ItemStat::isToIds();
         if (count($itemids)>0) {
             $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$itemids),join(",",$itemids));
         } else {
             $itemidssql="";
         }
-        if (!isset($opts->nosort)) {
-           $ranksql1=",RANK() OVER (PARTITION BY is1.itemid ORDER BY is1.loi DESC)+RANK() OVER (PARTITION BY is1.itemid ORDER BY is2.loi DESC) AS rank";
-           $ranksql2="ORDER BY (tw1.loi+tw2.loi), rank, (ic.itemid1 IS NULL OR ic.itemid2 IS NULL) DESC";
-        }
-        if ($opts->hostids) {
-            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",$opts->hostids),join(",",$opts->hostids));
+        $ranksql1=",RANK() OVER (PARTITION BY is1.itemid ORDER BY is1.loi DESC)+RANK() OVER (PARTITION BY is1.itemid ORDER BY is2.loi DESC) AS rank";
+        $ranksql2="ORDER BY (tw1.loi+tw2.loi), rank, (ic.itemid1 IS NULL OR ic.itemid2 IS NULL) DESC";
+        if (Opts::getOpt("hostids")) {
+            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")),join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";
         }
-        $wids=Tw::twToIds($opts);
+        $wids=Tw::twToIds();
         if (count($wids)>0) {
             $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
         } else {
             return(false);
         }
-        if ($opts->icempty) {
-            //$emptysql="AND (ic.itemid1 IS NULL OR ic.itemid2 IS NULL)";
-            $emptysql="";
-        } else {
-            $emptysql="AND (ic.itemid1 IS NOT NULL AND ic.itemid2 IS NOT NULL)";
-        }
-        if ($opts->icloionly) {
+        $emptysql="AND (ic.itemid1 IS NOT NULL AND ic.itemid2 IS NOT NULL)";
+        
+        if (Opts::getOpt("only_corr_with_loi")) {
             $loisql="AND ic.loi>0";
         } else {
             $loisql="";
         }
-        switch ($opts->corr) {
+        switch (Opts::getOpt("corr_type")) {
             case "samewindow":
                 $join1sql="is1.windowid=is2.windowid AND is1.itemid<>is2.itemid";
                 $sameiwsql="AND is1.itemid<>is2.itemid
@@ -95,23 +92,23 @@ class ItemCorr extends Monda {
                     AND (is1.itemid<=is2.itemid)
                     $sameiwsql $loisql $emptysql
                  $ranksql2
-                 LIMIT ?",$opts->min_corr,$opts->max_corr,$opts->max_rows
+                 LIMIT ?",Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows")
                 );
         return($rows);
     }
     
-    function icQuickSearch($opts) {
-        if ($opts->itemids) {
-            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$opts->itemids),join(",",$opts->itemids));
+    static function icQuickSearch() {
+        if (Opts::getOpt("itemids")) {
+            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
         } else {
             $itemidssql="";
         }
-        if ($opts->hostids) {
-            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",$opts->hostids),join(",",$opts->hostids));
+        if (Opts::getOpt("hostids")) {
+            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")),join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";
         }
-        switch ($opts->corr) {
+        switch (Opts::getOpt("corr_type")) {
             case "samewindow":
                 $corrsql="AND ic.windowid1=ic.windowid2";
                 break;
@@ -124,20 +121,15 @@ class ItemCorr extends Monda {
                 $corrsql="AND ic.windowid1<>ic.windowid2";
                 break;              
         }
-        if (!$opts->wids) {
-            $wids=Tw::twToIds($opts);
+        if (!Opts::getOpt("window_ids")) {
+            $wids=Tw::twToIds();
         } else {
-            $wids=$opts->wids;
+            $wids=Opts::getOpt("window_ids");
         }
         if (count($wids)>0) {
             $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
         } else {
-            return(false);
-        }
-        if ($opts->icloionly) {
-            $loisql="AND ic.loi>0";
-        } else {
-            $loisql="";
+            throw new Exception("No windows matched query for item correlation.");
         }
         $rows=self::mquery(
                 "SELECT windowid1,windowid2,itemid1,itemid2,corr,ic.cnt,ic.loi AS icloi
@@ -149,16 +141,16 @@ class ItemCorr extends Monda {
                     $hostidssql
                     $windowidsql 
                          true
-                     $loisql
+                     AND loi>?
                      $corrsql
                      AND ic.corr>? AND ic.corr<? 
                  ORDER BY ic.loi DESC
                  LIMIT ?
-                ",$opts->min_corr,$opts->max_corr,$opts->max_rows);
+                ",Opts::getOpt("min_loi"),Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
         return($rows);
     }
     
-    function icToIds($opts,$pkey=false,$quick=false) {
+    static function icToIds($opts,$pkey=false,$quick=false) {
         if ($quick) {
             $ids=self::icQuickSearch($opts); 
         } else {
@@ -196,7 +188,7 @@ class ItemCorr extends Monda {
         return($icids);
     }
     
-    function icStats($opts) {
+    static function icStats($opts) {
         if ($opts->itemids) {
             $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$opts->itemids),join(",",$opts->itemids));
         } else {
@@ -239,22 +231,22 @@ class ItemCorr extends Monda {
                  GROUP BY itemid1,itemid2
                  ORDER BY AVG(ic.corr) DESC
                  LIMIT ?
-                ",$opts->min_corr,$opts->max_corr,$opts->max_rows);
+                ",Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
         return($rows);
     }
     
-    function icWStats($opts) {
+    static function icWStats($opts) {
         if ($opts->itemids) {
-            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$opts->itemids),join(",",$opts->itemids));
+            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
         } else {
             $itemidssql="";
         }
         if ($opts->hostids) {
-            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",$opts->hostids),join(",",$opts->hostids));
+            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")),join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";
         }
-        $wids=Tw::twToIds($opts);
+        $wids=Tw::twToIds();
         if (count($wids)>0) {
             $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
         } else {
@@ -284,18 +276,17 @@ class ItemCorr extends Monda {
                  GROUP BY windowid1,windowid2
                  ORDER BY AVG(ic.corr) DESC
                  LIMIT ?
-                ",$opts->min_corr,$opts->max_corr,$opts->max_rows);
+                ",Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
         return($rows);
     }
     
-    function icMultiCompute($opts) {
-        $opts->icempty = true;
-        $cids = self::icToIds($opts, true);
+    static function icMultiCompute() {
+        $cids = self::icToIds(true);
         if (!$cids) {
-            return(false);
+            throw new Exception("No items for correlations.");
         }
         $wids = self::extractIds($cids, array("windowid1", "windowid2", "itemid1", "itemid2", "icitemid1", "icitemid2"));
-        CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%dx%d) items. %dx%d items needs to be computed. (mode %s,seconds=%s).\n", count($cids), count($wids["itemid1"]), count($wids["itemid2"]), count($wids["itemid1"]) - count($wids["icitemid1"]), count($wids["itemid2"]) - count($wids["icitemid2"]), $opts->corr, join(",", $opts->length)));
+        CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%dx%d) items. %dx%d items needs to be computed. (mode %s,seconds=%s).\n", count($cids), count($wids["itemid1"]), count($wids["itemid2"]), count($wids["itemid1"]) - count($wids["icitemid1"]), count($wids["itemid2"]) - count($wids["icitemid2"]), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
         if (count($cids) == 0) {
             return(false);
         }
@@ -344,7 +335,7 @@ class ItemCorr extends Monda {
                         AND h2.clock>? AND h2.clock<?
                     GROUP BY h1.itemid, h2.itemid
                     HAVING COUNT(*)>?
-                    ", $w2["fstamp"] - $w1["fstamp"], $opts->timeprecision, $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], $opts->min_icvalues, $w2["fstamp"] - $w1["fstamp"], $opts->timeprecision, $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], $opts->min_icvalues
+                    ", $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr")
                 );
                 $mincorr = 0;
                 $maxcorr = 0;
@@ -388,8 +379,8 @@ class ItemCorr extends Monda {
         }
     }
 
-    function icDelete($opts) {
-        $windows=Tw::twToIds($opts);
+    static function icDelete() {
+        $windows=Tw::twToIds();
         CliDebug::warn(sprintf("Will delete item correlations from %d windows.\n",count($windows)));
         if (count($windows)==0) {
             return(false);
@@ -399,10 +390,10 @@ class ItemCorr extends Monda {
         self::mcommit();
     }
     
-    function icLoi($opts) {
-        $twids=  Tw::twToIds($opts);
+    static function icLoi() {
+        $twids=  Tw::twToIds();
         if (count($twids)==0) {
-            return(false);
+            throw new Exception("No item correlations for loi.");
         }
         Monda::mbegin();
         $lsql=Monda::mquery("

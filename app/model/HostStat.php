@@ -7,85 +7,85 @@ use Nette,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
     Nette\Database\Context,
-    Nette\Utils\DateTime as DateTime,
-    \ZabbixApi;
+    App\Model\Opts,
+    Exception,
+    Nette\Utils\DateTime as DateTime;
 
 /**
  * ItemStat global class
  */
 class HostStat extends Monda {
-    
-    function hostsToIds($opts) {
-        if (!is_array($opts->hostids)) {
-            $opts->hostids=Array();
-        }
-        if ($opts->hostgroups) {
-            $hq=Array(
+
+    static function hostsToIds() {
+        $hostids = Opts::getOpt("hostids");
+        if (Opts::getOpt("hostgroups")) {
+            $hq = Array(
                 "selectHosts" => "refer",
                 "output" => "extend",
                 "filter" => Array(
-                        "name"=> $opts->hostgroups
-                    )
-                );
-            $hg=Monda::apiCmd("hostGroupGet",$hq);
+                    "name" => Opts::getOpt("hostgroups")
+                )
+            );
+            $hg = Monda::apiCmd("hostGroupGet", $hq);
             foreach ($hg as $hostgroup) {
                 foreach ($hostgroup->hosts as $host) {
-                    $opts->hostids[]=$host->hostid;
+                    $hostids[] = $host->hostid;
                 }
             }
         }
-        if ($opts->hosts) {
-            $opts->hostids=Array();
+        if (Opts::getOpt("hosts")) {
+            $hostids = Array();
             $iq = Array(
                 "monitored" => true
             );
-            $iq["filter"]["host"] = $opts->hosts;
-            $h = Monda::apiCmd("hostGet",$iq);
+            $iq["filter"]["host"] = Opts::getOpt("hosts");
+            $h = Monda::apiCmd("hostGet", $iq);
             foreach ($h as $host) {
-                $opts->hostids[]=$host->hostid;
+                $hostids[] = $host->hostid;
             }
         }
-        return($opts);
+        Opts::setOpt("hostids", $hostids);
+        return;
     }
-    
-    function hosts2itemids($hostids) {
-        $itemids=Array();
-        $c=1;
-        $hostcount=count($hostids);
+
+    static function hosts2itemids($hostids) {
+        $itemids = Array();
+        $c = 1;
+        $hostcount = count($hostids);
         foreach ($hostids as $hostid) {
             $iq = Array(
                 "monitored" => true,
-                "hostids" =>  Array($hostid)
+                "hostids" => Array($hostid)
             );
             CliDebug::dbg("Querying items ($c of $hostcount hosts)\n");
-            $i=Monda::apiCmd("itemGet",$iq);
-            if (count($i)>0) {
-                    foreach ($i as $item) {
-                        $itemids[]=$item->itemid;
-                    }
+            $i = Monda::apiCmd("itemGet", $iq);
+            if (count($i) > 0) {
+                foreach ($i as $item) {
+                    $itemids[] = $item->itemid;
+                }
             }
             $c++;
         }
         return($itemids);
     }
-    
-    function host2id($host) {
+
+    static function host2id($host) {
         $iq = Array(
-                "monitored" => true,
-                "filter" => Array(
-                    "name" => Array($host)
-                    )
-            );
-        $h=Monda::apiCmd("hostGet",$iq);
+            "monitored" => true,
+            "filter" => Array(
+                "name" => Array($host)
+            )
+        );
+        $h = Monda::apiCmd("hostGet", $iq);
         return($h->hostid);
     }
-    
-    function hsSearch($opts) {
-        $wids=Tw::twToIds($opts);
-        if (count($wids)==0) {
+
+    static function hsSearch() {
+        $wids = Tw::twToIds();
+        if (count($wids) == 0) {
             return(false);
         }
-        $ids=self::mquery("
+        $ids = self::mquery("
             SELECT
               hoststat.hostid AS hostid,
               hoststat.windowid AS windowid,
@@ -98,19 +98,16 @@ class HostStat extends Monda {
              AND hoststat.loi IS NOT NULL
              ORDER BY hoststat.loi DESC
              LIMIT ?
-            ",
-                $wids,
-                $opts->hostids,
-                $opts->max_rows);
+            ", $wids, Opts::getOpt("hostids"), Opts::getOpt("max_rows"));
         return($ids);
     }
-    
-    function hsStats($opts) {
-        $wids=Tw::twToIds($opts);
-        if (count($wids)==0) {
-            return(false);
+
+    static function hsStats() {
+        $wids = Tw::twToIds();
+        if (count($wids) == 0) {
+            throw New Exception("No windows to process.");
         }
-        $ids=self::mquery("
+        $ids = self::mquery("
             SELECT
               hoststat.hostid AS hostid,
               AVG(hoststat.cnt) AS cnt,
@@ -123,72 +120,67 @@ class HostStat extends Monda {
              GROUP BY hoststat.hostid
              ORDER BY AVG(hoststat.loi) DESC
              LIMIT ?
-            ",
-                $wids,
-                $opts->hostids,
-                $opts->max_rows);
+            ", $wids, Opts::getOpt("hostids"), Opts::getOpt("max_rows"));
         return($ids);
     }
-    
-    function hsToIds($opts,$pkey=false) {
-        $ids=self::hsSearch($opts);
+
+    static function hsToIds($pkey = false) {
+        $ids = self::hsSearch();
         if (!$ids) {
-            return(false);
+            throw new Exception("No hosts to process.");
         }
-        $rows=$ids->fetchAll();
-        $hostids=Array();
+        $rows = $ids->fetchAll();
+        $hostids = Array();
         foreach ($rows as $row) {
             if ($pkey) {
-                $hostids[]=Array(
+                $hostids[] = Array(
                     "hostid" => $row->hostid,
                     "windowid" => $row->windowid
-                    );
-                } else {
-                    $hostids[]=$row->hostid;
-                }
+                );
+            } else {
+                $hostids[] = $row->hostid;
+            }
         }
         return($hostids);
     }
-    
-    function hsUpdate($opts) {
-        $hostids=$this->opts->hostids;
-        $itemids=self::hosts2itemids($hostids);
-        $wids=Tw::twToIds($opts);
-        CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items.\n",count($wids),count($hostids),count($itemids)));
-        if (count($wids)==0 || count($hostids)<1 || count($itemids)<1) {
+
+    static function hsUpdate() {
+        $hostids = Opts::getOpt("hostids");
+        $itemids = self::hosts2itemids($hostids);
+        $wids = Tw::twToIds();
+        CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items.\n", count($wids), count($hostids), count($itemids)));
+        if (count($wids) == 0 || count($hostids) < 1 || count($itemids) < 1) {
             return(false);
         }
         self::mbegin();
         foreach ($hostids as $hostid) {
-            $hitemids=self::hosts2itemids(array($hostid));
-            if (count($hitemids)<1) continue;
-            $ius=self::mquery("
+            $hitemids = self::hosts2itemids(array($hostid));
+            if (count($hitemids) < 1)
+                continue;
+            $ius = self::mquery("
                 UPDATE itemstat
                 SET hostid=?
-                WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL",
-                    $hostid,
-                    $hitemids,
-                    $wids);
+                WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", $hostid, $hitemids, $wids);
         }
         self::mcommit();
     }
-    
-    function hsDelete($opts) {
-        $ids=self::hsToIds($opts,true);
+
+    static function hsDelete() {
+        $ids = self::hsToIds(true);
         self::mbegin();
         foreach ($ids as $id) {
-            $dq=self::mquery("DELETE FROM hoststat WHERE ",$id);
+            $dq = self::mquery("DELETE FROM hoststat WHERE ", $id);
         }
         self::mcommit();
     }
-    
-    function hsMultiCompute($opts) {
-        $wids=Tw::twToIds($opts);
-        CliDebug::warn(sprintf("Need to compute HostStat for %d windows.\n",count($wids)));
-        if (count($wids)==0 || count($opts->hostids)==0) {
-            return(false);
+
+    static function hsMultiCompute() {
+        $wids = Tw::twToIds();
+        CliDebug::warn(sprintf("Need to compute HostStat for %d windows.\n", count($wids)));
+        if (count($wids) == 0 || count(Opts::getOpt("hostids")) == 0) {
+            throw New Exception("No hosts to process.");
         }
-        $stat=self::mquery("
+        $stat = self::mquery("
             SELECT itemstat.hostid AS hostid,
                 itemstat.windowid AS windowid,
                 AVG(cv) AS cv,
@@ -200,53 +192,50 @@ class HostStat extends Monda {
             WHERE itemstat.windowid IN (?) AND itemstat.hostid IN (?)
               AND itemstat.cnt>0
             GROUP BY itemstat.hostid,itemstat.windowid
-            ",$wids,$opts->hostids);
-        $rows=$stat->fetchAll();
-        $i=0;
+            ", $wids, Opts::getOpt("hostids"));
+        $rows = $stat->fetchAll();
+        $i = 0;
         foreach ($rows as $row) {
             self::mbegin();
             $i++;
-            CliDebug::info(sprintf("Computing HostStat for host %s and window %s (%d of %d)\n",$row->hostid,$row->windowid,$i,count($rows)));
-            $sd=self::mquery("DELETE FROM hoststat WHERE windowid=? AND hostid=?",
-                    $row->windowid,$row->hostid
-                    );
-            $su=self::mquery("
-                INSERT INTO hoststat",
-                    Array(
+            CliDebug::info(sprintf("Computing HostStat for host %s and window %s (%d of %d)\n", $row->hostid, $row->windowid, $i, count($rows)));
+            $sd = self::mquery("DELETE FROM hoststat WHERE windowid=? AND hostid=?", $row->windowid, $row->hostid
+            );
+            $su = self::mquery("
+                INSERT INTO hoststat", Array(
                         "hostid" => $row->hostid,
                         "windowid" => $row->windowid,
                         "cnt" => $row->cnt,
                         "loi" => 0,
                         "updated" => New DateTime()
-                        )
-                );
+                            )
+            );
             self::mcommit();
         }
     }
-    
-    function hsLoi($opts) {
-        $wids=Tw::twToIds($opts);
-        CliDebug::warn(sprintf("Need to compute HostStat Loi on %d windows.\n",count($wids)));
-        if (count($wids)==0) {
-            return(false);
+
+    static function hsLoi() {
+        $wids = Tw::twToIds();
+        CliDebug::warn(sprintf("Need to compute HostStat Loi on %d windows.\n", count($wids)));
+        if (count($wids) == 0) {
+            throw New Exception("No hosts to process.");
         }
         self::mbegin();
-        $stats=self::mquery("SELECT
+        $stats = self::mquery("SELECT
                   windowid,
                   MAX(cnt) AS maxcnt,
                   MIN(cnt) AS mincnt
                 FROM hoststat
                 WHERE windowid IN (?)
-                GROUP BY windowid",Tw::twToIds($opts))->fetchAll();
+                GROUP BY windowid", Tw::twToIds())->fetchAll();
         foreach ($stats as $s) {
-            foreach ($opts->hostids as $hostid) {
-                $lq=self::mquery("UPDATE hoststat set loi=100*cnt/? WHERE windowid=? AND hostid=?",$s->maxcnt,$s->windowid,$hostid);
+            foreach (Opts::getOpt("hostids") as $hostid) {
+                $lq = self::mquery("UPDATE hoststat set loi=100*cnt/? WHERE windowid=? AND hostid=?", $s->maxcnt, $s->windowid, $hostid);
             }
-            
         }
         self::mcommit();
     }
-    
+
 }
 
 ?>

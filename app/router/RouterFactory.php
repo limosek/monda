@@ -5,6 +5,7 @@ namespace App;
 use Nette,
     Nette\Application\Routers\RouteList,
     Nette\Application\Routers\Route,
+    Nette\Application\Routers\CliRouter,
     Nette\Application\Routers\SimpleRouter;
 
 /**
@@ -16,11 +17,10 @@ class RouterFactory {
      * @return \Nette\Application\IRouter
      */
     public function createRouter() {
-        global $argv;
         
         $router = new RouteList();
         if (getenv("MONDA_CLI")) {
-           $router[] = new Nette\Application\Routers\CliRouter(
+           $router[] = new CliRouter(
                    Array('action' => 'Default:default')
                     );
         } else {

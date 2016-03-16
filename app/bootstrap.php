@@ -1,11 +1,10 @@
 <?php
 
-use Tracy\Debugger;
+use Tracy\Debugger,App\Model\Opts;
 
 require __DIR__ . '/../vendor/autoload.php';
 
 $configurator = new Nette\Configurator;
-$configurator->setDebugMode(true);
 $configurator->setTempDirectory(getenv("MONDA_TMP"));
 $configurator->enableDebugger(getenv("MONDA_LOGDIR"));
 
@@ -26,6 +25,11 @@ $configurator->addConfig(__DIR__ . '/config/config.neon');
 Debugger::$maxDepth = 15;
 Debugger::$maxLen = 2000;
 Debugger::$strictMode = false;
+
+Opts::startup();
+if (isset($argv)) {    
+    Opts::preReadOpts();
+}
 
 $container = $configurator->createContainer();
 
