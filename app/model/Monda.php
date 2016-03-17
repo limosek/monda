@@ -7,7 +7,11 @@ use ZabbixApi\ZabbixApi,Nette,
     Nette\Security\Passwords,
     Tracy\Debugger,
     Nette\Database\Context,
+    Nette\Database\Structure,
     Nette\Database\Connection,
+    Nette\Database\SqlPreprocessor,
+    Nette\Caching\Storages\FileStorage,
+    Nette\Caching\Cache,
     \Exception;
 
 /**
@@ -39,10 +43,10 @@ class Monda extends Nette\Object {
                 try {
                     self::$api = new ZabbixApi(Opts::getOpt("zabbix_api_url"), Opts::getOpt("zabbix_api_user"), Opts::getOpt("zabbix_api_pw"));
                 } catch (Exception $e) {
-                    CliDebug::log($e,Debugger::ERROR);
+                    throw $e;
                 }
             } else {
-                throw New \Exception("Undefined parameters!");
+                throw New Exception("Undefined parameters!");
             }
             return(self::$api);
         } else {
@@ -60,7 +64,7 @@ class Monda extends Nette\Object {
                 );
         self::$zq = New Context(
                 $c,
-                New Nette\Database\Structure($c, New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")))
+                New Structure($c, New FileStorage(getenv("MONDA_SQLCACHEDIR")))
                 );
         
         CliDebug::dbg("Using Monda db (".Opts::getOpt("monda_dsn").")\n");
@@ -72,7 +76,7 @@ class Monda extends Nette\Object {
                 );
         self::$mq = New Context(
                 $c,
-                New Nette\Database\Structure($c, New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")))
+                New Structure($c, New FileStorage(getenv("MONDA_SQLCACHEDIR")))
                 );
 
         if (self::$zq && self::$mq) {
@@ -83,7 +87,7 @@ class Monda extends Nette\Object {
     }
     
     static function apiCmd($cmd,$req) {
-        $ckey=$cmd.serialize($req);
+        $ckey=$cmd.Opts::getOpt("zabbix_id").serialize($req);
         $ret = self::$apicache->load($ckey);
         if ($ret === NULL || Opts::getOpt("api_cache_expire")==0) {
             if (!isset(self::$api)) {
@@ -93,10 +97,18 @@ class Monda extends Nette\Object {
                 }
             }
             CliDebug::dbg("Zabbix Api query ($cmd)\n");
-            $ret = self::$api->$cmd($req);
-            self::$apicache->save($ckey, $ret, array(
-                Nette\Caching\Cache::EXPIRE => Opts::getOpt("api_cache_expire"),
-            ));
+            try {
+                $ret = self::$api->$cmd($req);
+            } catch (Exception $e) {
+                throw $e;
+            }
+            if (count($ret)==0) {
+                CliDebug::err("Zabbix API $cmd returned empty result. Check permissions.\n");
+            } else {
+                self::$apicache->save($ckey, $ret, array(
+                    Cache::EXPIRE => Opts::getOpt("api_cache_expire"),
+                ));
+            }
         }
         return($ret);
     }
@@ -110,7 +122,7 @@ class Monda extends Nette\Object {
         } else {
             $args=$query;
         }
-        $psql=new \Nette\Database\SqlPreprocessor(self::$zq->connection);
+        $psql=new SqlPreprocessor(self::$zq->connection);
         List($sql)=$psql->process($args);
         CliDebug::dbg("zquery(\n$sql\n)=\n");
         $ret=self::$zq->queryArgs(array_shift($args),$args);
@@ -121,14 +133,14 @@ class Monda extends Nette\Object {
     
     static function zcquery($query) {
         $args = func_get_args();
-        $ckey=serialize($args);
+        $ckey=serialize(Opts::getOpt("zabbix_id").$args);
         $ret=self::$sqlcache->load($ckey);
         if ($ret===null || Opts::getOpt("sql_cache_expire")==0) {
             $ret=self::zquery($args)->fetchAll();
             self::$sqlcache->save($ckey,
                     $ret,
                     array(
-                        Nette\Caching\Cache::EXPIRE => Opts::getOpt("sql_cache_expire"),
+                        Cache::EXPIRE => Opts::getOpt("sql_cache_expire"),
                         )
                     );
         }
@@ -144,7 +156,7 @@ class Monda extends Nette\Object {
         } else {
             $args=$query;
         }
-        $psql=new \Nette\Database\SqlPreprocessor(self::$mq->connection);
+        $psql=new SqlPreprocessor(self::$mq->connection);
         List($sql)=$psql->process($args);
         CliDebug::dbg("mquery(\n$sql\n)\n");
         $ret=self::$mq->queryArgs(array_shift($args),$args);
@@ -161,7 +173,7 @@ class Monda extends Nette\Object {
             self::$sqlcache->save($ckey,
                     $ret,
                     array(
-                        Nette\Caching\Cache::EXPIRE => Opts::getOpt("sql_cache_expire"),
+                        Cache::EXPIRE => Opts::getOpt("sql_cache_expire"),
                         )
                     );
         }
