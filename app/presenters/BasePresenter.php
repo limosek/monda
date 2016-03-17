@@ -130,6 +130,15 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         );
         parent::startup();
     }
+    
+    public function beforeRender() {
+        if (Opts::getOpt("help") || Opts::getOpt("xhelp") || Opts::getOpt("config_test")) {
+            $this->Help();
+        }
+    }
+    
+    static public function preCfg() {
+    }
             
     static public function postCfg() {
         Opts::setOpt("csv_separator", htmlspecialchars_decode(Opts::getOpt("csv_separator")),"default");

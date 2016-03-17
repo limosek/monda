@@ -17,6 +17,7 @@ class Opts extends Nette\Object {
     private static $opts=Array();
     private static $setfrom=Array();
     private static $cfgread=Array();
+    private static $history=Array();
 
     public static function startup() {
         
@@ -56,6 +57,7 @@ class Opts extends Nette\Object {
                 foreach (Opts::$opts as $okey=>$ovalue) {
                     if (!strcmp($opt,$ovalue["long"])) {
                         Opts::setOpt($okey,$value,"INI");
+                        Opts::$opts[$opt]["defaults"] = false;
                         $found=true;
                     }
                 }
@@ -109,6 +111,7 @@ class Opts extends Nette\Object {
             foreach (Opts::$opts as $okey=>$ovalue) {
                 if (!strcmp($p,$ovalue["short"]) || !strcmp($p,$ovalue["long"])) {
                     Opts::setOpt($okey,$value);
+                    Opts::$opts[$okey]["defaults"] = false;
                     $found=true;
                 }
             }
@@ -136,10 +139,35 @@ class Opts extends Nette\Object {
         $long=Opts::$opts[$opt]["long"];
         Opts::$data[$opt] = $value;
         Opts::$setfrom[$opt] = $from;
+    }
+    
+    public static function pushOpt($opt, $value) {
+        if (!array_key_exists($opt,Opts::$opts)) {
+            throw New \Exception("Unknown parameter $opt!");
+        }
+        $long=Opts::$opts[$opt]["long"];
+        if (array_key_exists($opt,Opts::$history)) {
+            if (!is_array(Opts::$history[$opt])) {
+                Opts::$history[$opt]=Array();
+            }
+        } else {
+            Opts::$history[$opt]=Array();
+        }
+        array_push(Opts::$history[$opt],Opts::$data[$opt]);
+        Opts::$data[$opt] = $value;
         if (array_key_exists($opt,Opts::$opts)) {
             Opts::$opts[$opt]["defaults"] = false;
-            Opts::$opts[$opt]["deprecated"] = true;
         }
+    }
+    
+    public static function popOpt($opt) {
+        if (!array_key_exists($opt,Opts::$opts)) {
+            throw New \Exception("Unknown parameter $opt!");
+        }
+        $long=Opts::$opts[$opt]["long"];
+        $value=array_pop(Opts::$history[$opt]);
+        Opts::$data[$opt] = $value;
+        return($value);
     }
 
     public static function getOpt($opt) {
@@ -151,14 +179,14 @@ class Opts extends Nette\Object {
     }
     
     public static function optToArray($param,$sep=",") {
-        if (preg_match("/$sep/",Opts::getOpt($param))) {
+        if (!Opts::isOpt($param)) {
+            $arr=Array();
+        } elseif (is_array(Opts::getOpt($param))) {
+            $arr=Opts::getOpt($param);
+        } elseif (preg_match("/$sep/",Opts::getOpt($param))) {
             $arr = preg_split("/$sep/", Opts::getOpt($param));
         } else {
-            if (Opts::isOpt($param)) {
-                $arr=Array(Opts::getOpt($param));
-            } else {
-                return(false);
-            }
+            $arr=Array(Opts::getOpt($param));
         }
         Opts::setOpt($param,$arr);
         return($arr);
@@ -209,8 +237,7 @@ class Opts extends Nette\Object {
             );
             return(true);
         } else {
-           //throw New Exception("Same parameter '$long' added!");
-           CliDebug::dbg("Same parameter '$long' added!\n");
+           //CliDebug::dbg("Same parameter '$long' added!\n");
         }
     }
 
@@ -258,8 +285,12 @@ class Opts extends Nette\Object {
             } else {
                 $setfrom=false;
             }
-            if (!Opts::$opts[$key]["default"] || Opts::getOpt("debug")=="debug") {
-                CliDebug::warn(sprintf("%s=%s",$opt["long"],Opts::getOpt($key)));
+            if (!Opts::$opts[$key]["defaults"] || Opts::getOpt("debug")=="debug") {
+                if (is_array(Opts::getOpt($key))) {
+                    CliDebug::warn(sprintf("%s=[%s]",$opt["long"],join(",",Opts::getOpt($key))));
+                } else {
+                    CliDebug::warn(sprintf("%s=%s",$opt["long"],Opts::getOpt($key)));
+                }
                 CliDebug::info(sprintf(" (from=%s, default=%b)", $setfrom, Opts::$opts[$key]["defaults"]));            
                 CliDebug::warn("\n");
             }

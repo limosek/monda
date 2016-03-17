@@ -36,16 +36,14 @@ class HsPresenter extends BasePresenter {
 
     public function startup() {
         parent::startup();
-        $tw = new TwPresenter();
-        $tw->startup();
+        TwPresenter::startup();
+        
         Opts::addOpt(
                 false, "hostids", "Hostids to get", false, "All"
         );
-
         Opts::addOpt(
                 false, "hostgroups", "Hostgroups to get", "monda", "monda"
         );
-
         Opts::addOpt(
                 false, "hosts", "Hostnames to get", false, "All"
         );
@@ -56,14 +54,14 @@ class HsPresenter extends BasePresenter {
     }
 
     static function postCfg() {
+        TwPresenter::postCfg();
         Opts::optToArray("hostgroups");
         Opts::optToArray("hostids");
         Opts::optToArray("hosts");
         HostStat::hostsToIds();
         if (is_array(Opts::getOpt("hostids"))) {
-            CliDebug::dbg(sprintf("Hostids selected: %s\n", join(",", $ret->hostids)));
+            CliDebug::dbg(sprintf("Hostids selected: %s\n", join(",", Opts::getOpt("hostids"))));
         }
-        return;
     }
 
     function expandHost($hostid) {

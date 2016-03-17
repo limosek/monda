@@ -8,6 +8,7 @@ use Nette,
     Nette\Security\Passwords,
     Nette\Diagnostics\Debugger,
     Nette\Database\Context,
+    \Exception,
     \ZabbixApi;
 
 /**
@@ -39,7 +40,7 @@ class Tw extends Monda {
     static function twMultiCreate() {
         
         if (!is_array(Opts::getOpt("window_length"))) {
-            return(false);
+            throw new Exception("Specify window lengths!");
         }
         $fdate=date("Y-m-d",Opts::getOpt("start"));
         $tdate=date("Y-m-d",Opts::getOpt("end"));

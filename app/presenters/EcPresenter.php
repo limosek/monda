@@ -2,16 +2,19 @@
 
 namespace App\Presenters;
 
-use Nette\Application\Responses\TextResponse,
-    Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI,
-        Nette\Utils\DateTime as DateTime;
+use App\Model\ItemStat,
+    App\Model\Tw,
+    App\Model\EventCorr,
+    App\Model\Monda,
+    Tracy\Debugger,
+    App\Model\Opts,
+    App\Model\CliDebug,
+    Nette\Utils\DateTime as DateTime;
 
-class EcPresenter extends BasePresenter
-{
-    
+class EcPresenter extends BasePresenter {
+
     public function Help() {
-        \App\Model\CliDebug::warn("
+        CliDebug::warn("
      EventCorr operations
             
      ec:show [common opts]
@@ -19,46 +22,36 @@ class EcPresenter extends BasePresenter
  
      [common opts]
     \n");
-        self::helpOpts();
-    }
-    
-    public function getOpts($ret) {
-        $ret=parent::getOpts($ret);
-        $ret=TwPresenter::getOpts($ret);
-        $ret=HsPresenter::getOpts($ret);
-        $ret=IsPresenter::getOpts($ret);
-        $ret=self::parseOpt($ret,
-                "inc_loi_event_itemstat",
-                false,"inc_loi_event_item",
-                "Increase LOI for item with event",
-                50,
-                50
-                );
-        $ret=self::parseOpt($ret,
-                "inc_loi_event_window",
-                false,"inc_loi_event_window",
-                "Increase LOI for time window with event",
-                10,
-                10
-                );
-        $ret=self::parseOpt($ret,
-                "inc_loi_event_host",
-                false,"inc_loi_event_host",
-                "Increase LOI for time host with event",
-                5,
-                5
-                );
-        $ret=self::readCfg($ret,Array("Is","Hs","Tw"));
-        return($ret);
-    }
-    
-    public function renderEc() {
-        self::Help();
+        Opts::helpOpts();
+        Opts::showOpts();
+        echo "\n";
         self::mexit();
     }
-    
+
+    public function startup() {
+        parent::startup();
+        IsPresenter::startup();
+
+        Opts::addOpt(false, "ec_item_increment_loi", "Increase LOI for item with event", 50, 50
+        );
+        Opts::addOpt(false, "ec_window_increment_loi", "Increase LOI for time window with event", 10, 10
+        );
+        Opts::addOpt(false, "ec_host_increment_loi", "Increase LOI for time host with event", 5, 5
+        );
+
+        Opts::setDefaults();
+        Opts::readCfg(Array("Ec"));
+        Opts::readOpts($this->params);
+        self::postCfg();
+    }
+
+    public static function postCfg() {
+        IsPresenter::postCfg();
+    }
+
     public function renderLoi() {
-        \App\Model\EventCorr::EcLoi($this->opts);
+        EventCorr::EcLoi($this->opts);
         self::mexit();
     }
+
 }

@@ -78,12 +78,12 @@ class ItemStat extends Monda {
     }
     
     static function isSearch() {
-        if (Opts::getOpt("itemids")) {
+        if (count(Opts::getOpt("itemids"))>0) {
             $itemidssql=sprintf("i.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")));
         } else {
             $itemidssql="";
         }
-        if (Opts::isOpt("hostids")) {
+        if (count(Opts::isOpt("hostids"))>0) {
             $hostidssql=sprintf("i.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";

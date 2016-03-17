@@ -14,7 +14,7 @@ use App\Model\ItemStat,
 class IcPresenter extends BasePresenter {
 
     public function Help() {
-        \App\Model\CliDebug::warn("
+        CliDebug::warn("
      ItemCorr operations
             
      ic:show [common opts]
@@ -34,14 +34,13 @@ class IcPresenter extends BasePresenter {
 
     public function startup() {
         parent::startup();
-        $is=new IsPresenter();
-        $is->startup();
+        IsPresenter::startup();
         
         Opts::addOpt(
                 false, "corr_type", "Selector for windows to correlate with basic windows", "samewindow", "samewindow", Array("samewindow", "samehour", "samedow")
         );
         Opts::addOpt(
-                false, "ic_loi", "Select only item correlation which have loi bigger than this/=.", 0, 0
+                false, "ic_minloi", "Select only item correlation which have loi bigger than this/=.", 0, 0
         );
         Opts::addOpt(
                 false, "time_precision", "Time precision (maximum difference in time for correlation) in seconds", 5, 5
@@ -63,7 +62,7 @@ class IcPresenter extends BasePresenter {
     }
 
     public static function postCfg() {
-        parent::postCfg();
+        IsPresenter::postCfg();
         switch (Opts::getOpt("corr_type")) {
             case "samehour":
                 Opts::setOpt("window_length", Array(Monda::_1HOUR));

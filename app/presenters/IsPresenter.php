@@ -31,10 +31,8 @@ class IsPresenter extends BasePresenter {
 
     public function startup() {
         parent::startup();
-        $tw=new TwPresenter();
-        $tw->startup();        
-        $hs=new HsPresenter();
-        $hs->startup();
+        HsPresenter::startup();
+        
         Opts::addOpt(
                 false, "min_values_per_window", "Minimum values for item per window to process", 20, 20
         );
@@ -70,12 +68,10 @@ class IsPresenter extends BasePresenter {
     }
 
     static function postCfg() {
-        parent::postCfg();
-        
+        HsPresenter::postCfg();
         Opts::optToArray("itemids");
         Opts::optToArray("items", "~");
         ItemStat::itemsToIds();
-        return;
     }
 
     public function expandItem($itemid, $withhost = false, $desc = false) {
@@ -110,7 +106,7 @@ class IsPresenter extends BasePresenter {
             }
             parent::renderShow($this->exportdata);
         } else {
-            CliDebug::warn("No rows found. Try to fine-tune parameters (min_loi, window_empty, ...).\n");
+            CliDebug::warn("No rows found. Try to fine-tune parameters (is_minloi, tw_minloi, window_empty, ...).\n");
         }
         self::mexit();
     }

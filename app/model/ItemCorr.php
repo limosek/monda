@@ -141,12 +141,12 @@ class ItemCorr extends Monda {
                     $hostidssql
                     $windowidsql 
                          true
-                     AND loi>?
+                     AND ic.loi>?
                      $corrsql
                      AND ic.corr>? AND ic.corr<? 
                  ORDER BY ic.loi DESC
                  LIMIT ?
-                ",Opts::getOpt("min_loi"),Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
+                ",Opts::getOpt("ic_minloi"),Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
         return($rows);
     }
     

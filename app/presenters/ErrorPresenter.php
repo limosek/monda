@@ -4,6 +4,8 @@ namespace App\Presenters;
 
 use Nette;
 use Tracy\ILogger;
+use App\Model\CliDebug;
+use App\Model\Opts;
 
 
 class ErrorPresenter extends DefaultPresenter implements Nette\Application\IPresenter
@@ -38,7 +40,24 @@ class ErrorPresenter extends DefaultPresenter implements Nette\Application\IPres
 
 class Error4xxPresenter extends ErrorPresenter {
     public function run(Nette\Application\Request $request) {
-        DefaultPresenter::Help();
+        global $argv;
+        if ($argv[1]=="is") {
+            IsPresenter::Help();
+        } elseif ($argv[1]=="tw") {
+            TwPresenter::Help();
+        } elseif ($argv[1]=="ic") {
+            IcPresenter::Help();
+        } elseif ($argv[1]=="ec") {
+            EcPresenter::Help();
+        } elseif ($argv[1]=="cron") {
+            CronPresenter::Help();
+        } elseif ($argv[1]=="hs") {
+            HsPresenter::Help();
+        } elseif ($argv[1]=="gm") {
+            GmPresenter::Help();
+        } else {
+            DefaultPresenter::Help();
+        }
     }
 
 }
