@@ -62,19 +62,19 @@ class CronPresenter extends IsPresenter {
     public function render1hour() {
         Opts::setOpt("window_length",Array(Monda::_1HOUR));
         if (Opts::isDefault("start")) {
-            Opts::pushOpt("start",date_format(New DateTime("121 minutes ago"), "U"));
-            Opts::pushOpt("end",date_format(New DateTime("61 minutes ago"), "U"));
+            Opts::setOpt("start",date_format(New DateTime("121 minutes ago"), "U"));
+            Opts::setOpt("end",date_format(New DateTime("61 minutes ago"), "U"));
         }
         self::renderRange(Monda::_1HOUR, "1hour");
     }
 
     public function render1day() {      
         if (Opts::isDefault("start")) {
-            Opts::pushOpt("start",date_format(New DateTime("00:00 yesterday"), "U"));
-            Opts::pushOpt("end",date_format(New DateTime("00:00 today"), "U"));
+            Opts::setOpt("start",date_format(New DateTime("00:00 yesterday"), "U"));
+            Opts::setOpt("end",date_format(New DateTime("00:00 today"), "U"));
         }
         if (Opts::isDefault("window_length")) {
-            Opts::pushOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY));
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY));
         }
         self::renderRange(Monda::_1DAY, "1day");
     }
@@ -87,12 +87,12 @@ class CronPresenter extends IsPresenter {
             if ($start==$end) {
                 $end+=Monda::_1WEEK;
             }
-            Opts::pushOpt("start",$start);
-            Opts::pushOpt("end",$end);
+            Opts::setOpt("start",$start);
+            Opts::setOpt("end",$end);
         }
 
         if (Opts::isDefault("window_length")) {
-            Opts::pushOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK));
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK));
         }
         self::renderRange(Monda::_1WEEK, "1week");
     }
@@ -108,13 +108,13 @@ class CronPresenter extends IsPresenter {
         $start = date_format(New DateTime(date("Y-m-01 00:00", $monthago)), "U");
 
         if (Opts::isDefault("window_length")) {
-            Opts::pushOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK, Monda::_1MONTH, Monda::_1MONTH28, Monda::_1MONTH30, Monda::_1MONTH31));
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK, Monda::_1MONTH, Monda::_1MONTH28, Monda::_1MONTH30, Monda::_1MONTH31));
         }
         $end=Opts::getOpt("end");
         while ($start < $end) {
             $monthlength = date("t", $start) * Monda::_1DAY;
-            Opts::pushOpt("start",$start);
-            Opts::pushOpt("end",$start+$monthlength);
+            Opts::setOpt("start",$start);
+            Opts::setOpt("end",$start+$monthlength);
             self::renderRange($monthlength, "1month");
             $start+=$monthlength;
             Opts::popOpt("start");
@@ -130,8 +130,8 @@ class CronPresenter extends IsPresenter {
             self::precompute();
         }
         for ($s = $start; $s < $end; $s = $s + $step) {
-            Opts::pushOpt("start",$s);
-            Opts::pushOpt("end",$s+$step);
+            Opts::setOpt("start",$s);
+            Opts::setOpt("end",$s+$step);
             $e = $s + $step;
 
             CliDebug::warn(sprintf("== $name cron (%s to %s):\n", date("Y-m-d H:i", $s), date("Y-m-d H:i", $e)));
@@ -178,9 +178,9 @@ class CronPresenter extends IsPresenter {
         }
         try {
             Tw::twMultiCreate();
-            Opts::pushOpt("window_empty", true);
-            Opts::pushOpt("tw_minloi", -1);
-            Opts::pushOpt("window_sort", "start/+");
+            Opts::setOpt("window_empty", true);
+            Opts::setOpt("tw_minloi", -1);
+            Opts::setOpt("window_sort", "start/+");
             ItemStat::IsMultiCompute();
             Tw::twLoi();
             ItemStat::IsLoi();
@@ -198,8 +198,8 @@ class CronPresenter extends IsPresenter {
             return(false);
         }
 
-        Opts::pushOpt("start", $s);
-        Opts::pushOpt("end", $e);
+        Opts::setOpt("start", $s);
+        Opts::setOpt("end", $e);
         if (!$l) {
             $l = Monda::_1WEEK;
         }
@@ -208,17 +208,17 @@ class CronPresenter extends IsPresenter {
             foreach ($lengths as $length) {
                 if ($length > $l)
                     continue;
-                Opts::pushOpt("corr_type", "samewindow");
-                Opts::pushOpt("window_length", Array($l));
+                Opts::setOpt("corr_type", "samewindow");
+                Opts::setOpt("window_length", Array($l));
                 ItemCorr::IcMultiCompute();
                 if ($length == Monda::_1HOUR) {
-                    Opts::pushOpt("corr_type", "samehour");
-                    Opts::pushOpt("window_length", Array(Monda::_1HOUR));
+                    Opts::setOpt("corr_type", "samehour");
+                    Opts::setOpt("window_length", Array(Monda::_1HOUR));
                     ItemCorr::IcMultiCompute();
                 }
                 if ($length >= Monda::_1DAY) {
-                    Opts::pushOpt("corr_type", "samedow");
-                    Opts::pushOpt("window_length", Array(Monda::_1DAY));
+                    Opts::setOpt("corr_type", "samedow");
+                    Opts::setOpt("window_length", Array(Monda::_1DAY));
                     ItemCorr::IcMultiCompute();
                 }
             }

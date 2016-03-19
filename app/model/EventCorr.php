@@ -20,7 +20,7 @@ class EventCorr extends Monda {
         } else {
             $end=$start+Monda::_1DAY;
         }
-        CliDebug::warn(sprintf("Searching for events between <%d,%d> ", $start,$end));
+        CliDebug::warn(sprintf("Searching for events between <%s,%s> ", Util::dateTime($start),Util::dateTime($end)));
         $eq=Array(
             "time_from" => $start,
             "time_till" => $end,

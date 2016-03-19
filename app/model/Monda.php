@@ -27,6 +27,7 @@ class Monda extends Nette\Object {
     const _1MONTH30=2592000;
     const _1MONTH31=2678400;
     const _1YEAR=31536000;
+    const _MAX_ROWS=10000000;
     static $cache; // Cache
     static $apicache; // Cache for zabbix api
     static $sqlcache;
@@ -66,7 +67,6 @@ class Monda extends Nette\Object {
                 $c,
                 New Structure($c, New FileStorage(getenv("MONDA_SQLCACHEDIR")))
                 );
-        
         CliDebug::dbg("Using Monda db (".Opts::getOpt("monda_dsn").")\n");
         $c=New Connection(
                 Opts::getOpt("monda_dsn"),
@@ -80,6 +80,12 @@ class Monda extends Nette\Object {
                 );
 
         if (self::$zq && self::$mq) {
+            if (Opts::getOpt("zabbix_db_query_timeout")) {
+                self::zquery("set statement_timeout=?",Opts::getOpt("zabbix_db_query_timeout")*1000);
+            }
+            if (Opts::getOpt("monda_db_query_timeout")) {
+                self::mquery("set statement_timeout=?",Opts::getOpt("monda_db_query_timeout")*1000);
+            }
             return(true);
         } else {
             throw Exception("Cannot connect to monda or zabbix db");
@@ -103,7 +109,7 @@ class Monda extends Nette\Object {
                 throw $e;
             }
             if (count($ret)==0) {
-                CliDebug::err("Zabbix API $cmd returned empty result. Check permissions.\n");
+                CliDebug::info("Zabbix API $cmd returned empty result. Check permissions:\n".print_r($req,true)."\n");
             } else {
                 self::$apicache->save($ckey, $ret, array(
                     Cache::EXPIRE => Opts::getOpt("api_cache_expire"),

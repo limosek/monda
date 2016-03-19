@@ -70,7 +70,7 @@ class ItemCorr extends Monda {
                         tw1.loi AS tw1loi, tw2.loi AS tw2loi,
                         tw1.tfrom AS tfrom1, tw1.seconds AS seconds1,
                         tw2.tfrom AS tfrom2, tw2.seconds AS seconds2,
-                        ic.corr AS CORR
+                        ic.corr AS corr
                  FROM itemstat is1
                  JOIN itemstat is2 ON ($join1sql)
                  JOIN timewindow tw1 ON (is1.windowid=tw1.id)
@@ -88,6 +88,7 @@ class ItemCorr extends Monda {
                     AND (is1.itemid<=is2.itemid)
                     $sameiwsql
                     AND is1.loi>? AND is2.loi>?
+                    AND ic.corr IS NULL
                  ORDER BY (tw1.loi+tw2.loi+is1.loi+is2.loi) DESC
                  LIMIT ?",Opts::getOpt("is_minloi"),Opts::getOpt("is_minloi"),Opts::getOpt("max_rows")
                 );

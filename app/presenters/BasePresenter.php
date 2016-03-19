@@ -81,6 +81,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Zp", "zabbix_db_pw", "Use this zabbix Database password", "", ""
         );
         Opts::addOpt(
+                false, "zabbix_db_query_timeout", "Use this timeout for query to zabbix db [S]", false, false
+        );
+        Opts::addOpt(
                 false, "zabbix_db_preconnect", "Use this preconnect cmd (eg ssh tunel) before connecting to monda.", false, false
         );
         Opts::addOpt(
@@ -94,6 +97,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         );
         Opts::addOpt(
                 false, "monda_db_preconnect", "Use this preconnect cmd (eg ssh tunel) before connecting to monda.", false, false
+        );
+        Opts::addOpt(
+                false, "monda_db_query_timeout", "Use this timeout for query to monda db [S]", false, false
         );
         Opts::addOpt(
                 "Mu", "monda_db_user", "Use this monda Database user", "monda", "monda"
