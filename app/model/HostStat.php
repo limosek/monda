@@ -83,7 +83,7 @@ class HostStat extends Monda {
     static function hsSearch() {
         $wids = Tw::twToIds();
         if (count($wids) == 0) {
-            return(false);
+            throw New Exception("No windows to process.");
         }
         $ids = self::mquery("
             SELECT
@@ -148,7 +148,7 @@ class HostStat extends Monda {
         $hostids = Opts::getOpt("hostids");
         $itemids = self::hosts2itemids($hostids);
         $wids = Tw::twToIds();
-        CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items.\n", count($wids), count($hostids), count($itemids)));
+        CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items...", count($wids), count($hostids), count($itemids)));
         if (count($wids) == 0 || count($hostids) < 1 || count($itemids) < 1) {
             return(false);
         }
@@ -163,6 +163,7 @@ class HostStat extends Monda {
                 WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", $hostid, $hitemids, $wids);
         }
         self::mcommit();
+        CliDebug::warn("\n");
     }
 
     static function hsDelete() {
@@ -176,7 +177,7 @@ class HostStat extends Monda {
 
     static function hsMultiCompute() {
         $wids = Tw::twToIds();
-        CliDebug::warn(sprintf("Need to compute HostStat for %d windows.\n", count($wids)));
+        CliDebug::warn(sprintf("Need to compute HostStat for %d windows...", count($wids)));
         if (count($wids) == 0 || count(Opts::getOpt("hostids")) == 0) {
             throw New Exception("No hosts to process.");
         }
@@ -196,6 +197,7 @@ class HostStat extends Monda {
         $rows = $stat->fetchAll();
         $i = 0;
         foreach ($rows as $row) {
+            CliDebug::info(".");
             self::mbegin();
             $i++;
             CliDebug::info(sprintf("Computing HostStat for host %s and window %s (%d of %d)\n", $row->hostid, $row->windowid, $i, count($rows)));
@@ -212,11 +214,12 @@ class HostStat extends Monda {
             );
             self::mcommit();
         }
+        CliDebug::warn("\n");
     }
 
     static function hsLoi() {
         $wids = Tw::twToIds();
-        CliDebug::warn(sprintf("Need to compute HostStat Loi on %d windows.\n", count($wids)));
+        CliDebug::warn(sprintf("Need to compute HostStat Loi on %d windows...", count($wids)));
         if (count($wids) == 0) {
             throw New Exception("No hosts to process.");
         }
@@ -234,6 +237,7 @@ class HostStat extends Monda {
             }
         }
         self::mcommit();
+        CliDebug::warn("Done\n");
     }
 
 }

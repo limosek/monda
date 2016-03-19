@@ -81,6 +81,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Zp", "zabbix_db_pw", "Use this zabbix Database password", "", ""
         );
         Opts::addOpt(
+                false, "zabbix_db_preconnect", "Use this preconnect cmd (eg ssh tunel) before connecting to monda.", false, false
+        );
+        Opts::addOpt(
                 "Zi", "zabbix_id", "Use this zabbix server ID", "1", "1"
         );
         Opts::addOpt(
@@ -88,6 +91,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         );
         Opts::addOpt(
                 "Md", "monda_dsn", "Use this monda Database settings", "pgsql:host=127.0.0.1;port=5432;dbname=monda", "pgsql:host=127.0.0.1;port=5432;dbname=monda"
+        );
+        Opts::addOpt(
+                false, "monda_db_preconnect", "Use this preconnect cmd (eg ssh tunel) before connecting to monda.", false, false
         );
         Opts::addOpt(
                 "Mu", "monda_db_user", "Use this monda Database user", "monda", "monda"
@@ -152,6 +158,16 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         }
         if (Opts::isOpt("zabbix_alias")) {
             Opts::readCfg(Array("zabbix-" . Opts::getOpt("zabbix_alias")));
+        }
+        if (Opts::isOpt("monda_db_preconnect")) {
+            CliDebug::info("Runing monda DB preconnect: '".Opts::getOpt("monda_db_preconnect")."...");
+            exec(Opts::getOpt("monda_db_preconnect"));
+            CliDebug::info("Done\n");
+        }
+        if (Opts::isOpt("zabbix_db_preconnect")) {
+            CliDebug::info("Runing Zabbix DB preconnect: '".Opts::getOpt("zabbix_db_preconnect")."...");
+            exec(Opts::getOpt("zabbix_db_preconnect"));
+            CliDebug::info("Done\n");
         }
     }
     

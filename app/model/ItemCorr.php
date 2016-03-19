@@ -12,19 +12,23 @@ use Nette,
     \Exception;
 
 /**
- * ItemStat global class
+ * ItemCorr global class
+ * It computes ans searches correlations between items
  */
 class ItemCorr extends Monda {
-   
-    static function icSearch() {
+
+    /**
+    * Search items which were preprocessed to compute item correlations
+    * @return Nette\Database\Result
+    * @throws Exception
+    */
+    static function icSearchItemsToIc() {
         $itemids=ItemStat::isToIds();
         if (count($itemids)>0) {
             $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$itemids),join(",",$itemids));
         } else {
             $itemidssql="";
         }
-        $ranksql1=",RANK() OVER (PARTITION BY is1.itemid ORDER BY is1.loi DESC)+RANK() OVER (PARTITION BY is1.itemid ORDER BY is2.loi DESC) AS rank";
-        $ranksql2="ORDER BY (tw1.loi+tw2.loi), rank, (ic.itemid1 IS NULL OR ic.itemid2 IS NULL) DESC";
         if (Opts::getOpt("hostids")) {
             $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")),join(",",Opts::getOpt("hostids")));
         } else {
@@ -36,7 +40,6 @@ class ItemCorr extends Monda {
         } else {
             throw New Exception("No windows matched query.");
         }
-        $emptysql="AND (ic.itemid1 IS NOT NULL AND ic.itemid2 IS NOT NULL)";
         
         switch (Opts::getOpt("corr_type")) {
             case "samewindow":
@@ -65,19 +68,17 @@ class ItemCorr extends Monda {
                         is1.windowid AS windowid1, is2.windowid AS windowid2,
                         is1.loi AS item1loi, is2.loi AS item2loi,
                         tw1.loi AS tw1loi, tw2.loi AS tw2loi,
-                        ic.itemid1 As icitemid1,ic.itemid2 AS icitemid2,
-                        ic.windowid1 AS icwindowid1,ic.windowid2 AS icwindowid2,
                         tw1.tfrom AS tfrom1, tw1.seconds AS seconds1,
                         tw2.tfrom AS tfrom2, tw2.seconds AS seconds2,
-                        ic.corr AS corr, ic.loi AS icloi
-                        $ranksql1
+                        ic.corr AS CORR
                  FROM itemstat is1
                  JOIN itemstat is2 ON ($join1sql)
-                 LEFT JOIN itemcorr ic ON (is1.itemid=itemid1 AND itemid2=is2.itemid AND is1.windowid=windowid1 AND is2.windowid=windowid2)
                  JOIN timewindow tw1 ON (is1.windowid=tw1.id)
                  JOIN timewindow tw2 ON (is2.windowid=tw2.id)
+                 LEFT JOIN itemcorr ic ON 
+                        (ic.itemid1=is1.itemid AND ic.itemid2=is2.itemid
+                        AND ic.windowid1=is1.windowid AND ic.windowid2=is2.windowid)
                  WHERE 
-                    ((ic.corr>? AND ic.corr<?) OR ic.corr IS NULL) AND
                     $itemidssql
                     $hostidssql
                     $windowidsql 
@@ -85,15 +86,20 @@ class ItemCorr extends Monda {
                     AND tw1.seconds=tw2.seconds
                     AND (is1.windowid<=is2.windowid)
                     AND (is1.itemid<=is2.itemid)
-                    AND ic.loi>?
-                    $sameiwsql $emptysql
-                 $ranksql2
-                 LIMIT ?",Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("ic_minloi"),Opts::getOpt("max_rows")
+                    $sameiwsql
+                    AND is1.loi>? AND is2.loi>?
+                 ORDER BY (tw1.loi+tw2.loi+is1.loi+is2.loi) DESC
+                 LIMIT ?",Opts::getOpt("is_minloi"),Opts::getOpt("is_minloi"),Opts::getOpt("max_rows")
                 );
         return($rows);
     }
     
-    static function icQuickSearch() {
+    /**
+    * Search computed item correlations
+    * @return Nette\Database\Result
+    * @throws Exception
+    */
+    static function icSearch() {
         if (Opts::getOpt("itemids")) {
             $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
         } else {
@@ -146,31 +152,43 @@ class ItemCorr extends Monda {
         return($rows);
     }
     
-    static function icToIds($pkey=false,$quick=false) {
-        if ($quick) {
-            $ids=self::icQuickSearch(); 
+    /**
+    * Search items and returns itemids
+    * @param $withwindows If true, return windowids and itemids. If false, only itemids are returned
+    * @param $computed If true, return computed correlations. If false, return items to compute correlations
+    * @return Array()
+    * @throws Exception
+    */
+    static function icToIds($withwindows=false,$computed=false) {
+        if (!$computed) {
+            $ids=self::icSearchItemsToIc(); 
         } else {
             $ids=self::icSearch();
         }
         $rows=$ids->fetchAll();
         if (count($rows)==0) {
-            throw new Exception("No items for correlations (icToIds,quick=$quick).");
+            throw new Exception("No items for correlations (icToIds,computed=$computed).");
         }
         $icids=Array();
         foreach ($rows as $row) {
-            if ($pkey) {
-                if ($opts->icempty) {
-                    if ($row->icitemid1!=null && $row->icitemid2!=null) {
-                        continue;
-                    }
+            if ($withwindows) {
+                if (isset($row->icitemid1)) {
+                    $icitemid1=$row->icitemid1;
+                } else {
+                    $icitemid1=null;
+                }
+                if (isset($row->icitemid2)) {
+                    $icitemid2=$row->icitemid2;
+                } else {
+                    $icitemid2=null;
                 }
                 $icids[]=Array(
                     "itemid1" => $row->itemid1,
                     "itemid2" => $row->itemid2,
                     "windowid1" => $row->windowid1,
                     "windowid2" => $row->windowid2,
-                    "icitemid1" => $row->icitemid1,
-                    "icitemid2" => $row->icitemid2,
+                    "icitemid1" => $icitemid1,
+                    "icitemid2" => $icitemid2,
                     "tfrom1" => date_format($row->tfrom1,"U"),
                     "tto1" => date_format($row->tfrom1,"U")+$row->seconds1,
                     "tfrom2" => date_format($row->tfrom2,"U"),
@@ -184,18 +202,23 @@ class ItemCorr extends Monda {
         return($icids);
     }
     
-    static function icStats($opts) {
-        if ($opts->itemids) {
-            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$opts->itemids),join(",",$opts->itemids));
+    /**
+    * Return item correlation statistics. Item based
+    * @return Nette\Database\Result
+    * @throws Exception
+    */
+    static function icStats() {
+        if (Opts::getOpt("itemids")) {
+            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
         } else {
             $itemidssql="";
         }
-        if ($opts->hostids) {
-            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",$opts->hostids),join(",",$opts->hostids));
+        if (Opts::getOpt("hostids")) {
+            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")),join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";
         }
-        $wids=Tw::twToIds($opts);
+        $wids=Tw::twToIds();
         if (count($wids)>0) {
             $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
         } else {
@@ -231,13 +254,18 @@ class ItemCorr extends Monda {
         return($rows);
     }
     
-    static function icWStats($opts) {
-        if ($opts->itemids) {
+    /**
+    * Return item correlation statistics. Window based
+    * @return Nette\Database\Result
+    * @throws Exception
+    */
+    static function icTwStats($opts) {
+        if (Opts::getOpt("itemids")) {
             $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
         } else {
             $itemidssql="";
         }
-        if ($opts->hostids) {
+        if (Opts::getOpt("hostids")) {
             $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")),join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";
@@ -276,13 +304,17 @@ class ItemCorr extends Monda {
         return($rows);
     }
     
+    /**
+    * Compute item correlations
+    */
     static function icMultiCompute() {
-        $cids = self::icToIds(true);
+        $cids = self::icToIds(true,false);
         if (!$cids) {
             throw new Exception("No items for correlations (icMultiCompute).");
         }
-        $wids = self::extractIds($cids, array("windowid1", "windowid2", "itemid1", "itemid2", "icitemid1", "icitemid2"));
-        CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%dx%d) items. %dx%d items needs to be computed. (mode %s,seconds=%s).\n", count($cids), count($wids["itemid1"]), count($wids["itemid2"]), count($wids["itemid1"]) - count($wids["icitemid1"]), count($wids["itemid2"]) - count($wids["icitemid2"]), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
+        $wids = self::extractIds($cids, array("windowid1", "windowid2", "itemid1", "itemid2"));
+        CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%d items and %d windows, mode %s, seconds=%s)...",
+                count($cids), count($wids["itemid1"])+count($wids["itemid2"]), count($wids["windowid1"]) + count($wids["windowid2"]), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
         if (count($cids) == 0) {
             return(false);
         }
@@ -290,7 +322,6 @@ class ItemCorr extends Monda {
         foreach ($wids["windowid1"] as $wid1) {
             $i++;
             $w1 = Tw::twGet($wid1);
-            //CliDebug::info(sprintf("Computing correlations for window %d (%d of %d)\n", $wid1,$i,count($wids["windowid1"])));
             $j = 0;
             foreach ($wids["windowid2"] as $wid2) {
                 if (!self::IdsSearch(
@@ -301,7 +332,7 @@ class ItemCorr extends Monda {
                     continue;
                 }
                 $j++;
-                CliDebug::info(sprintf("Computing correlations for windows %d-%d\n", $wid1, $wid2));
+                CliDebug::info(sprintf("Windows %d-%d:", $wid1, $wid2));
                 $w2 = Tw::twGet($wid2);
                 $icrows = self::zcquery("
                     SELECT  h1.itemid AS itemid1,
@@ -345,7 +376,7 @@ class ItemCorr extends Monda {
                     } else {
                         $icrow->corr=0;
                     }
-                    if ($icrow->corr === null || $icrow->cnt < $opts->min_icvalues) {
+                    if ($icrow->corr === null || $icrow->cnt < Opts::getOpt("min_values_for_corr")) {
                         $icrow->corr = 0;
                     }
                     if (abs($icrow->corr) > 1) {
@@ -369,12 +400,16 @@ class ItemCorr extends Monda {
                     self::mquery("DELETE FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $icrow->windowid1, $icrow->windowid2, $icrow->itemid1, $icrow->itemid2);
                     $iic = self::mquery("INSERT INTO itemcorr", $wrow);
                 }
-                CliDebug::info(sprintf("Min corr: %f, max corr: %f\n", $mincorr, $maxcorr));
+                CliDebug::info(sprintf("<%f,%f>,", $mincorr, $maxcorr));
                 self::mcommit();
             }
         }
+        CliDebug::warn("Done\n");
     }
 
+    /**
+    * Delete item correlations
+    */
     static function icDelete() {
         $windows=Tw::twToIds();
         CliDebug::warn(sprintf("Will delete item correlations from %d windows.\n",count($windows)));
@@ -386,6 +421,9 @@ class ItemCorr extends Monda {
         self::mcommit();
     }
     
+    /**
+    * Update item correlations LOI. 
+    */
     static function icLoi() {
         $twids=  Tw::twToIds();
         if (count($twids)==0) {

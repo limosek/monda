@@ -74,7 +74,7 @@ class IcPresenter extends BasePresenter {
     }
 
     public function renderShow() {
-        $rows = ItemCorr::icQuickSearch();
+        $rows = ItemCorr::icSearch();
         if ($rows) {
             $this->exportdata = $rows->fetchAll();
             if (Opts::getOpt("output_verbosity") == "expanded") {
@@ -95,7 +95,7 @@ class IcPresenter extends BasePresenter {
     }
 
     public function renderMatrix() {
-        $rows = ItemCorr::icQuickSearch();
+        $rows = ItemCorr::icSearch();
         $m = Array();
         $cnt = Array();
         $itemids = Array();

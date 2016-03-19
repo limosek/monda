@@ -45,6 +45,10 @@ class Util extends Nette\Object {
         return(round($tme/self::TW_STEP)*self::TW_STEP);
     }
     
+    static public function dateTime($tme) {
+        return(date("Y-m-d H:i",$tme));
+    }
+    
     static function zabbixGraphUrl1($itemids, $start, $seconds) {
         if ($itemids) {
             $itemidsstr = "";

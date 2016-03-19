@@ -182,7 +182,7 @@ class ItemStat extends Monda {
             $crsql.=$crsqli;
         }
         $wstats=Tw::twStats();
-        CliDebug::warn("Computing item statistics (zabbix_id:".Opts::getOpt("zabbix_id").",<$wstats->minfstamp-$wstats->maxtstamp,max ".($wstats->maxtstamp-$wstats->minfstamp)." seconds>),".count($wids)." windows\n");
+        CliDebug::warn(sprintf("Computing item statistics (zabbix_id: %d, from %s to %s (%d) windows...",Opts::getOpt("zabbix_id"),Util::dateTime($wstats->minfstamp),Util::dateTime($wstats->maxtstamp),count($wids)));
         $items=self::isToIds();
         if (count($items)>0) {
             $itemidsql=sprintf("AND itemid IN (%s)",join(",",$items));
@@ -215,6 +215,7 @@ class ItemStat extends Monda {
         Monda::sreset();
         $wid=false;
         while ($row=$rows->fetch()) {
+            CliDebug::info(".");
             Monda::sadd("found");
             if ($row->stddev_<=Opts::getOpt("min_stddev")) {
                 Monda::sadd("ignored");
@@ -291,6 +292,7 @@ class ItemStat extends Monda {
         }
         Monda::mcommit();
         Monda::zquery("DROP TABLE $ttable");
+        CliDebug::warn("Done.\n");
         return($ret);
     }
     
@@ -335,10 +337,7 @@ class ItemStat extends Monda {
             foreach (array_chunk($wids,Opts::getOpt("max_windows_per_query")) as $subwids) {
                 self::isCompute($subwids);
             }
-            CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($wids),date("Y-m-d H:i",Opts::getOpt("start")),date("Y-m-d H:i",Opts::getOpt("end"))));
-            
-        } else {
-            CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($wids),date("Y-m-d H:i",Opts::getOpt("start")),date("Y-m-d H:i",Opts::getOpt("end"))));
+        } else {           
             self::isCompute($wids);
         }
     }
@@ -346,13 +345,14 @@ class ItemStat extends Monda {
     static public function IsDelete() {
         $items=self::IsToIds();
         $windowids=Tw::TwtoIds();
-        CliDebug::warn(sprintf("Will delete %d itemstat entries (%d windows).\n",count($items),count($windowids)));
+        CliDebug::warn(sprintf("Will delete %d itemstat entries (%d windows)...",count($items),count($windowids)));
         if (count($items)>0 && count($windowids)>0) {
             self::mbegin();
             self::mquery("DELETE FROM itemstat WHERE ?", $items);
             self::mquery("UPDATE timewindow SET updated=NULL,loi=0 WHERE id IN (?)",$windowids);
             self::mcommit();
         }
+        CliDebug::warn("Done\n");
     }
     
     static public function IsShow() {
@@ -369,7 +369,7 @@ class ItemStat extends Monda {
     
     static public function IsLoi() {
         $wids=Tw::twToIds();
-        CliDebug::warn(sprintf("Need to compute itemstat loi for %d windows.\n",count($wids)));
+        CliDebug::warn(sprintf("Need to compute itemstat loi for %d windows...",count($wids)));
         if (count($wids)>0) {
             $stat=self::mquery("
                 SELECT MIN(cv) AS mincv,
@@ -385,6 +385,7 @@ class ItemStat extends Monda {
                 WHERE windowid IN (?)
                 ",Opts::getOpt("max_cv"),$wids);
         }
+        CliDebug::warn("Done\n");
     }
 }
 

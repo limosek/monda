@@ -35,8 +35,13 @@ class Opts extends Nette\Object {
         );
         Opts::preReadOpts();
     }
-
-    public static function readCfg($contexts,$final=true) {
+    
+    /**
+     * Read config from INI file
+     * @param Array() $contexts contexts to read
+     * @param boolean $final If this is final (last call, all options known)
+     */
+    public static function readCfg($contexts,$final=false) {
         if (file_exists(getenv("MONDARC"))) {
             $fopts = parse_ini_file(getenv("MONDARC"), true);
             $foptions = Array();
@@ -62,7 +67,7 @@ class Opts extends Nette\Object {
                     }
                 }
                 if (!$found && $final) {
-                    CliDebug::err("Option $opt uknown, ignoring!\n");
+                    CliDebug::err("Option '$opt' unknown, ignoring!\n");
                 }
             }
         }
@@ -104,7 +109,12 @@ class Opts extends Nette\Object {
         CliDebug::startup(Opts::getOpt("debug"));
     }
 
-    public static function readOpts($params=Array(),$final=true) {
+    /**
+     * Read config from cmdline arguments
+     * @param Array() $params cmdline parameters parsed by clirouter
+     * @param boolean $final If this is final (last call, all options known)
+     */
+    public static function readOpts($params=Array(),$final=false) {
         foreach ($params as $p=>$value) {
             if (!strcmp($p,"action")) continue;
             $found=false;
@@ -116,7 +126,7 @@ class Opts extends Nette\Object {
                 }
             }
             if (!$found && $final) {
-                CliDebug::err("Option $p uknown!\n");   
+                CliDebug::err("Option '$p' unknown!\n");
             }
         }
         if (Opts::getOpt("debug") == "debug") {

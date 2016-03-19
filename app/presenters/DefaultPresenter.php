@@ -31,6 +31,8 @@ class DefaultPresenter extends BasePresenter
      Hint: You can negate option by -_option (like -_m) 
     \n");
        parent::startup();
+       Opts::readCfg(Array("global"));
+       Opts::readOpts($this->params);
        Opts::helpOpts(); 
        Opts::showOpts();
        echo "\n";

@@ -21,7 +21,7 @@ class Tw extends Monda {
         $id = Monda::mquery("SELECT id FROM timewindow WHERE tfrom=? AND seconds IN (?) AND serverid=?", New DateTime("@$start"), $length, $zid
                 )->fetch();
         if ($id == false) {
-            CliDebug::warn("Creating window $start,$length,$description\n");
+            CliDebug::dbg("Creating window $start,$length,$description\n");
             return(
                     Monda::mquery("INSERT INTO timewindow", Array(
                         "description" => $description,
@@ -32,8 +32,6 @@ class Tw extends Monda {
                         "parentid" => null,
                         "loi" => 0
             )));
-        } else {
-            CliDebug::dbg("Skiping window zabbix_id=$zid,start=$start,length=$length,$description (already in db)\n");
         }
     }
 
@@ -45,7 +43,7 @@ class Tw extends Monda {
         $fdate=date("Y-m-d",Opts::getOpt("start"));
         $tdate=date("Y-m-d",Opts::getOpt("end"));
         $lengths=join(",",Opts::getOpt("window_length"));
-        CliDebug::warn("Creating windows from $fdate to $tdate and lengths $lengths\n");
+        CliDebug::warn("Creating windows from $fdate to $tdate and lengths $lengths...");
         Monda::mbegin();
         $start=round(Opts::getOpt("start")/3600,0)*3600;
         $end=(round(Opts::getOpt("end")/3600,0)+1)*3600;
@@ -70,6 +68,7 @@ class Tw extends Monda {
             }
         }
         Monda::mcommit();
+        CliDebug::warn("Done\n");
         Tw::twLoi();
         return(true);
     }
@@ -350,7 +349,7 @@ class Tw extends Monda {
         Opts::setOpt("tw_minloi",-1,"monda");
         Opts::setOpt("max_rows",1000000,"monda");
         $wids = self::twToIds();
-        CliDebug::warn(sprintf("Recomputing loi for %d windows\n", count($wids)));
+        CliDebug::warn(sprintf("Recomputing loi for %d windows...", count($wids)));
         if (count($wids) == 0) {
             return(false);
         }
@@ -370,6 +369,7 @@ class Tw extends Monda {
             UPDATE timewindow SET loi=0 WHERE found=0 OR found IS NULL AND serverid=?
                 ",Opts::getOpt("zabbix_id"));
         Monda::mcommit();
+        CliDebug::warn("Done\n");
     }
 
     static function twDelete() {
@@ -381,7 +381,7 @@ class Tw extends Monda {
         } else {
             $lengths="All";
         }
-        CliDebug::warn(sprintf("Deleting timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n", Opts::getOpt("zabbix_id"), date("Y-m-d H:i", Opts::getOpt("start")), date("Y-m-d H:i", Opts::getOpt("end")), $lengths, count($wids)));
+        CliDebug::warn(sprintf("Deleting timewindows for zabbix_id %d from %s to %s, length %s (%d windows)...", Opts::getOpt("zabbix_id"), date("Y-m-d H:i", Opts::getOpt("start")), date("Y-m-d H:i", Opts::getOpt("end")), $lengths, count($wids)));
         if (count($wids) > 0) {
             $d1 = Monda::mquery("DELETE FROM itemstat WHERE windowid IN (?)", $wids);
             $d2 = Monda::mquery("DELETE FROM hoststat WHERE windowid IN (?)", $wids);
@@ -390,6 +390,7 @@ class Tw extends Monda {
             $d5 = Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $wids, $wids);
             $d6 = Monda::mquery("DELETE FROM timewindow WHERE id IN (?)", $wids);
         }
+        CliDebug::warn("Done\n");
         return(Monda::mcommit());
     }
 
@@ -438,7 +439,7 @@ class Tw extends Monda {
         Monda::mbegin();
         Opts::setOpt("max_rows",100000);
         $wids = self::twToIds();
-        CliDebug::warn(sprintf("Emptying timewindows for zabbix_id %d from %s to %s, length %s (%d windows)\n", Opts::getOpt("zabbix_id"), date("Y-m-d H:i", Opts::getOpt("start")), date("Y-m-d H:i", Opts::getOpt("end")), join(",", Opts::getOpt("window_length")), count($wids)));
+        CliDebug::warn(sprintf("Emptying timewindows for zabbix_id %d from %s to %s, length %s (%d windows)...", Opts::getOpt("zabbix_id"), date("Y-m-d H:i", Opts::getOpt("start")), date("Y-m-d H:i", Opts::getOpt("end")), join(",", Opts::getOpt("window_length")), count($wids)));
         if (count($wids) > 0) {
             $d1 = Monda::mquery("DELETE FROM itemstat WHERE windowid IN (?)", $wids);
             $d2 = Monda::mquery("DELETE FROM hoststat WHERE windowid IN (?)", $wids);
@@ -447,6 +448,7 @@ class Tw extends Monda {
             $d5 = Monda::mquery("DELETE FROM windowcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $wids, $wids);
             $d6 = Monda::mquery("UPDATE timewindow SET updated=?, processed=0,found=0,loi=0 WHERE id IN (?)", New DateTime(), $wids);
         }
+        CliDebug::warn("Done\n");
         return(Monda::mcommit());
     }
 

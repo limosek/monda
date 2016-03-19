@@ -26,7 +26,7 @@ class TwPresenter extends BasePresenter {
                 "d", "window_description", "Window description.", "", ""
         );
         Opts::addOpt(
-                "l", "window_length", "Window length. Leave empty to get all lengths.", false, "All"
+                "l", "window_length", "Window length. Leave empty to get all lengths.", Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK, Monda::_1MONTH, Monda::_1MONTH28, Monda::_1MONTH30, Monda::_1MONTH31), "All"
         );
         Opts::addOpt(
                 false, "window_empty", "Work only with empty (non-computed) windows.", false, "All"

@@ -133,7 +133,7 @@ class Monda extends Nette\Object {
     
     static function zcquery($query) {
         $args = func_get_args();
-        $ckey=serialize(Opts::getOpt("zabbix_id").$args);
+        $ckey=Opts::getOpt("zabbix_id").serialize($args);
         $ret=self::$sqlcache->load($ckey);
         if ($ret===null || Opts::getOpt("sql_cache_expire")==0) {
             $ret=self::zquery($args)->fetchAll();
