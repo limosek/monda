@@ -71,10 +71,12 @@ class IsPresenter extends BasePresenter {
         HsPresenter::postCfg();
         Opts::optToArray("itemids");
         Opts::optToArray("items", "~");
-        ItemStat::itemsToIds();
+        if (count(Opts::getOpt("itemids"))==0) {
+            ItemStat::itemsToIds();
+        }
     }
 
-    public function expandItem($itemid, $withhost = false, $desc = false) {
+    static function expandItem($itemid, $withhost = false, $desc = false) {
         $ii = ItemStat::itemInfo($itemid);
         if (count($ii) > 0) {
             if ($desc) {
@@ -123,7 +125,7 @@ class IsPresenter extends BasePresenter {
     public function renderStats() {
         $rows = ItemStat::isStats();
         if ($rows) {
-            $this->exportdata = $rows->fetchAll();
+            $this->exportdata = $rows;
             if (Opts::getOpt("output_verbosity") == "expanded") {
                 foreach ($this->exportdata as $i => $row) {
                     CliDebug::dbg(sprintf("Processing %d row of %d          \r", $i, count($this->exportdata)));

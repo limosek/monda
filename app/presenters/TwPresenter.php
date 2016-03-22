@@ -69,11 +69,11 @@ class TwPresenter extends BasePresenter {
             }
             Opts::setOpt("window_length", $lengths);
         }
+        if (Opts::isOpt("window_ids")) {
+            Opts::optToArray("window_ids");
+        }
         if (Opts::getOpt("start") < 631148400) {
             self::mexit(4, sprintf("Bad start time (%d)?!\n", date("Y-m-d", Opts::getOpt("start"))));
-        }
-        if (Opts::isOpt("window_ids")) {
-            Opts::setOpt("window_ids", preg_split("/,/", Opts::getOpt("window_ids")));
         }
     }
     

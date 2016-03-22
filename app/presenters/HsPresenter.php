@@ -58,13 +58,15 @@ class HsPresenter extends BasePresenter {
         Opts::optToArray("hostgroups");
         Opts::optToArray("hostids");
         Opts::optToArray("hosts");
-        HostStat::hostsToIds();
+        if (count(Opts::getOpt("hostids"))==0) {
+            HostStat::hostsToIds();
+        }
         if (is_array(Opts::getOpt("hostids"))) {
             CliDebug::dbg(sprintf("Hostids selected: %s\n", join(",", Opts::getOpt("hostids"))));
         }
     }
 
-    function expandHost($hostid) {
+    static function expandHost($hostid) {
         $iq = Array(
             "monitored" => true,
             "output" => "extend",

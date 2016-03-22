@@ -150,6 +150,8 @@ class Tw extends Monda {
                 lowavg,
                 lowcnt,
                 lowcv,
+                timewindow.avgcv AS cv,
+                timewindow.avgcnt AS cnt,
                 serverid,     
                 COUNT(itemstat.itemid) AS itemcount
             FROM timewindow
@@ -194,6 +196,8 @@ class Tw extends Monda {
                 lowstddev,
                 lowavg,
                 lowcnt,
+                timewindow.avgcv AS cv,
+                timewindow.avgcnt AS cnt,
                 serverid
             FROM timewindow
             WHERE extract(epoch from tfrom)>=? AND extract(epoch from tfrom)+seconds<=? AND $emptysql AND serverid=?
@@ -222,6 +226,8 @@ class Tw extends Monda {
                 lowavg,
                 lowcnt,
                 serverid,
+                timewindow.avgcv AS cv,
+                timewindow.avgcnt AS cnt,
                 timewindow.loi/(timewindow.seconds/3600) AS loih,
                 COUNT(itemstat.itemid) AS itemcount
              FROM timewindow
@@ -356,7 +362,7 @@ class Tw extends Monda {
         Monda::mbegin();
         $uloi = Monda::mquery("
             UPDATE timewindow twchild
-            SET loi=round(100*(processed::float/found::float)),
+            SET loi=round(avgcnt*avgcv*(processed::float/found::float)),
             parentid=( SELECT id from timewindow twparent
               WHERE twchild.tfrom>=twparent.tfrom
               AND (extract(epoch from twchild.tfrom)+twchild.seconds)<=(extract(epoch from twparent.tfrom)+twparent.seconds)

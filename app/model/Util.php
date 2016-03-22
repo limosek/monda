@@ -58,7 +58,7 @@ class Util extends Nette\Object {
         } else {
             $itemidsstr = "";
         }
-        $url=sprintf("%s/history.php?", Opts::getOpt("zaburl")) . sprintf("action=batchgraph&%s&graphtype=0&period=%d&stime=%d", $itemidsstr, $seconds, $start);
+        $url=sprintf("%s/history.php?", Opts::getOpt("zabbix_url")) . sprintf("action=batchgraph&%s&graphtype=0&period=%d&stime=%d", $itemidsstr, $seconds, $start);
         return($url);
     }
     
@@ -73,10 +73,30 @@ class Util extends Nette\Object {
         } else {
             $itemidsstr = "";
         }
-        $url=sprintf("%s/chart.php?", Opts::getOpt("zaburl")) . sprintf("period=%d&stime=%s&%s&type=0&batch=1&updateProfile=0&profileIdx=&profileIdx2=&width=1024", $seconds, date("YmdHis",$start), $itemidsstr);
+        $url=sprintf("%s/chart.php?", Opts::getOpt("zabbix_url")) . sprintf("period=%d&stime=%s&%s&type=0&batch=1&updateProfile=0&profileIdx=&profileIdx2=&width=1024", $seconds, date("YmdHis",$start), $itemidsstr);
         return($url);
     }
-
+    
+    function numtostep($num,$min,$max,$steps=10) {
+        $range=abs($max-$min);
+        if ($range==0 || $max==0) {
+            return(1);
+        }
+        $step=$range/$steps;
+        $ret=min(1+round($steps*($num/$max)),$steps);
+        return($ret);
+    }
+    
+    function addclass($props,$class) {
+        $props->class[]=$class;
+        $props->$class=1;
+        return($props);
+    }
+    
+    function isclass($props,$class) {
+        return(isset($props->$class));
+    }
+    
 }
 
 ?>

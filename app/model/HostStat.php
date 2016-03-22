@@ -17,7 +17,6 @@ use Nette,
 class HostStat extends Monda {
 
     static function hostsToIds() {
-        $hostids = Opts::getOpt("hostids");
         if (Opts::getOpt("hostgroups")) {
             $hq = Array(
                 "selectHosts" => "refer",

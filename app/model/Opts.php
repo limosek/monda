@@ -50,11 +50,11 @@ class Opts extends Nette\Object {
                     continue;
                 }
 
-                CliDebug::dbg("Want to read INI context $context.\n");
+                CliDebug::dbg("Want to read INI file ".getenv("MONDARC")." context $context.\n");
                 Opts::$cfgread[$context]=true;
                 if (array_key_exists($context, $fopts)) {
                     $foptions = array_merge($foptions, $fopts[$context]);
-                    CliDebug::info("Got config from INI context $context.\n");
+                    CliDebug::info("Got config from INI file ".getenv("MONDARC")." context $context.\n");
                 }
             }
             foreach ($foptions as $opt => $value) {
@@ -70,6 +70,8 @@ class Opts extends Nette\Object {
                     CliDebug::err("Option '$opt' unknown, ignoring!\n");
                 }
             }
+        } else {
+            throw new Exception("Config file ".getenv("MONDARC")." unreadable!");
         }
     }
     
@@ -77,7 +79,7 @@ class Opts extends Nette\Object {
         global $argv;
 
         $configurator = new Nette\Configurator;
-        if (getenv("MONDA_CLI")) {
+        if (getenv("MONDA_CLI") && isset($argv)) {
             foreach ($argv as $i => $a) {
                 if (!strcmp($a, "--help") ||
                         !strcmp($a, "-h")
@@ -100,12 +102,17 @@ class Opts extends Nette\Object {
                     Opts::setOpt("config_test", true);
                 }
             }
+        } else {
+            if ($_SERVER["REMOTE_ADDR"]=="127.0.0.1") {
+                Opts::setOpt("debug", "debug");
+            }
         }
-        if (Opts::getOpt("debug") == "debug" || !getenv("MONDA_CLI")) {
+        if (Opts::getOpt("debug") == "debug") {
             $configurator->setDebugMode(true);
         } else {
             $configurator->setDebugMode(false);
         }
+        //error_reporting(!E_DEPRECATED);
         CliDebug::startup(Opts::getOpt("debug"));
     }
 
@@ -129,15 +136,11 @@ class Opts extends Nette\Object {
                 CliDebug::err("Option '$p' unknown!\n");
             }
         }
+        $configurator = new Nette\Configurator;
         if (Opts::getOpt("debug") == "debug") {
-            Debugger::enable(Debugger::DEVELOPMENT);
+            $configurator->setDebugMode(true);
         } else {
-            Debugger::enable(Debugger::PRODUCTION);
-        }
-        if (Opts::getOpt("debug") == "debug") {
-            Debugger::enable(Debugger::DEVELOPMENT);
-        } else {
-            Debugger::enable(Debugger::PRODUCTION);
+            $configurator->setDebugMode(false);
         }
         CliDebug::startup(Opts::getOpt("debug"));
     }
@@ -223,7 +226,7 @@ class Opts extends Nette\Object {
 
     public static function setDefaults() {
         foreach (Opts::$opts as $key => $optdata) {
-            if (preg_match("/(<.*>)/", $optdata["default"], $vars)) {
+            if (!is_array($optdata["default"]) && preg_match("/(<.*>)/", $optdata["default"], $vars)) {
                 $key2=substr(substr($vars[1],1),0,-1);
                 $optdata["default"]=preg_replace("/($key2)/",Opts::getOpt($key2),$optdata["default"]);
             }

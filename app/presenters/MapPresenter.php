@@ -2,271 +2,249 @@
 
 namespace App\Presenters;
 
-use Nette\Application\Responses\TextResponse,
-    Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI,
+use App\Model\ItemStat,
+    App\Model\Tw,
+    App\Model\HostStat,
+    App\Model\ItemCorr,
+    App\Model\EventCorr,
+    App\Model\Monda,
+    App\Model\Util,
+    Tracy\Debugger,
+    App\Model\Opts,
+    App\Model\CliDebug,
+    Exception,
     Nette\Utils\DateTime as DateTime,
     Tree\Node\Node;
 
-class MapPresenter extends BasePresenter
-{
-    
-    public function getOpts($ret) {
-        $ret=parent::getOpts($ret);
-        $ret=TwPresenter::getOpts($ret);
-        $ret=HsPresenter::getOpts($ret);
-        $ret=IsPresenter::getOpts($ret);
-        $ret=self::parseOpt($ret,
-                "maptype",
-                "Mt","maptype",
-                "Selector for map type to create",
-                "html",
-                "html",
-                Array("html")
-                );
-        $ret=self::parseOpt($ret,
-                "mapname",
-                "Mn","mapname",
-                "Map name to create",
-                "monda",
-                "monda"
-                );
-        
-        $ret=self::parseOpt($ret,
-                "loi_sizefactor",
-                false,"loi_sizefactor",
-                "Size factor for loi",
-                2,
-                2
-                );
-        $ret=self::parseOpt($ret,
-                "loi_minsize",
-                false,"loi_minsize",
-                "Minimum box size",
-                0.1,
-                0.1
-                );
-        $ret=self::readCfg($ret,Array("Ic","Is","Hs","Map"));
-        return($ret);
+class MapPresenter extends BasePresenter {
+
+    public function Help() {
+        CliDebug::warn("
+     Map operations
+     
+     map:tw -w id [common opts]
+     map:tws [common opts]
+     map:icw [common opts]
+     
+    [common opts]
+     \n");
+        Opts::helpOpts();
+        Opts::showOpts();
+        echo "\n";
+        self::mexit();
+    }
+
+    public function startup() {
+        parent::startup();
+        TwPresenter::startup();
+        HsPresenter::startup();
+        IsPresenter::startup();
+        IcPresenter::startup();
+        EcPresenter::startup();
+
+        Opts::addOpt(false, "tw_graph_items", "How many items to place in url of graphs", 10, 10
+        );
+        Opts::addOpt(false, "map_output", "Selector for map type to create", "svg", "svg", Array("svg")
+        );
+        Opts::addOpt(false, "loi_sizefactor", "Size factor for loi", 2, 2
+        );
+        Opts::addOpt(false, "loi_minsize", "Minimum box size", 0.1, 0.1
+        );
+        Opts::setDefaults();
+        Opts::readCfg(Array( "Tw", "Is", "Hs", "Ic", "Ec", "Map"));
+        Opts::readOpts($this->params);
+        self::postCfg();
     }
     
-    public function createMap($name,$props=false) {
-        $map=New Node($name);
-        $props->name=$name;
+    static function postCfg() {
+        parent::postCfg();
+        TwPresenter::postCfg();
+        //HsPresenter::postCfg();
+        IsPresenter::postCfg();
+        IcPresenter::postCfg();
+        EcPresenter::postCfg();
+    }
+
+    public function createMap($name, $props = false) {
+        $map = New Node($name);
+        $props->name = $name;
         $map->setValue($props);
         return($map);
     }
     
-    function numtostep($num,$min,$max,$steps=10) {
-        $range=abs($max-$min);
-        if ($range==0 || $max==0) {
-            return(1);
+    function renderTl() {
+        $tl=Tw::twSearch()->fetchAll();
+        $stats=Tw::twStats();
+        $this->template->title=sprintf("Monda Timeline from %s to %s",Util::datetime(Opts::getOpt("start")),Util::datetime(Opts::getOpt("end")));
+        foreach ($tl as $tw) {
+            $tw->class = Array();
+            $tw = Util::addclass($tw, "loi" . Util::numtostep($tw->loi, $stats["minloi"], $stats["maxloi"], 10));
+            $tw = Util::addclass($tw, "loih" . Util::numtostep($tw->loih, $stats["minloih"], $stats["maxloih"], 10));
+            $tw = Util::addclass($tw, "processed" . Util::numtostep($tw->processed, $stats["minprocessed"], $stats["maxprocessed"], 10));
+            $tw = Util::addclass($tw, "ignored" . Util::numtostep($tw->ignored, $stats["minignored"], $stats["maxignored"], 10));
+            $tw->url1=Util::zabbixGraphUrl1(Opts::GetOpt("itemids"), $tw->fstamp, $tw->seconds);
         }
-        $step=$range/$steps;
-        $ret=min(1+round($steps*($num/$max)),$steps);
-        return($ret);
+        $this->template->tl=$tl;
     }
-    
-    function addclass($props,$class) {
-        $props->class[]=$class;
-        $props->$class=1;
-        return($props);
-    }
-    
-    function isclass($props,$class) {
-        return(isset($props->$class));
-    }
-    
+
     function renderTw() {
-        $opts=$this->opts;
-        if (!$opts->wids || count($wids)>1) {
-            self::mexit(2,"Bad window ids!\n");
+        if (Opts::isDefault("max_rows")) {
+            Opts::setOpt("max_rows",20);
         }
-        $map=self::createMap($opts->mapname);
-        $items= \App\Model\ItemStat::IsSearch($opts);
-        if (!$items) {
-            self::mexit(2,"No items!\n");
+        if (count(Opts::getOpt("window_ids"))==0) {
+            throw New Exception("No windows to create report. Use -w.");
         }
-        $w=\App\Model\Tw::twGet($opts->wids);
-        $map->w=$w;
-        $items=$items->fetchAll();
-        $maxcv=0;
-        $maxloi=0;
-        $maxstddev=0;
-        $mincv=0;
-        $minloi=0;
-        $minstddev=0;
-        $mincnt=0;
-        $maxcnt=0;
-        foreach ($items as $item) {
-            $maxcv=max($maxcv,$item->cv);
-            $mincv=min($mincv,$item->cv);
-            $minstddev=min($minstddev,$item->stddev_);
-            $maxstddev=max($maxstddev,$item->stddev_);
-            $minloi=min($minloi,$item->loi);
-            $maxloi=max($maxloi,$item->loi);
-            $mincnt=min($mincnt,$item->cnt);
-            $maxcnt=max($maxcnt,$item->cnt);
+        if (count(Opts::getOpt("window_ids"))>1) {
+            throw New Exception("Tw report needs only one window.");
         }
-        foreach ($items as $item) {
-            $props=New \StdClass();
-            $props->cv=$item->cv;
-            $props->loi=$item->loi;
-            $props->stddev=$item->stddev_;
-            $props->min=$item->min_;
-            $props->max=$item->max_;
-            $props->avg=$item->avg_;
-            $props->cnt=$item->cnt;
-            $props->gurl1=sprintf("%s/chart.php?itemids[]=%d&period=%d&stime=%d&width=200&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
-            $props->gurl2=sprintf("%s/chart.php?itemids[]=%d&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$item->itemid,$w->seconds,$w->fstamp,time());
-            if ($opts->outputverb=="expanded") {
-                $props->description= HsPresenter::expandHost($item->hostid).":".IsPresenter::expandItem($item->itemid);
+        $items = ItemStat::IsSearch()->fetchAll();
+        if (count($items) == 0) {
+            throw New Exception("No items to create report.");
+        }
+        $w = Tw::twGet(Opts::getOpt("window_ids"));
+        foreach ($items as $c=>$i) {
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                $i->key=IsPresenter::expandItem($i->itemid,true);
+                $i->url1=Util::zabbixGraphUrl1(Array($i->itemid), $w->fstamp, $w->seconds);
+                $i->url2=Util::zabbixGraphUrl2(Array($i->itemid), $w->fstamp, $w->seconds);
             } else {
-                $props->description=$item->itemid;
+                $i->key=$i->itemid;
+                $i->url1="";
+                $i->url2="";
             }
-            
-            $props->height=round(50*($item->loi/$maxloi));
-            $props->width=100;
-            $props->class=Array();
-            $props=self::addclass($props,"loi".self::numtostep($item->loi,$minloi,$maxloi,10));
-            $props=self::addclass($props,"cv".self::numtostep($item->cv,$mincv,$maxcv,10));
-            $props=self::addclass($props,"stddev".self::numtostep($item->stddev_,$minstddev,$maxstddev,10));
-            $props=self::addclass($props,"cnt".self::numtostep($item->cnt,$mincnt,$maxcnt,10));
-           
-            $child=New Node($item->itemid);
-            $child->setValue($props);
-            $map->addChild($child);
         }
-        $this->template->map=$map;
-        $i=1;
-        $zitemids="";
-        foreach ($items as $item) {
-            $zitemids.="itemids[]=$item->itemid&";
-            $i++;
-            if ($i>10) break;
+        $hosts = HostStat::HsSearch()->fetchAll();
+        foreach ($hosts as $c=>$h) {
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                $h->host=HsPresenter::expandHost($h->hostid);
+            } else {
+                $h->host=$h->hostid;
+            }
         }
-        $this->template->top10graph=sprintf("%s/chart.php?%s&&graphtype=0&period=%d&stime=%d&width=1025&curtime=%d",$opts->zaburl,$zitemids,$w->seconds,$w->fstamp,time());
+        
+        $this->template->items = $items;
+        $this->template->hosts = $hosts;
+        $this->template->w = $w;
+        $this->template->title=sprintf("Monda Timeline for window id %s",$w[0]);
     }
     
-    function TwTreeMap($tree,$twids,$stats,$zstats,$id=false) {
+    function renderHs() {
+        if (Opts::isDefault("max_rows")) {
+            Opts::setOpt("max_rows",20);
+        }
+        if (count(Opts::getOpt("hostids"))==0) {
+            throw New Exception("No hosts to create report. Use --hostids.");
+        }
+        if (count(Opts::getOpt("hostids"))>1) {
+            throw New Exception("Host report needs only one host.");
+        }
+        $hostids=Opts::getOpt("hostids");
+        $items = ItemStat::IsSearch()->fetchAll();
+        if (count($items) == 0) {
+            throw New Exception("No items to create report.");
+        }
+        $istats = ItemStat::IsStats();
+        $wstats = Tw::twStats();
+        $windows = Tw::twSearch()->fetchAll();
+        foreach ($windows as $w) {
+            Opts::setOpt("window_ids",Array($w->id));
+            $is=ItemStat::IsSearch()->fetchAll();
+            foreach ($is as $c=>$i) {
+                if (Opts::getOpt("output_verbosity") == "expanded") {
+                    $i->key=IsPresenter::expandItem($i->itemid,true);
+                    $i->url1=Util::zabbixGraphUrl1(Array($i->itemid), $w->fstamp, $w->seconds);
+                    $i->url2=Util::zabbixGraphUrl2(Array($i->itemid), $w->fstamp, $w->seconds);
+                } else {
+                    $i->key=$i->itemid;
+                    $i->url1="";
+                    $i->url2="";
+                }
+                $i->class = Array();
+                $i = Util::addclass($i, "loi" . Util::numtostep($i->loi, $istats->minloi, $istats->maxloi, 10));
+            }
+            $w->is=$is;
+            $w->class = Array();
+            $w = Util::addclass($w, "loi" . Util::numtostep($w->loi, $wstats->minloi, $wstats->maxloi, 10));
+        }
+        $this->template->windows = $windows;
+        $this->template->title=sprintf("Monda Host satus for %s",  HsPresenter::expandHost($hostids[0]));
+    }
+
+    function TwTreeMap($tree, $twids, $stats, $zstats, $id = false) {
         if (is_array($tree)) {
-            $map=self::TwTreeMap($id,$twids,$stats,$zstats,$id);
-            foreach ($tree as $wid=>$subtree) {
-                $submap=self::TwTreeMap($subtree,$twids,$stats,$zstats,$wid);
+            $map = self::TwTreeMap($id, $twids, $stats, $zstats, $id);
+            foreach ($tree as $wid => $subtree) {
+                $submap = self::TwTreeMap($subtree, $twids, $stats, $zstats, $wid);
                 $map->addChild($submap);
             }
             return($map);
         } else {
-            $props=New \StdClass();
-            if (is_int($id) && !array_key_exists($id,$twids)) {
-                $twids[$id]=  \App\Model\Tw::twGet($id);
+            $props = New \StdClass();
+            if (is_int($id) && !array_key_exists($id, $twids)) {
+                $twids[$id] = Tw::twGet($id);
             }
-            if (array_key_exists($id,$twids)) {
-                $window=$twids[$id];
-                $props->id=$window->id;
-                $props->cv=$window->loi;
-                $props->seconds=$window->seconds;
-                $props->processed=$window->processed;
-                $props->found=$window->found;
-                $props->fstamp=$window->fstamp;
-                $props->tstamp=$window->tstamp;
-                $props->loi=$window->loi;
-                $props->loih=$window->loih;
-                $props->size=$window->loi*$this->opts->loi_sizefactor+$this->opts->loi_minsize;
-                $opts2=$this->opts;
-                $opts2->wid=$window->id;
-                if ($this->opts->itemids) {
-                    $itemids=$this->opts->itemids;
+            if (array_key_exists($id, $twids)) {
+                $window = $twids[$id];
+                $props->id = $window->id;
+                $props->cv = $window->loi;
+                $props->seconds = $window->seconds;
+                $props->processed = $window->processed;
+                $props->found = $window->found;
+                $props->fstamp = $window->fstamp;
+                $props->tstamp = $window->tstamp;
+                $props->loi = $window->loi;
+                $props->loih = $window->loih;
+                $props->size = $window->loi * $this->opts->loi_sizefactor + $this->opts->loi_minsize;
+                if (count(Opts::getOpt("itemids"))>0) {
+                    $itemids = Opts::getOpt("itemids");
                 } else {
-                    $opts=$this->opts;
-                    $opts->wids=Array($id);
-                    $itemids=  \App\Model\ItemStat::isToIds($opts);
+                    $itemids = ItemStat::isToIds();
                 }
-                $props->url=self::ZabbixGraphUrl1($itemids,$window->fstamp,$window->seconds);
-                $props->description=$window->description;
-                $props->zabbix=$window->description;
-                $props->class=Array();
-                $props=self::addclass($props,"loi".self::numtostep($window->loi,$stats["minloi"],$stats["maxloi"],10));
-                $props=self::addclass($props,"loih".self::numtostep($window->loih,$stats["minloih"],$stats["maxloih"],10));
-                $props=self::addclass($props,"processed".self::numtostep($window->processed,$stats["minprocessed"],$stats["maxprocessed"],10));
-                $props=self::addclass($props,"ignored".self::numtostep($window->ignored,$stats["minignored"],$stats["maxignored"],10));
+                $props->url = Util::ZabbixGraphUrl1($itemids, $window->fstamp, $window->seconds);
+                $props->description = $window->description;
+                $props->zabbix = $window->description;
+                $props->class = Array();
+                $props = Util::addclass($props, "loi" . self::numtostep($window->loi, $stats["minloi"], $stats["maxloi"], 10));
+                $props = Util::addclass($props, "loih" . self::numtostep($window->loih, $stats["minloih"], $stats["maxloih"], 10));
+                $props = Util::addclass($props, "processed" . self::numtostep($window->processed, $stats["minprocessed"], $stats["maxprocessed"], 10));
+                $props = Util::addclass($props, "ignored" . self::numtostep($window->ignored, $stats["minignored"], $stats["maxignored"], 10));
                 switch ($window->seconds) {
-                    case \App\Model\Monda::_1HOUR:
-                        $props=self::addclass($props,"l_hour");
-                        $props=self::addclass($props,"hour_".date("H",$props->fstamp+date("Z")));
+                    case Monda::_1HOUR:
+                        $props = Util::addclass($props, "l_hour");
+                        $props = Util::addclass($props, "hour_" . date("H", $props->fstamp + date("Z")));
                         break;
-                    case \App\Model\Monda::_1DAY:
-                        $props=self::addclass($props,"l_day");
-                        $props=self::addclass($props,"dow_".date("l",$props->fstamp+date("Z")));
-                        if (date("l",$props->fstamp+date("Z"))==$this->opts->sow) {
-                            $props=self::addclass($props,"day_sow");
+                    case Monda::_1DAY:
+                        $props = Util::addclass($props, "l_day");
+                        $props = Util::addclass($props, "dow_" . date("l", $props->fstamp + date("Z")));
+                        if (date("l", $props->fstamp + date("Z")) == $this->opts->sow) {
+                            $props = Util::addclass($props, "day_sow");
                         }
                         break;
-                    case \App\Model\Monda::_1WEEK:
-                        $props=self::addclass($props,"l_week");
-                        //$props->size=3;
+                    case Monda::_1WEEK:
+                        $props = Util::addclass($props, "l_week");
                         break;
-                    case \App\Model\Monda::_1MONTH:
-                        $props=self::addclass($props,"l_month");
-                        $props=self::addclass($props,"month_".date("M",$props->fstamp+date("Z")));
-                        //$props->size=4;
+                    case Monda::_1MONTH:
+                        $props = Util::addclass($props, "l_month");
+                        $props = Util::addclass($props, "month_" . date("M", $props->fstamp + date("Z")));
                         break;
-                   case \App\Model\Monda::_1YEAR:
-                        $props=self::addclass($props,"l_year");
-                        //$props->size=5;
+                    case Monda::_1YEAR:
+                        $props = Util::addclass($props, "l_year");
                         break;
                 }
-                if ($window->processed==0) {
-                    $props=self::addclass($props,"processed0");
+                if ($window->processed == 0) {
+                    $props = Util::addclass($props, "processed0");
                 }
-                if ($window->found==0) {
-                    $props=self::addclass($props,"found0");
+                if ($window->found == 0) {
+                    $props = Util::addclass($props, "found0");
                 }
             } else {
-                $props->id=$id;
-                $props->loi=0;
+                $props->id = $id;
+                $props->loi = 0;
             }
-            $map=New Node($props->id);
+            $map = New Node($props->id);
             $map->setValue($props);
             return($map);
         }
-    }
-    
-    function renderHs() {
-        $map = New Node("monda");
-        $hosts = \App\Model\HostStat::hsSearch($this->opts)->fetchAll();
-        $windows = \App\Model\Tw::twSearch($this->opts)->fetchAll();
-        $stats = \App\Model\Tw::twStats($this->opts);
-        foreach ($windows as $window) {
-            if (!$window->loi)
-                continue;
-            $twnode = New Node($window->id);
-            $props = New \StdClass();
-            $props->id = $window->id;
-            $props->name = $window->description;
-            $props->loi = $window->loi;
-            $props->size = $window->loi*$this->opts->loi_sizefactor+$this->opts->loi_minsize;
-            $props->url = "";
-            $twnode->setValue($props);
-            foreach ($hosts as $host) {
-                if ($host->windowid != $window->id)
-                    continue;
-                $hostnode = New Node($window->id . $host->hostid);
-                $props = New \StdClass();
-                $props->id = $window->id . $host->hostid;
-                $props->name = HsPresenter::expandHost($host->hostid);
-                $props->loi = $host->loi;
-                $props->size = $host->loi*$this->opts->loi_sizefactor+$this->opts->loi_minsize;
-                $props->url = "";
-                $hostnode->setValue($props);
-                $twnode->addChild($hostnode);
-            }
-            $map->addChild($twnode);
-        }
-        $props = New \StdClass();
-        $props->id = "monda";
-        $map->setValue($props);
-        $this->template->map = $map;
     }
 
 }

@@ -1,0 +1,20 @@
+{block content}
+{foreach $windows as $w}
+    <div id="tw{$w->id}" class="twbox {join(" ",$w->class)}">
+        <a href="{link Map:tw,w=>$w->id}">{$w->description}</a><br>
+        {$w->loi}<br>
+        {$w->processed}/{$row->ignored}<br>
+        {$w->cv}<br>
+        {$w->cnt}<br>
+        {foreach $w->is as $i}
+          <div id="i{$i->itemid}" class="isbox {join(" ",$w->class)}">
+            <a target="_blank" href="{$i->url1}">{$i->key}</a><br>
+            {$i->loi}<br>
+            {$i->stddev_|number:3}<br>
+            {$i->cv|number:3}<br>
+            {$i->cnt}<br>
+          </div>
+        {/foreach}
+    </div>
+{/foreach}
+{/block}

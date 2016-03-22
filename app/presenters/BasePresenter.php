@@ -32,7 +32,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             CliDebug::err($msg);
         }
         if (!getenv("MONDA_CLI")) {
-            $this->terminate();
+            //$this->terminate();
         } else {
             exit($code);
         }
@@ -156,7 +156,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         Opts::setOpt("csv_separator", htmlspecialchars_decode(Opts::getOpt("csv_separator")),"default");
         Opts::setOpt("csv_field_enclosure", htmlspecialchars_decode(Opts::getOpt("csv_field_enclosure")),"default");
         if (!Opts::isDefault("csv_fields")) {
-            Opts::setOpt("csv_fields", array_flip(preg_split("/,/", Opts::getOpt("csv_fields"))),"default");
+            Opts::optToArray("csv_fields");
         }
         if (Opts::isOpt("nocache")) {
             Opts::setOpt("sql_cache_expire", 0, "default");

@@ -27,9 +27,7 @@ Debugger::$maxLen = 2000;
 Debugger::$strictMode = false;
 
 Opts::startup();
-if (isset($argv)) {    
-    Opts::preReadOpts();
-}
+Opts::preReadOpts();
 
 $container = $configurator->createContainer();
 

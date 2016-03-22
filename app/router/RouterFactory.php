@@ -24,7 +24,7 @@ class RouterFactory {
                    Array('action' => 'Default:default')
                     );
         } else {
-            $router[] = new Route('index.php', 'Default:default', Route::ONE_WAY);
+            $router[] = new Route('/', 'Map:tl', Route::ONE_WAY);
             $router[] = new Route('/<presenter>/<action>', 'Default:default');
         }
         return $router;

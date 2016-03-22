@@ -30,8 +30,9 @@ putenv("MONDA_LOGDIR=$logdir");
 
 putenv("MONDA_WWW=1");
 if (!getenv("MONDARC")) {
-    putenv("MONDARC=" . __DIR__ . "../app/config/mondarc");
+    putenv("MONDARC=" . __DIR__ . "/../app/config/mondarc");
 }
 
 $container = require __DIR__ . '/../app/bootstrap.php';
+
 $container->getByType('Nette\Application\Application')->run();

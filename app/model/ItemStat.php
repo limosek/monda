@@ -139,7 +139,7 @@ class ItemStat extends Monda {
                  ORDER BY AVG(i.loi)*COUNT(i.windowid) DESC
                  LIMIT ?
                 ",$itemids,Opts::getOpt("max_rows"));
-        return($rows);
+        return($rows->fetchAll());
     }
     
     static function isToIds($pkey=false) {
@@ -214,6 +214,8 @@ class ItemStat extends Monda {
         self::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
         Monda::sreset();
         $wid=false;
+        $sumcv=0;
+        $sumcnt=0;
         while ($row=$rows->fetch()) {
             CliDebug::info(".");
             Monda::sadd("found");
@@ -240,6 +242,8 @@ class ItemStat extends Monda {
                 continue;
             }
             Monda::sadd("processed");
+            $sumcv+=$cv;
+            $sumcnt+=$row->cnt;
             Monda::mquery("INSERT INTO itemstat "
                     . "       (windowid,    itemid, min_,   max_,   avg_,   stddev_,    cnt,    cv) "
                     . "VALUES (?       ,    ?,      ?,      ?,      ?,      ?,          ?,      ?)",
@@ -255,7 +259,7 @@ class ItemStat extends Monda {
             if ($wid!=$row->windowid) {
                 if ($wid) {
                     Monda::mquery("UPDATE timewindow
-                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?
+                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?, avgcv=?, avgcnt=?
                     WHERE id=?",
                     New DateTime(),
                     Monda::sget("found"),
@@ -265,16 +269,20 @@ class ItemStat extends Monda {
                     Monda::sget("lowavg"),
                     Monda::sget("lowstddev"),
                     Monda::sget("lowcv"),
+                    $sumcv/Monda::sget("processed"),
+                    $sumcnt/Monda::sget("found"),
                     $wid);
                 }
                 Monda::sreset();
+                $sumcv=0;
+                $sumcnt=0;
                 $wid=$row->windowid;
             }
         }
         if (Monda::sget("found")>0) {
             if ($wid) {
                 Monda::mquery("UPDATE timewindow
-                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?
+                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?, avgcv=?, avgcnt=?
                     WHERE id=?",
                     New DateTime(),
                     Monda::sget("found"),
@@ -284,6 +292,8 @@ class ItemStat extends Monda {
                     Monda::sget("lowavg"),
                     Monda::sget("lowstddev"),
                     Monda::sget("lowcv"),
+                    $sumcv/Monda::sget("processed"),
+                    $sumcnt/Monda::sget("found"),
                     $wid);
             }          
             $ret=Monda::sget();
@@ -332,6 +342,7 @@ class ItemStat extends Monda {
 
     static public function IsMultiCompute() {
         Opts::setOpt("window_empty",true);
+        Opts::setOpt("tw_minloi",-1);
         $wids=Tw::twToIds();
         if (Opts::getOpt("max_windows_per_query") && count($wids)>Opts::getOpt("max_windows_per_query")) {
             foreach (array_chunk($wids,Opts::getOpt("max_windows_per_query")) as $subwids) {
@@ -371,17 +382,9 @@ class ItemStat extends Monda {
         $wids=Tw::twToIds();
         CliDebug::warn(sprintf("Need to compute itemstat loi for %d windows...",count($wids)));
         if (count($wids)>0) {
-            $stat=self::mquery("
-                SELECT MIN(cv) AS mincv,
-                    MAX(cv) AS maxcv,
-                    MIN(cnt) AS mincnt,
-                    MAX(cnt) AS maxcnt
-                FROM itemstat
-                WHERE windowid IN (?)",$wids)->fetch();
-
             $lsql=self::mquery("
                 UPDATE itemstat 
-                SET loi=100*(cv/?)
+                SET loi=cnt*(cv/?)
                 WHERE windowid IN (?)
                 ",Opts::getOpt("max_cv"),$wids);
         }
