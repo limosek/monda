@@ -75,9 +75,20 @@ class IsPresenter extends BasePresenter {
             ItemStat::itemsToIds();
         }
     }
+    
+    static function expandItemParams($item) {
+        if (preg_match("/\[(.*)\]/",$item[0]->key_,$params)) {
+            $params=preg_split("/,/",$params[1]);
+            foreach ($params as $i=>$p) {
+                $item[0]->name=str_replace('$'.($i+1),$p,$item[0]->name);
+            }
+        }
+        return($item);
+    }
 
     static function expandItem($itemid, $withhost = false, $desc = false) {
         $ii = ItemStat::itemInfo($itemid);
+        $ii=self::expandItemParams($ii);
         if (count($ii) > 0) {
             if ($desc) {
                 $itxt = $ii[0]->name;

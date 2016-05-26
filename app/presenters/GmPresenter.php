@@ -5,12 +5,18 @@ namespace App\Presenters;
 use \Exception,
     Nette,
     App\Model,
+    App\Model\Opts,
+    App\Model\Tw,
+    App\Model\Util,
+    App\Model\ItemStat,
+    App\Model\ItemCorr,
+    App\Model\CliDebug,
     Nette\Utils\DateTime as DateTime;
 
 class GmPresenter extends MapPresenter {
 
     public function Help() {
-        \App\Model\CliDebug::warn("
+        CliDebug::warn("
      Graphviz Map operations
      
      gm:tws  [common opts]
@@ -18,21 +24,10 @@ class GmPresenter extends MapPresenter {
  
      [common opts]
     \n");
-        self::helpOpts();
-    }
-    
-    public function getOpts($ret) {
-        $ret=parent::getOpts($ret);
-        $ret=  IcPresenter::getOpts($ret);
-        $ret=self::parseOpt($ret,
-                "tl_items",
-                false,"tl_items",
-                "How many items to place in url of graphs",
-                10,
-                10
-                );
-        $ret=self::readCfg($ret,Array("Ic","Is","Hs","Tw","Gm"));
-        return($ret);
+        Opts::helpOpts();
+        Opts::showOpts();
+        echo "\n";
+        self::mexit();
     }
     
     public function renderGm() {
@@ -40,26 +35,28 @@ class GmPresenter extends MapPresenter {
         self::mexit();
     }
     
+    public function startup() {
+        parent::startup();
+    }
+    
     function renderTws() {
         $this->setLayout(false);
-        $opts = $this->opts;
-        $wids = \App\Model\Tw::twToIds($opts);
-        $tree = \App\Model\Tw::twTree($wids);
-        $stats = \App\Model\Tw::twStats($opts);
+        $wids = Tw::twToIds();
+        $tree = Tw::twTree($wids);
+        $stats = Tw::twStats();
         $this->template->title = "Monda TimeWindows";
-        $opts = IcPresenter::getOpts($this->opts);
-        $opts->corr = "samehour";
-        $ics = Model\ItemCorr::icWStats($opts)->fetchAll();
+        Opts::setOpt("corr_type","samehour");
+        $ics = ItemCorr::icTwStats()->fetchAll();
         if (sizeof($ics) > 0) {
             foreach ($ics as $ic) {
-                $opts->wids = Array($ic->windowid1, $ic->windowid2);
-                $opts->max_rows = 10;
-                $itemids = Model\ItemCorr::icToIds($opts, false, true);
+                Opts::setOpt("window_ids",Array($ic->windowid1, $ic->windowid2));
+                Opts::setOpt("max_rows",10);
+                $itemids = ItemCorr::icToIds(false, true);
                 $wcorr[$ic->windowid1][$ic->windowid2] = $ic->acorr * 10;
-                $w1 = Model\Tw::twGet($ic->windowid1);
-                $w2 = Model\Tw::twGet($ic->windowid2);
-                $urls[$ic->windowid1][$ic->windowid2] = self::ZabbixGraphUrl1($itemids, $w1->fstamp, $w1->seconds);
-                $urls[$ic->windowid2][$ic->windowid1] = self::ZabbixGraphUrl1($itemids, $w2->fstamp, $w2->seconds);
+                $w1 = Tw::twGet($ic->windowid1);
+                $w2 = Tw::twGet($ic->windowid2);
+                $urls[$ic->windowid1][$ic->windowid2] = Util::ZabbixGraphUrl1($itemids, $w1->fstamp, $w1->seconds);
+                $urls[$ic->windowid2][$ic->windowid1] = Util::ZabbixGraphUrl1($itemids, $w2->fstamp, $w2->seconds);
             }
             $this->template->wcorr = $wcorr;
             $this->template->urls = $urls;
@@ -67,49 +64,56 @@ class GmPresenter extends MapPresenter {
         $twids = Array();
         foreach ($wids as $w) {
             if (!array_key_exists($w, $twids)) {
-                $twids[$w] = \App\Model\Tw::twGet($w);
+                $twids[$w] = Tw::twGet($w);
             }
         }
-        $map = self::TwTreeMap($tree, $twids, $stats, false, $opts->mapname);
+        $map = self::TwTreeMap($tree, $twids, $stats);
         $this->template->map = $map;
         $this->template->stats = $stats;
     }
 
     function renderIcw() {
-        $opts=TwPresenter::getOpts($this->opts);
-        $opts=IsPresenter::getOpts($opts);
-        $opts=IcPresenter::getOpts($opts);
+        
         $this->setLayout(false);
         $this->template->title = "Monda Correlations";
-        $tws=Model\Tw::twToIds($this->opts);
+        $tws=Tw::twToIds();
         if (sizeof($tws)>1) {
             self::mexit(2,"Specify only one window!\n");
         }
-        $ics=  Model\ItemCorr::icQuickSearch($this->opts)->fetchAll();
+        $ics=  ItemCorr::icSearch()->fetchAll();
         if (sizeof($ics)==0) {
             self::mexit(2,"No correlations to report?\n");
         }
-        $window=  Model\Tw::twGet($tws);
+        $window= Tw::twGet($tws);
+        $iccomb=Array();
         foreach ($ics as $i=>$ic) {
-            if ($ic->itemid1==$ic->itemid2) continue;
+            if ($ic->itemid1==$ic->itemid2) {
+                unset($ics[$i]);
+                continue;
+            }
+            if (array_key_exists($ic->itemid2.$ic->itemid1,$iccomb)) {
+                unset($ics[$i]);
+                continue;
+            }
+            $iccomb[$ic->itemid1.$ic->itemid2]=1;
             $ics[$i]->size=$ic->corr*5;
             $ics[$i]->label=sprintf("%.2f",$ic->corr);
-            $info1=Model\ItemStat::iteminfo($ic->itemid1);
-            $info2=Model\ItemStat::iteminfo($ic->itemid2);
+            $info1=ItemStat::iteminfo($ic->itemid1);
+            $info2=ItemStat::iteminfo($ic->itemid2);
             $iteminfo[$ic->itemid1]= $info1[0];
             $iteminfo[$ic->itemid2]= $info2[0];
             $hostid1=$info1[0]->hostid;
             $hostid2=$info2[0]->hostid;
             $hosts[$hostid1][]=$ic->itemid1;
             $hosts[$hostid2][]=$ic->itemid2;
-            if ($opts->outputverb=="expanded") {
+            if (Opts::getOpt("output_verbosity")=="expanded") {
                 $hostsinfo[$hostid1]=  HsPresenter::expandHost($info1[0]->hostid);
                 $hostsinfo[$hostid2]=  HsPresenter::expandHost($info2[0]->hostid);
-                $itemsinfo[$ic->itemid1]=  addslashes(IsPresenter::expandItem($ic->itemid1,false,true));
-                $itemsinfo[$ic->itemid2]=  addslashes(IsPresenter::expandItem($ic->itemid2,false,true));
-                $ics[$i]->url=self::ZabbixGraphUrl2(Array($ic->itemid1,$ic->itemid2),$window->fstamp,$window->seconds);
-                $iurl[$ic->itemid1]=self::ZabbixGraphUrl1(Array($ic->itemid1),$window->fstamp,$window->seconds);
-                $iurl[$ic->itemid2]=self::ZabbixGraphUrl1(Array($ic->itemid2),$window->fstamp,$window->seconds);
+                $itemsinfo[$ic->itemid1]=  addslashes(IsPresenter::expandItem($ic->itemid1,true,true));
+                $itemsinfo[$ic->itemid2]=  addslashes(IsPresenter::expandItem($ic->itemid2,true,true));
+                $ics[$i]->url=Util::ZabbixGraphUrl2(Array($ic->itemid1,$ic->itemid2),$window->fstamp,$window->seconds);
+                $iurl[$ic->itemid1]=Util::ZabbixGraphUrl1(Array($ic->itemid1),$window->fstamp,$window->seconds);
+                $iurl[$ic->itemid2]=Util::ZabbixGraphUrl1(Array($ic->itemid2),$window->fstamp,$window->seconds);
             } else {
                 $hostsinfo[$hostid1]=$info1[0]->hostid;
                 $hostsinfo[$hostid2]=$info2[0]->hostid;
@@ -124,6 +128,7 @@ class GmPresenter extends MapPresenter {
         $this->template->itemsinfo=$itemsinfo;
         $this->template->iurl=$iurl;
         $this->template->ics=$ics;
+        dump($ics);
         $this->template->window=$window;
     }
 

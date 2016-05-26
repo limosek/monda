@@ -324,7 +324,7 @@ class Tw extends Monda {
             LEFT JOIN timewindow tw6 ON (tw6.parentid=tw5.id)
             WHERE tw2.id IN (?) OR tw3.id IN (?) OR tw4.id IN (?) OR tw5.id IN (?)
             AND tw1.serverid=? AND tw2.serverid=? AND tw3.serverid=? AND tw4.serverid=?
-            ORDER BY tw1.tfrom,tw2.tfrom,tw3.tfrom,tw4.tfrom", $twids, $twids, $twids, $twids, Opts::getOpt("zabbix_id"), Opts::getOpt("zid"), Opts::getOpt("zid"), Opts::getOpt("zid"));
+            ORDER BY tw1.tfrom,tw2.tfrom,tw3.tfrom,tw4.tfrom", $twids, $twids, $twids, $twids, Opts::getOpt("zabbix_id"), Opts::getOpt("zabbix_id"), Opts::getOpt("zabbix_id"), Opts::getOpt("zabbix_id"));
         $treeids = Array();
         foreach ($result as $row) {
             if ($row->id4) {

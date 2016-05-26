@@ -108,9 +108,9 @@ class Opts extends Nette\Object {
             }
         }
         if (Opts::getOpt("debug") == "debug") {
-            $configurator->setDebugMode(true);
+            Debugger::$productionMode=false;
         } else {
-            $configurator->setDebugMode(false);
+            Debugger::$productionMode=true;
         }
         //error_reporting(!E_DEPRECATED);
         CliDebug::startup(Opts::getOpt("debug"));

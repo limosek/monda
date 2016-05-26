@@ -170,11 +170,11 @@ class MapPresenter extends BasePresenter {
         $this->template->title=sprintf("Monda Host satus for %s",  HsPresenter::expandHost($hostids[0]));
     }
 
-    function TwTreeMap($tree, $twids, $stats, $zstats, $id = false) {
+    function TwTreeMap($tree, $twids, $stats, $id = false) {
         if (is_array($tree)) {
-            $map = self::TwTreeMap($id, $twids, $stats, $zstats, $id);
+            $map = self::TwTreeMap($id, $twids, $stats, $id);
             foreach ($tree as $wid => $subtree) {
-                $submap = self::TwTreeMap($subtree, $twids, $stats, $zstats, $wid);
+                $submap = self::TwTreeMap($subtree, $twids, $stats, $wid);
                 $map->addChild($submap);
             }
             return($map);
@@ -194,7 +194,7 @@ class MapPresenter extends BasePresenter {
                 $props->tstamp = $window->tstamp;
                 $props->loi = $window->loi;
                 $props->loih = $window->loih;
-                $props->size = $window->loi * $this->opts->loi_sizefactor + $this->opts->loi_minsize;
+                $props->size = $window->loi * Opts::getOpt("loi_sizefactor") + Opts::getOpt("loi_minsize");
                 if (count(Opts::getOpt("itemids"))>0) {
                     $itemids = Opts::getOpt("itemids");
                 } else {
@@ -204,10 +204,10 @@ class MapPresenter extends BasePresenter {
                 $props->description = $window->description;
                 $props->zabbix = $window->description;
                 $props->class = Array();
-                $props = Util::addclass($props, "loi" . self::numtostep($window->loi, $stats["minloi"], $stats["maxloi"], 10));
-                $props = Util::addclass($props, "loih" . self::numtostep($window->loih, $stats["minloih"], $stats["maxloih"], 10));
-                $props = Util::addclass($props, "processed" . self::numtostep($window->processed, $stats["minprocessed"], $stats["maxprocessed"], 10));
-                $props = Util::addclass($props, "ignored" . self::numtostep($window->ignored, $stats["minignored"], $stats["maxignored"], 10));
+                $props = Util::addclass($props, "loi" . Util::numtostep($window->loi, $stats["minloi"], $stats["maxloi"], 10));
+                $props = Util::addclass($props, "loih" . Util::numtostep($window->loih, $stats["minloih"], $stats["maxloih"], 10));
+                $props = Util::addclass($props, "processed" . Util::numtostep($window->processed, $stats["minprocessed"], $stats["maxprocessed"], 10));
+                $props = Util::addclass($props, "ignored" . Util::numtostep($window->ignored, $stats["minignored"], $stats["maxignored"], 10));
                 switch ($window->seconds) {
                     case Monda::_1HOUR:
                         $props = Util::addclass($props, "l_hour");
@@ -216,7 +216,7 @@ class MapPresenter extends BasePresenter {
                     case Monda::_1DAY:
                         $props = Util::addclass($props, "l_day");
                         $props = Util::addclass($props, "dow_" . date("l", $props->fstamp + date("Z")));
-                        if (date("l", $props->fstamp + date("Z")) == $this->opts->sow) {
+                        if (date("l", $props->fstamp + date("Z")) == Opts::getOpt("sow")) {
                             $props = Util::addclass($props, "day_sow");
                         }
                         break;

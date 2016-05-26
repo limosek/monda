@@ -25,7 +25,9 @@ digraph ItemCorrelationsWindow {
     {/foreach}
     
     {foreach $ics as $ic}
+        {if $ic->itemid1!=$ic->itemid2}
         i{$ic->itemid1}->i{$ic->itemid2} [edgeURL="{$ic->url}", penwidth={$ic->size}, label="{$ic->label}" ];
+        {/if}
     {/foreach}
    }
 }

@@ -47,7 +47,7 @@ class Monda extends Nette\Object {
                     throw $e;
                 }
             } else {
-                throw New Exception("Undefined parameters!");
+                throw New Exception("Undefined parameters zabbix_api_url, zabbix_api_user, zabbix_api_pw?");
             }
             return(self::$api);
         } else {
