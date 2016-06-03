@@ -129,6 +129,11 @@ class ItemCorr extends Monda {
         } else {
             $wids=Opts::getOpt("window_ids");
         }
+        if (Opts::getOpt("ic_notsame")) {
+            $notsamesql="AND (windowid1<>windowid2 OR ic.itemid1<>ic.itemid2)";
+        } else {
+            $notsamesql="";
+        }
         if (count($wids)>0) {
             $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
         } else {
@@ -147,6 +152,7 @@ class ItemCorr extends Monda {
                      AND ic.loi>?
                      $corrsql
                      AND ic.corr>? AND ic.corr<? 
+                     $notsamesql
                  ORDER BY ic.loi DESC
                  LIMIT ?
                 ",Opts::getOpt("ic_minloi"),Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));

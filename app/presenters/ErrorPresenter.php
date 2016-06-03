@@ -39,8 +39,12 @@ class ErrorPresenter extends DefaultPresenter implements Nette\Application\IPres
 }
 
 class Error4xxPresenter extends ErrorPresenter {
+    
     public function run(Nette\Application\Request $request) {
         global $argv;
+        
+        $e = $request->getParameter('exception');
+        CliDebug::err($e->getMessage());
         if ($argv[1]=="is") {
             IsPresenter::Help();
         } elseif ($argv[1]=="tw") {

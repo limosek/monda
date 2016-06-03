@@ -110,11 +110,10 @@ class Monda extends Nette\Object {
             }
             if (count($ret)==0) {
                 CliDebug::info("Zabbix API $cmd returned empty result. Check permissions:\n".print_r($req,true)."\n");
-            } else {
-                self::$apicache->save($ckey, $ret, array(
-                    Cache::EXPIRE => Opts::getOpt("api_cache_expire"),
-                ));
             }
+            self::$apicache->save($ckey, $ret, array(
+                Cache::EXPIRE => Opts::getOpt("api_cache_expire"),
+            ));
         }
         return($ret);
     }

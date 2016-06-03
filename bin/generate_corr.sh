@@ -9,10 +9,13 @@ fi
 graph=$1
 shift
 
+outdir=$(dirname $0)/../out
+monda=$(dirname $0)/monda.php
+
 if ! [ -f "${graph}_ic.txt" ]; then
-  echo $(dirname $0)/monda.php ic:matrix "$@"
-  $(dirname $0)/monda.php ic:matrix "$@" >${graph}_ic.txt
-  $(dirname $0)/monda.php ic:show -Ov expanded "$@" >${graph}_ic.names | head -n 1
+  echo $monda ic:matrix "$@"
+  $monda ic:matrix "$@" >${outdir}/${graph}_ic.txt
+  $monda ic:show -Ov expanded "$@" >${outdir}/${graph}_ic.names | head -n 1
 fi
 
 octave -q <<EOF
@@ -26,7 +29,7 @@ f=figure();
 set(f,'papertype', 'a4');
 colorbar();
 surface(x,y,h);
-print("${graph}-corr.png");
+print("${outdir}/${graph}-corr.png");
 
 EOF
 

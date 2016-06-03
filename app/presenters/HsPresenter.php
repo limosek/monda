@@ -47,10 +47,25 @@ class HsPresenter extends BasePresenter {
         Opts::addOpt(
                 false, "hosts", "Hostnames to get", false, "All"
         );
+        Opts::addOpt(
+                false, "anonymize_hosts", "Anonymize host names", false, "no"
+        );
+        Opts::addOpt(
+                false, "hostname_restricted_chars", "Characters mangled in hostnames", false, "none"
+        );
         Opts::setDefaults();
         Opts::readCfg(Array("Hs"));
         Opts::readOpts($this->params);
         self::postCfg();
+        if ($this->action=="stats") {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("hostid","host","loi"));
+            }
+        } else {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("hostid","host","windowid","loi"));
+            }
+        }
     }
 
     static function postCfg() {
@@ -64,6 +79,9 @@ class HsPresenter extends BasePresenter {
         if (is_array(Opts::getOpt("hostids"))) {
             CliDebug::dbg(sprintf("Hostids selected: %s\n", join(",", Opts::getOpt("hostids"))));
         }
+        if (!Opts::getOpt("anonymize_key") && Opts::getOpt("anonymize_hosts")) {
+            self::mexit(2,"You must use anonymize_key to anonymize hosts.");
+        }
     }
 
     static function expandHost($hostid) {
@@ -74,7 +92,15 @@ class HsPresenter extends BasePresenter {
         );
         $h = Monda::apiCmd("hostGet", $iq);
         if (count($h) > 0) {
-            return($h[0]->host);
+            if (Opts::getOpt("anonymize_hosts")) {
+                return(Util::encrypt($h[0]->host,Opts::getOpt("anonymize_key")));
+            } else {
+                if (Opts::getOpt("hostname_restricted_chars")) {
+                    return(strtr($h[0]->host,Opts::getOpt("hostname_restricted_chars"),"_____________"));
+                } else {
+                    return($h[0]->host);
+                }
+            }
         } else {
             return("unknown");
         }

@@ -21,6 +21,8 @@ class CliDebug {
         "critical" => 4
     );
     private static $level;
+    private static $obuff;
+    private static $ebuff;
     
     static function comparelevel($l1,$l2) {
         if (!is_numeric($l1)) {
@@ -58,12 +60,14 @@ class CliDebug {
     static function log($message,$priority=Debugger::INFO) {
         if (self::comparelevel($priority,self::getLevel())) {
             fwrite(STDERR,$message);
+            self::$obuff.=$message;
         }
      }
      
      static function write($message,$priority=Debugger::WARNING) {
         if (self::comparelevel($priority,self::getLevel())) {
             fwrite(STDOUT,$message);
+            self::$ebuff.=$message;
         }
      }
      
@@ -85,6 +89,13 @@ class CliDebug {
      
      static function crit($message) {
          self::log($message,Debugger::CRITICAL);
+     }
+     
+     static function getLog() {
+         return(self::$obuff);
+     }
+     static function getErrorLog() {
+         return(self::$ebuff);
      }
 }
     

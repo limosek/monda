@@ -15,6 +15,8 @@ if (getenv("MONDA_WWW")) {
     define("STDOUT",$o);
 }
 
+define("APP_DIR",__DIR__);
+
 $configurator->createRobotLoader()
 	->addDirectory(__DIR__)
 	->addDirectory(__DIR__ . '/../vendor/')

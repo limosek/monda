@@ -43,6 +43,9 @@ class IcPresenter extends BasePresenter {
                 false, "ic_minloi", "Select only item correlation which have loi bigger than this/=.", 0, 0
         );
         Opts::addOpt(
+                false, "ic_notsame", "Report only correlations with other items, not itself (corr<>1)", 0, 0
+        );
+        Opts::addOpt(
                 false, "time_precision", "Time precision (maximum difference in time for correlation) in seconds", 5, 5
         );
         Opts::addOpt(
@@ -59,6 +62,15 @@ class IcPresenter extends BasePresenter {
         Opts::readCfg(Array("Ic"));
         Opts::readOpts($this->params);
         self::postCfg();
+        if ($this->action=="stats") {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("itemid1","itemid2","wcnt1","wcnt2","acorr"));
+            }
+        } else {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("itemid1","itemid2","corr","loi"));
+            }
+        }
     }
 
     public static function postCfg() {
@@ -101,14 +113,14 @@ class IcPresenter extends BasePresenter {
         $itemids = Array();
         if ($rows) {
             $rows = $rows->fetchAll();
-            if (sizeof($opts->wids) == 1) {
+            if (sizeof(Opts::getOpt("window_ids")) == 1) {
                 foreach ($rows as $r) {
                     $m[$r->itemid1][$r->itemid2] = $r->corr;
                     $m[$r->itemid2][$r->itemid1] = $r->corr;
                     $itemids[$r->itemid1] = true;
                     $itemids[$r->itemid2] = true;
                 }
-            } elseif (sizeof($opts->wids) == 2) {
+            } elseif (sizeof(Opts::getOpt("window_ids")) == 2) {
                 foreach ($rows as $r) {
                     if ($r->windowid1 != $r->windowid2) {
                         $m[$r->itemid1][$r->itemid2] = $r->corr;

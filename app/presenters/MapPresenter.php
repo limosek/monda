@@ -13,28 +13,13 @@ use App\Model\ItemStat,
     App\Model\Opts,
     App\Model\CliDebug,
     Exception,
+    Nette\Templating\FileTemplate,
     Nette\Utils\DateTime as DateTime,
     Tree\Node\Node;
 
 class MapPresenter extends BasePresenter {
 
-    public function Help() {
-        CliDebug::warn("
-     Map operations
-     
-     map:tw -w id [common opts]
-     map:tws [common opts]
-     map:icw [common opts]
-     
-    [common opts]
-     \n");
-        Opts::helpOpts();
-        Opts::showOpts();
-        echo "\n";
-        self::mexit();
-    }
-
-    public function startup() {
+    function startup() {
         parent::startup();
         TwPresenter::startup();
         HsPresenter::startup();
@@ -43,8 +28,6 @@ class MapPresenter extends BasePresenter {
         EcPresenter::startup();
 
         Opts::addOpt(false, "tw_graph_items", "How many items to place in url of graphs", 10, 10
-        );
-        Opts::addOpt(false, "map_output", "Selector for map type to create", "svg", "svg", Array("svg")
         );
         Opts::addOpt(false, "loi_sizefactor", "Size factor for loi", 2, 2
         );
@@ -59,19 +42,18 @@ class MapPresenter extends BasePresenter {
     static function postCfg() {
         parent::postCfg();
         TwPresenter::postCfg();
-        //HsPresenter::postCfg();
         IsPresenter::postCfg();
         IcPresenter::postCfg();
         EcPresenter::postCfg();
     }
 
-    public function createMap($name, $props = false) {
+    static function createMap($name, $props = false) {
         $map = New Node($name);
         $props->name = $name;
         $map->setValue($props);
         return($map);
     }
-    
+
     function renderTl() {
         $tl=Tw::twSearch()->fetchAll();
         $stats=Tw::twStats();

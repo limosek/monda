@@ -60,11 +60,26 @@ class IsPresenter extends BasePresenter {
         Opts::addOpt(
                 false, "items", "Item keys to get. Use ~ to add more items. Prepend item by @ to use regex.", false, "All"
         );
+        Opts::addOpt(
+                false, "anonymize_items", "Anonymize item names", false, "no"
+        );
+        Opts::addOpt(
+                false, "item_restricted_chars", "Characters mangled in items", false, "none"
+        );
         
         Opts::setDefaults();
         Opts::readCfg(Array("Is"));
         Opts::readOpts($this->params);
         self::postCfg();
+        if ($this->action=="stats") {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("itemid","avg_","loi","wcnt"));
+            }
+        } else {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("itemid","stddev_","cv","loi"));
+            }
+        }
     }
 
     static function postCfg() {
@@ -73,6 +88,9 @@ class IsPresenter extends BasePresenter {
         Opts::optToArray("items", "~");
         if (count(Opts::getOpt("itemids"))==0) {
             ItemStat::itemsToIds();
+        }
+        if (!Opts::getOpt("anonymize_key") && Opts::getOpt("anonymize_items")) {
+            self::mexit(2,"You must use anonymize_key to anonymize items.");
         }
     }
     
@@ -94,6 +112,15 @@ class IsPresenter extends BasePresenter {
                 $itxt = $ii[0]->name;
             } else {
                 $itxt = $ii[0]->key_;
+            }
+            if (Opts::getOpt("anonymize_items")) {
+                $itxt=Util::encrypt($itxt,Opts::getOpt("anonymize_key"));
+            } else {
+                if (Opts::getOpt("item_restricted_chars")) {
+                    return(strtr($itxt,Opts::getOpt("items_restricted_chars"),"_____________"));
+                } else {
+                    return($itxt);
+                }
             }
             if ($withhost) {
                 return(HsPresenter::expandHost($ii[0]->hostid) . ":" . $itxt);

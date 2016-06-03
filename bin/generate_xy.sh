@@ -9,16 +9,19 @@ fi
 graph=$1
 shift
 
-if ! [ -f "${graph}.txt" ]; then
+outdir=$(dirname $0)/../out
+monda=$(dirname $0)/monda.php
+
+if ! [ -f "${outdir}/${graph}.txt" ]; then
   echo $(dirname $0)/monda.php is:history \
     -Om csv --csv_separator ',' --csv_field_enclosure '' "$@"
   $(dirname $0)/monda.php is:history \
-    -Om csv --csv_separator ',' --csv_field_enclosure '' "$@" >${graph}.txt
+    -Om csv --csv_separator ',' --csv_field_enclosure '' "$@" >${outdir}/${graph}.txt
 fi
 
 octave -q <<EOF
 
-h=dlmread("${graph}.txt");
+h=dlmread("${outdir}/{graph}.txt");
 sy=size(h,1);
 sx=size(h,2)-1;
 x=h(2:sy,1);
@@ -37,7 +40,7 @@ title(sprintf("Item data from %s to %s (%d items)",
 xlabel(sprintf("t[S] (start %s, end %s)",
         strftime("%Y-%m-%d %H:%M:%S",localtime(min(x))),
         strftime("%Y-%m-%d %H:%M:%S",localtime(max(x)))));
-print("${graph}-xy.png");
+print("${outdir}/{graph}-xy.png");
 
 EOF
 

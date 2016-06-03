@@ -103,7 +103,7 @@ class Opts extends Nette\Object {
                 }
             }
         } else {
-            if ($_SERVER["REMOTE_ADDR"]=="127.0.0.1") {
+            if ($_SERVER["REMOTE_ADDR"]=="127.0.0.1" || $_SERVER["REMOTE_ADDR"]=="::1") {
                 Opts::setOpt("debug", "debug");
             }
         }
@@ -112,7 +112,7 @@ class Opts extends Nette\Object {
         } else {
             Debugger::$productionMode=true;
         }
-        //error_reporting(!E_DEPRECATED);
+        error_reporting(!E_DEPRECATED);
         CliDebug::startup(Opts::getOpt("debug"));
     }
 

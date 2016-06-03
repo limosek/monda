@@ -16,7 +16,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     
     public $exportdata;
 
-    function mexit($code = 0, $msg = "") {
+    public function mexit($code = 0, $msg = "") {
         if (!$msg) {
             if (array_key_exists("exception", $this->params)) {
                 $msg = $this->params["exception"]->getMessage() . "\n";
@@ -32,7 +32,13 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
             CliDebug::err($msg);
         }
         if (!getenv("MONDA_CLI")) {
-            //$this->terminate();
+            if ($code==0) {
+                echo nl2br(CliDebug::getLog());
+                echo nl2br(CliDebug::getErrorLog());
+                exit;
+            } else {
+                $this->terminate();
+            }
         } else {
             exit($code);
         }
@@ -54,7 +60,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "za", "zabbix_api", "Use Zabbix API to retrieve objects. If this is false, cache is used. If object is not in cache, return empty values.", false, "API disabled"
         );
         Opts::addOpt(
-                "Om", "output_mode", "Use this output mode {cli|csv|dump}", "cli", "cli"
+                "Om", "output_mode", "Use this output mode {brief|cli|env|csv|dump}", "brief", "brief"
         );
         Opts::addOpt(
                 false, "csv_separator", "Use this CSV separator", ";", ";"
@@ -67,6 +73,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         );
         Opts::addOpt(
                 false, "csv_fields", "Output only this fields", false, false
+        );
+        Opts::addOpt(
+                false, "brief_columns", "Columns of current view to show in brief view", "id", "id"
         );
         Opts::addOpt(
                 "Ov", "output_verbosity", "Use this output verbosity {id,expanded}", "ids", "ids"
@@ -140,6 +149,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         Opts::addOpt(
                 "sw", "sow", "Star day of week", "Monday", "Monday"
         );
+        Opts::addOpt(
+                false, "anonymize_key", "Key to anonymize data if requested.", false, "No key"
+        );
         parent::startup();
     }
     
@@ -158,6 +170,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         if (!Opts::isDefault("csv_fields")) {
             Opts::optToArray("csv_fields");
         }
+        Opts::optToArray("brief_columns");
         if (Opts::isOpt("nocache")) {
             Opts::setOpt("sql_cache_expire", 0, "default");
             Opts::setOpt("api_cache_expire", 0, "default");
@@ -185,6 +198,34 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 echo "$r='$v'\n";
             }
             echo "\n\n";
+        }
+        self::mexit();
+    }
+    
+    function renderBrief() {
+        foreach (Opts::getOpt("brief_columns") as $id) {
+            CliDebug::log("$id ");
+        }
+        CliDebug::log("\n");
+        foreach ((array) $this->exportdata as $id=>$row) {
+           foreach (Opts::getOpt("brief_columns") as $id) {
+               if (is_float($row->$id)) {
+                    echo sprintf("%6f ",$row->$id);
+               } else {
+                    echo $row->$id." ";
+               }
+           }
+           echo "\n";
+        }
+        self::mexit();
+    }
+    
+    function renderEnv() {
+       foreach ((array) $this->exportdata as $id=>$row) {
+           foreach ($row as $r=>$v) {
+                echo "$r='$v' ";
+            }
+            echo "\n";
         }
         self::mexit();
     }
@@ -231,6 +272,12 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         switch (Opts::getOpt("output_mode")) {
             case "cli":
                 self::renderCli();
+                break;
+            case "brief":
+                self::renderBrief();
+                break;
+            case "env":
+                self::renderEnv();
                 break;
             case "csv":
                 self::renderCsv();

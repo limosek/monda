@@ -24,7 +24,7 @@ class DefaultPresenter extends BasePresenter
      ic             - Item Correlation operations
      ec             - Event Correlation operations
      cron           - Combining all operations from cron
-     gm             - Create Graphiz maps
+     gm             - Create graphviz maps
      
      Hint: Date formats: @timestamp, YYYY_MM_DD_hhmm, YYYYMMDDhhmm, now, '-1 day'
      Hint: Divide more ids by comma ( like 1,3,45)

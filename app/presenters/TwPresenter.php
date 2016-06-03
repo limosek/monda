@@ -53,6 +53,15 @@ class TwPresenter extends BasePresenter {
         Opts::readCfg(Array("global", "Tw"));
         Opts::readOpts($this->params);
         self::postCfg();
+        if ($this->action=="stats") {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("cnt","minloi","maxloi","mintfrom","maxtfrom"));
+            }
+        } else {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("id","loi","description","seconds","found","processed"));
+            }
+        }
     }
     
     static public function postCfg() {
