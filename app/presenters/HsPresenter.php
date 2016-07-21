@@ -53,6 +53,9 @@ class HsPresenter extends BasePresenter {
         Opts::addOpt(
                 false, "hostname_restricted_chars", "Characters mangled in hostnames", false, "none"
         );
+        Opts::addOpt(
+                false, "hs_update_unknown", "(Re)-update even unknown hosts (slow).", false, "no"
+        );
         Opts::setDefaults();
         Opts::readCfg(Array("Hs"));
         Opts::readOpts($this->params);

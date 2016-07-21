@@ -185,7 +185,7 @@ class CronPresenter extends IsPresenter {
             Tw::twLoi();
             ItemStat::IsLoi();
             HostStat::hsUpdate();
-            HostStat::hsMultiCompute(opts);
+            HostStat::hsMultiCompute();
             HostStat::hsLoi();
             EventCorr::ecLoi();
         } catch (Exception $e) {

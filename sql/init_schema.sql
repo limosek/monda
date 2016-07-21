@@ -1,204 +1,344 @@
+--
+-- Name: hostcorr; Type: TABLE; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE TABLE hostcorr (
+    windowid1 bigint NOT NULL,
+    windowid2 bigint NOT NULL,
+    hostid1 bigint NOT NULL,
+    hostid2 bigint NOT NULL,
+    cnt bigint,
+    corr double precision,
+    loi integer DEFAULT 0
+);
+
+
+ALTER TABLE hostcorr OWNER TO monda;
+
+SET default_with_oids = true;
+
+--
+-- Name: hoststat; Type: TABLE; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE TABLE hoststat (
+    hostid bigint NOT NULL,
+    windowid integer NOT NULL,
+    cnt bigint DEFAULT 0,
+    loi integer DEFAULT 0,
+    updated timestamp with time zone,
+    items integer DEFAULT 0
+);
+
+
+ALTER TABLE hoststat OWNER TO monda;
+
+--
+-- Name: itemcorr; Type: TABLE; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE TABLE itemcorr (
+    windowid1 integer NOT NULL,
+    windowid2 integer NOT NULL,
+    itemid1 bigint NOT NULL,
+    itemid2 bigint NOT NULL,
+    corr double precision NOT NULL,
+    cnt bigint,
+    loi integer DEFAULT 0
+);
+
+
+ALTER TABLE itemcorr OWNER TO monda;
+
+--
+-- Name: itemstat; Type: TABLE; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE TABLE itemstat (
+    itemid bigint NOT NULL,
+    hostid bigint,
+    windowid integer NOT NULL,
+    avg_ double precision DEFAULT 0.0000 NOT NULL,
+    min_ double precision DEFAULT 0.0000 NOT NULL,
+    max_ double precision DEFAULT 0.0000 NOT NULL,
+    stddev_ double precision DEFAULT 0.0000 NOT NULL,
+    cv double precision DEFAULT 0.0000 NOT NULL,
+    cnt bigint DEFAULT 0,
+    loi integer DEFAULT 0
+);
+
+
+ALTER TABLE itemstat OWNER TO monda;
+
+--
+-- Name: s_timewindowid; Type: SEQUENCE; Schema: public; Owner: monda
+--
 
 CREATE SEQUENCE s_timewindowid
-  INCREMENT 1
-  MINVALUE 1
-  MAXVALUE 9223372036854775807
-  START 100
-  CACHE 1;
-ALTER TABLE s_timewindowid
-  OWNER TO monda;
+    START WITH 100
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
-CREATE TABLE timewindow
-(
-  id integer NOT NULL DEFAULT nextval('s_timewindowid'::regclass),
-  parentid integer DEFAULT NULL,
-  serverid integer DEFAULT 1,
-  description character varying(255) DEFAULT NULL::character varying,
-  tfrom timestamp with time zone NOT NULL,
-  seconds bigint NOT NULL,
-  created timestamp with time zone NOT NULL,
-  updated timestamp with time zone DEFAULT NULL,
-  found bigint DEFAULT NULL,
-  processed bigint DEFAULT NULL,
-  ignored bigint DEFAULT NULL,
-  stddev0 bigint DEFAULT NULL,
-  lowavg bigint DEFAULT NULL,
-  lowcnt bigint DEFAULT NULL,
-  avgcv double precision NOT NULL DEFAULT 0.0000,
-  avgcnt bigint DEFAULT NULL,
-  loi integer DEFAULT 0,
-  CONSTRAINT "p_timewindow" PRIMARY KEY (id)
-)
-WITH (
-  OIDS=TRUE
+
+ALTER TABLE s_timewindowid OWNER TO monda;
+
+--
+-- Name: timewindow; Type: TABLE; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE TABLE timewindow (
+    id integer DEFAULT nextval('s_timewindowid'::regclass) NOT NULL,
+    parentid integer,
+    serverid integer DEFAULT 1,
+    description character varying(255) DEFAULT NULL::character varying,
+    tfrom timestamp with time zone NOT NULL,
+    seconds bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone,
+    found bigint,
+    processed bigint,
+    ignored bigint,
+    stddev0 bigint,
+    lowavg bigint,
+    lowcnt bigint,
+    loi integer DEFAULT 0,
+    lowstddev integer,
+    lowcv integer,
+    avgcv double precision,
+    avgcnt bigint
 );
-ALTER TABLE timewindow
-  OWNER TO monda;
-CREATE INDEX i_id
-  ON timewindow
-  USING btree
-  (id);
-CREATE INDEX i_parentid
-  ON timewindow
-  USING btree
-  (parentid);
-CREATE UNIQUE INDEX i_times
-  ON timewindow
-  USING btree
-  (serverid,tfrom,seconds);
-CREATE INDEX i_loi
-  ON timewindow
-  USING btree
-  (loi);
-CREATE INDEX i_desc
-  ON timewindow
-  USING btree
-  (description COLLATE pg_catalog."default");
 
 
-CREATE TABLE itemstat
-(
-  itemid bigint NOT NULL,
-  hostid bigint,
-  windowid integer NOT NULL,
-  avg_ double precision NOT NULL DEFAULT 0.0000,
-  min_ double precision NOT NULL DEFAULT 0.0000,
-  max_ double precision NOT NULL DEFAULT 0.0000,
-  stddev_ double precision NOT NULL DEFAULT 0.0000,
-  cv double precision NOT NULL DEFAULT 0.0000,
-  cnt bigint DEFAULT 0,
-  loi integer DEFAULT 0,
-  CONSTRAINT "p_itemstat" PRIMARY KEY (windowid,itemid)
-)
-WITH (
-  OIDS=TRUE
+ALTER TABLE timewindow OWNER TO monda;
+
+SET default_with_oids = false;
+
+--
+-- Name: windowcorr; Type: TABLE; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE TABLE windowcorr (
+    windowid1 bigint NOT NULL,
+    windowid2 bigint NOT NULL,
+    loi integer DEFAULT 0
 );
-ALTER TABLE itemstat
-  OWNER TO monda;
-CREATE UNIQUE INDEX i_windowitem
-  ON itemstat
-  USING btree
-  (windowid,itemid);
-CREATE INDEX i_hostid
-  ON itemstat
-  USING btree
-  (hostid);
-CREATE INDEX loi
-  ON itemstat
-  USING btree
-  (loi);
-ALTER TABLE itemstat
-  ADD CONSTRAINT fi_windowid FOREIGN KEY (windowid) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
-
-CREATE TABLE hoststat
-(
-  hostid bigint NOT NULL,
-  windowid integer NOT NULL,
-  cnt bigint DEFAULT 0,
-  loi integer DEFAULT 0,
-  updated timestamp with time zone,
-  CONSTRAINT p_hoststat PRIMARY KEY (hostid, windowid)
-)
-WITH (
-  OIDS=TRUE
-);
-ALTER TABLE hoststat
-  OWNER TO monda;
-
-CREATE UNIQUE INDEX i_windowhost
-  ON hoststat
-  USING btree
-  (windowid, hostid);
 
 
-CREATE INDEX ih_loi
-  ON hoststat
-  USING btree
-  (loi);
+ALTER TABLE windowcorr OWNER TO monda;
 
-CREATE TABLE itemcorr
-(
-  windowid1 integer NOT NULL,
-  windowid2 integer NOT NULL,
-  itemid1 bigint NOT NULL,
-  itemid2 bigint NOT NULL,
-  corr double precision NOT NULL,
-  cnt bigint,
-  loi integer DEFAULT 0,
-  CONSTRAINT "p_itemcorr" PRIMARY KEY (windowid1, windowid2, itemid1, itemid2)
-)
-WITH (
-  OIDS=TRUE
-);
-ALTER TABLE itemcorr
-  OWNER TO monda;
-CREATE INDEX ic_windowitem
-  ON itemcorr
-  USING btree
-  (windowid1, windowid2, itemid1, itemid2);
-CREATE INDEX ic_loi
-  ON itemcorr
-  USING btree
-  (loi);
-ALTER TABLE itemcorr
-  ADD CONSTRAINT fi_windowid1 FOREIGN KEY (windowid1) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
-ALTER TABLE itemcorr
-  ADD CONSTRAINT fi_windowid2 FOREIGN KEY (windowid2) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
+--
+-- Name: p_hoststat; Type: CONSTRAINT; Schema: public; Owner: monda; Tablespace: 
+--
 
-CREATE TABLE hostcorr
-(
-  windowid1 bigint NOT NULL,
-  windowid2 bigint NOT NULL,
-  hostid1 bigint NOT NULL,
-  hostid2 bigint NOT NULL,
-  cnt bigint,
-  corr double precision,
-  loi integer DEFAULT 0, 
-  CONSTRAINT "primary" PRIMARY KEY (windowid1, windowid2, hostid1, hostid2)
-)
-WITH (
-  OIDS=FALSE
-);
-ALTER TABLE hostcorr
-  OWNER TO monda;
-CREATE INDEX i_window
-  ON hostcorr
-  USING btree
-  (windowid1,windowid2,hostid1,hostid2);
-CREATE INDEX ihc_loi 
-ON hostcorr
-USING btree
- (loi);
-ALTER TABLE hostcorr
-  ADD CONSTRAINT fi_windowid1 FOREIGN KEY (windowid1) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
-ALTER TABLE hostcorr
-  ADD CONSTRAINT fi_windowid2 FOREIGN KEY (windowid2) REFERENCES timewindow (id)
-   ON UPDATE NO ACTION ON DELETE NO ACTION;
-
-CREATE TABLE windowcorr
-(
-  windowid1 bigint NOT NULL,
-  windowid2 bigint NOT NULL,
-  loi integer DEFAULT 0,
-  CONSTRAINT "p_windowcorr" PRIMARY KEY (windowid1, windowid2)
-)
-WITH (
-  OIDS=FALSE
-);
-ALTER TABLE windowcorr
-  OWNER TO monda;
-CREATE INDEX iwc_window
-  ON windowcorr
-  USING btree
-  (windowid1, windowid2);
-CREATE INDEX iwc_loi
-  ON windowcorr
-  USING btree
-  (loi);
+ALTER TABLE ONLY hoststat
+    ADD CONSTRAINT p_hoststat PRIMARY KEY (hostid, windowid);
 
 
+--
+-- Name: p_itemcorr; Type: CONSTRAINT; Schema: public; Owner: monda; Tablespace: 
+--
+
+ALTER TABLE ONLY itemcorr
+    ADD CONSTRAINT p_itemcorr PRIMARY KEY (windowid1, windowid2, itemid1, itemid2);
+
+
+--
+-- Name: p_itemstat; Type: CONSTRAINT; Schema: public; Owner: monda; Tablespace: 
+--
+
+ALTER TABLE ONLY itemstat
+    ADD CONSTRAINT p_itemstat PRIMARY KEY (windowid, itemid);
+
+
+--
+-- Name: p_timewindow; Type: CONSTRAINT; Schema: public; Owner: monda; Tablespace: 
+--
+
+ALTER TABLE ONLY timewindow
+    ADD CONSTRAINT p_timewindow PRIMARY KEY (id);
+
+
+--
+-- Name: p_windowcorr; Type: CONSTRAINT; Schema: public; Owner: monda; Tablespace: 
+--
+
+ALTER TABLE ONLY windowcorr
+    ADD CONSTRAINT p_windowcorr PRIMARY KEY (windowid1, windowid2);
+
+
+--
+-- Name: primary; Type: CONSTRAINT; Schema: public; Owner: monda; Tablespace: 
+--
+
+ALTER TABLE ONLY hostcorr
+    ADD CONSTRAINT "primary" PRIMARY KEY (windowid1, windowid2, hostid1, hostid2);
+
+
+--
+-- Name: i_desc; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX i_desc ON timewindow USING btree (description);
+
+
+--
+-- Name: i_hostid; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX i_hostid ON itemstat USING btree (hostid);
+
+
+--
+-- Name: i_id; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX i_id ON timewindow USING btree (id);
+
+
+--
+-- Name: i_loi; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX i_loi ON timewindow USING btree (loi);
+
+
+--
+-- Name: i_parentid; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX i_parentid ON timewindow USING btree (parentid);
+
+
+--
+-- Name: i_times; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE UNIQUE INDEX i_times ON timewindow USING btree (serverid, tfrom, seconds);
+
+
+--
+-- Name: i_window; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX i_window ON hostcorr USING btree (windowid1, windowid2, hostid1, hostid2);
+
+
+--
+-- Name: i_windowhost; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE UNIQUE INDEX i_windowhost ON hoststat USING btree (windowid, hostid);
+
+
+--
+-- Name: i_windowitem; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE UNIQUE INDEX i_windowitem ON itemstat USING btree (windowid, itemid);
+
+
+--
+-- Name: ic_loi; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX ic_loi ON itemcorr USING btree (loi);
+
+
+--
+-- Name: ic_windowitem; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX ic_windowitem ON itemcorr USING btree (windowid1, windowid2, itemid1, itemid2);
+
+
+--
+-- Name: ih_loi; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX ih_loi ON hoststat USING btree (loi);
+
+
+--
+-- Name: ihc_loi; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX ihc_loi ON hostcorr USING btree (loi);
+
+
+--
+-- Name: iwc_loi; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX iwc_loi ON windowcorr USING btree (loi);
+
+
+--
+-- Name: iwc_window; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX iwc_window ON windowcorr USING btree (windowid1, windowid2);
+
+
+--
+-- Name: loi; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX loi ON itemstat USING btree (loi);
+
+
+--
+-- Name: fi_windowid; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY itemstat
+    ADD CONSTRAINT fi_windowid FOREIGN KEY (windowid) REFERENCES timewindow(id);
+
+
+--
+-- Name: fi_windowid1; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY itemcorr
+    ADD CONSTRAINT fi_windowid1 FOREIGN KEY (windowid1) REFERENCES timewindow(id);
+
+
+--
+-- Name: fi_windowid1; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY hostcorr
+    ADD CONSTRAINT fi_windowid1 FOREIGN KEY (windowid1) REFERENCES timewindow(id);
+
+
+--
+-- Name: fi_windowid2; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY itemcorr
+    ADD CONSTRAINT fi_windowid2 FOREIGN KEY (windowid2) REFERENCES timewindow(id);
+
+
+--
+-- Name: fi_windowid2; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY hostcorr
+    ADD CONSTRAINT fi_windowid2 FOREIGN KEY (windowid2) REFERENCES timewindow(id);
+
+
+--
+-- Name: public; Type: ACL; Schema: -; Owner: postgres
+--
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM postgres;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+
+
+--
+-- PostgreSQL database dump complete
+--
 

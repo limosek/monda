@@ -25,8 +25,8 @@ class EventCorr extends Monda {
             "time_from" => $start,
             "time_till" => $end,
             "output" => "extend",
-            "selectItems" => "refer",
             "selectHosts" => "refer",
+            "selectRelatedObject" => "refer",
             "select_alerts" => "refer",
             "select_acknowledges" => "refer"
         );
@@ -37,6 +37,8 @@ class EventCorr extends Monda {
     
     function ecLoi() {
         $start = Opts::getOpt("start");
+        $wstats1 = Tw::twStats();
+        $isstats1 = ItemStat::isStats();
         self::mbegin();
         while ($start < Opts::getOpt("end")) {
             $events = self::ecSearch($start);
@@ -45,6 +47,25 @@ class EventCorr extends Monda {
                 return;
             }
             foreach ($events as $e) {
+                if ($e->source!=0) continue;
+                $continue=0;
+                if (isset($e->relatedObject->triggerid)) {
+                    $tq=Array(
+                        "triggerids" => $e->relatedObject->triggerid,
+                        "hostids" => Opts::getOpt("hostids"),
+                        "selectFunctions" => "extend",
+                        "output" => "extend"
+                    );
+                    $triggers=self::apiCmd("triggerGet",$tq);
+                    foreach ($triggers as $t) {
+                        if ($t->priority<Opts::getOpt("ec_min_priority")) {
+                            $continue=1;
+                            CliDebug::info(sprintf("Skipping event %d due to low priority (%d).\n",$e->eventid,$t->priority));
+                            continue;
+                        }
+                    }
+                }
+                if ($continue) continue;
                 $w = Tw::twSearchClock($e->clock)->fetchAll();
                 $wids = self::extractIds($w, array("id"));
                 self::mquery("UPDATE timewindow SET loi=loi+? WHERE id IN (?)", Opts::getOpt("ec_window_increment_loi"), $wids["id"]);
@@ -61,6 +82,8 @@ class EventCorr extends Monda {
             }
         }
         self::mcommit();
+        $wstats2 = Tw::twStats();
+        $isstats2 = ItemStat::isStats();
     }
 
 }

@@ -362,7 +362,7 @@ class Tw extends Monda {
         Monda::mbegin();
         $uloi = Monda::mquery("
             UPDATE timewindow twchild
-            SET loi=round(avgcnt*avgcv*(processed::float/found::float)),
+            SET loi=round(avgcnt*avgcv*100*(processed::float/found::float)),
             parentid=( SELECT id from timewindow twparent
               WHERE twchild.tfrom>=twparent.tfrom
               AND (extract(epoch from twchild.tfrom)+twchild.seconds)<=(extract(epoch from twparent.tfrom)+twparent.seconds)

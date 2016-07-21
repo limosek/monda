@@ -38,6 +38,8 @@ class EcPresenter extends BasePresenter {
         );
         Opts::addOpt(false, "ec_host_increment_loi", "Increase LOI for time host with event", 5, 5
         );
+        Opts::addOpt(false, "ec_min_priority", "Minimum priority of trigger", 3, 3
+        );
 
         Opts::setDefaults();
         Opts::readCfg(Array("Ec"));
@@ -50,7 +52,7 @@ class EcPresenter extends BasePresenter {
     }
 
     public function renderLoi() {
-        EventCorr::EcLoi($this->opts);
+        EventCorr::EcLoi();
         self::mexit();
     }
 

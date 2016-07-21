@@ -20,6 +20,7 @@ class IcPresenter extends BasePresenter {
      ic:show [common opts]
      ic:stats [commom opts]
      ic:matrix [common opts]
+     ic:history [common opts]
      ic:compute [common opts]
      ic:delete [common opts]
      ic:loi [common opts]
@@ -43,13 +44,19 @@ class IcPresenter extends BasePresenter {
                 false, "ic_minloi", "Select only item correlation which have loi bigger than this/=.", 0, 0
         );
         Opts::addOpt(
-                false, "ic_notsame", "Report only correlations with other items, not itself (corr<>1)", 0, 0
+                false, "ic_notsame", "Report only correlations with other items, not itself (corr<>1)", 1, 1
+        );
+        Opts::addOpt(
+                false, "ic_sort", "Sort correlation (to compute or to show) by {start|id|loi}", "loi/-", "loi/-"
         );
         Opts::addOpt(
                 false, "time_precision", "Time precision (maximum difference in time for correlation) in seconds", 5, 5
         );
         Opts::addOpt(
                 false, "min_values_for_corr", "Minimum values to make correlation", 40, 40
+        );
+        Opts::addOpt(
+                false, "max_values_for_corr", "Maximum values to make correlation", 1000, 1000
         );
         Opts::addOpt(
                 false, "min_corr", "Minimum correlation to report (bigger than)", 0.4, 0.4
@@ -68,7 +75,7 @@ class IcPresenter extends BasePresenter {
             }
         } else {
             if (Opts::isDefault("brief_columns")) {
-                Opts::setOpt("brief_columns",Array("itemid1","itemid2","corr","loi"));
+                Opts::setOpt("brief_columns",Array("windowid1","itemid1","windowid2","itemid2","corr","icloi"));
             }
         }
     }
@@ -103,6 +110,25 @@ class IcPresenter extends BasePresenter {
             }
             parent::renderShow($this->exportdata);
         }
+        self::mexit();
+    }
+    
+    public function renderHistory() {
+        Opts::setOpt("ic_sort", "start/+");
+        $rows = ItemCorr::icToIds();
+        foreach ($rows as $itemid) {
+            Opts::setOpt("itemids", Array($itemid));
+            $items = ItemCorr::icSearch()->fetchAll();
+            foreach ($items as $item) {
+                $this->exportdata[$item->windowid1] = Array(
+                    "windowid" => $item->windowid1,
+                    "itemid1" => $item->itemid1,
+                    "itemid2" => $item->itemid2,
+                    "corr" => $item->corr
+                );
+            }
+        }
+        parent::renderShow($this->exportdata);
         self::mexit();
     }
 
@@ -170,10 +196,10 @@ class IcPresenter extends BasePresenter {
     }
 
     function renderWcorr() {
-        $rows = ItemCorr::icWStats(true);
+        $rows = ItemCorr::icTwStats();
         if ($rows) {
             $this->exportdata = $rows->fetchAll();
-            if ($this->opts->outputverb == "expanded") {
+            if (Opts::getOpt("output_verbosity") == "expanded") {
                 $i = 0;
                 foreach ($this->exportdata as $i => $row) {
                     $i++;
@@ -194,6 +220,9 @@ class IcPresenter extends BasePresenter {
     }
 
     public function renderCompute() {
+        if (Opts::isDefault("window_length")) {
+            Opts::setOpt("window_length",Array(Monda::_1HOUR,Monda::_1DAY));
+        }
         ItemCorr::IcMultiCompute();
         self::mexit(0, "Done\n");
     }

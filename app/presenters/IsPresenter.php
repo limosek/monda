@@ -117,9 +117,7 @@ class IsPresenter extends BasePresenter {
                 $itxt=Util::encrypt($itxt,Opts::getOpt("anonymize_key"));
             } else {
                 if (Opts::getOpt("item_restricted_chars")) {
-                    return(strtr($itxt,Opts::getOpt("items_restricted_chars"),"_____________"));
-                } else {
-                    return($itxt);
+                    $itxt=strtr($itxt,Opts::getOpt("item_restricted_chars"),"_____________");
                 }
             }
             if ($withhost) {
@@ -155,7 +153,16 @@ class IsPresenter extends BasePresenter {
         $rows = ItemStat::isZabbixHistory();
         if ($rows) {
             $this->exportdata = array_values($rows);
-            //dump($rows);exit;
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                foreach ($this->exportdata as $i => $row) {
+                    CliDebug::dbg(sprintf("Processing %d row of %d          \r", $i, count($this->exportdata)));
+                    foreach ($row as $column=>$value) {
+                        if (!array_key_exists($column,$this->exportinfo)) {
+                            $this->exportinfo[$column]=self::expandItem($column,true);
+                        }
+                    }
+                }
+            }
             parent::renderShow($this->exportdata);
         }
     }

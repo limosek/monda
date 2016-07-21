@@ -152,14 +152,26 @@ class HostStat extends Monda {
             return(false);
         }
         self::mbegin();
-        foreach ($hostids as $hostid) {
-            $hitemids = self::hosts2itemids(array($hostid));
-            if (count($hitemids) < 1)
-                continue;
-            $ius = self::mquery("
+        if (Opts::getOpt("hs_update_unknown")) {
+            $ius = self::mquery("UPDATE itemstat
+                SET hostid=NULL
+                WHERE itemid IN (?) AND windowid IN (?) AND hostid=-1", $hitemids, $wids);
+        }
+        $ius = self::mquery("SELECT COUNT(*) AS cnt FROM itemstat WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", $hitemids, $wids)->fetchAll();
+        if ($ius->cnt > 0) {
+            foreach ($hostids as $hostid) {
+                $hitemids = self::hosts2itemids(array($hostid));
+                if (count($hitemids) < 1)
+                    continue;
+                $ius = self::mquery("
                 UPDATE itemstat
                 SET hostid=?
                 WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", $hostid, $hitemids, $wids);
+            }
+            $ius = self::mquery("
+            UPDATE itemstat
+            SET hostid=?
+            WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", -1, $hitemids, $wids);
         }
         self::mcommit();
         CliDebug::warn("\n");
@@ -185,7 +197,7 @@ class HostStat extends Monda {
                 itemstat.windowid AS windowid,
                 AVG(cv) AS cv,
                 SUM(itemstat.loi) AS loi,
-                COUNT(itemid) AS itemid,
+                COUNT(itemid) AS items,
                 COUNT(itemstat.cnt) AS cnt
             FROM itemstat
             LEFT JOIN hoststat ON (hoststat.hostid=itemstat.hostid)
@@ -207,6 +219,7 @@ class HostStat extends Monda {
                         "hostid" => $row->hostid,
                         "windowid" => $row->windowid,
                         "cnt" => $row->cnt,
+                        "items" => $row->items,
                         "loi" => 0,
                         "updated" => New DateTime()
                             )

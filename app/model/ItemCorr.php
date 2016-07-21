@@ -41,6 +41,27 @@ class ItemCorr extends Monda {
             throw New Exception("No windows matched query.");
         }
         
+        if (preg_match("#/#", Opts::getOpt("ic_sort"))) {
+            List($sc, $so) = preg_split("#/#", Opts::getOpt("ic_sort"));
+        } else {
+            $sc = Opts::getOpt("ic_sort");
+            $so = "+";
+        }
+        switch ($sc) {
+            case "start":
+                $sortsql = "tw1.tfrom,is1.itemid,tw2.tfrom,is2.itemid";
+                break;
+            case "loi":
+                $sortsql = "(tw1.loi+tw2.loi+is1.loi+is2.loi)";
+                break;
+            case "id":
+                $sortsql = "is1.itemid,is2.itemid";
+                break;
+        }
+        if ($so == "-") {
+            $sortsql.=" DESC";
+        }
+        
         switch (Opts::getOpt("corr_type")) {
             case "samewindow":
                 $join1sql="is1.windowid=is2.windowid AND is1.itemid<>is2.itemid";
@@ -89,7 +110,7 @@ class ItemCorr extends Monda {
                     $sameiwsql
                     AND is1.loi>? AND is2.loi>?
                     AND ic.corr IS NULL
-                 ORDER BY (tw1.loi+tw2.loi+is1.loi+is2.loi) DESC
+                 ORDER BY $sortsql
                  LIMIT ?",Opts::getOpt("is_minloi"),Opts::getOpt("is_minloi"),Opts::getOpt("max_rows")
                 );
         return($rows);
@@ -102,7 +123,11 @@ class ItemCorr extends Monda {
     */
     static function icSearch() {
         if (Opts::getOpt("itemids")) {
-            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
+            if (sizeof(Opts::getOpt("itemids")==1)) {
+                $itemidssql=sprintf("(is1.itemid IN (%s) OR is2.itemid IN (%s)) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
+            } else {
+                $itemidssql=sprintf("(is1.itemid IN (%s) AND is2.itemid IN (%s)) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
+            }
         } else {
             $itemidssql="";
         }
@@ -124,13 +149,38 @@ class ItemCorr extends Monda {
                 $corrsql="AND ic.windowid1<>ic.windowid2";
                 break;              
         }
+        if (preg_match("#/#", Opts::getOpt("ic_sort"))) {
+            List($sc, $so) = preg_split("#/#", Opts::getOpt("ic_sort"));
+        } else {
+            $sc = Opts::getOpt("ic_sort");
+            $so = "+";
+        }
+        switch ($sc) {
+            case "start":
+                $sortsql = "tw.tfrom";
+                break;
+            case "loi":
+                $sortsql = "ic.loi";
+                break;
+            case "isloi":
+                $sortsql = "(is1.loi+is2.loi)";
+                break;
+            case "id":
+                $sortsql = "is1.itemid,is2.itemid";
+                break;
+            default:
+                $sortsql = "id";
+        }
+        if ($so == "-") {
+            $sortsql.=" DESC";
+        }
         if (!Opts::getOpt("window_ids")) {
             $wids=Tw::twToIds();
         } else {
             $wids=Opts::getOpt("window_ids");
         }
         if (Opts::getOpt("ic_notsame")) {
-            $notsamesql="AND (windowid1<>windowid2 OR ic.itemid1<>ic.itemid2)";
+            $notsamesql="AND ((windowid1<>windowid2 AND ic.itemid1=ic.itemid2) OR (windowid1=windowid2 AND ic.itemid1<>ic.itemid2))";
         } else {
             $notsamesql="";
         }
@@ -144,6 +194,7 @@ class ItemCorr extends Monda {
                  FROM itemcorr ic
                  JOIN itemstat is1 ON (ic.itemid1=is1.itemid AND ic.windowid1=is1.windowid)
                  JOIN itemstat is2 ON (ic.itemid2=is2.itemid AND ic.windowid2=is2.windowid)
+                 JOIN timewindow tw ON (ic.windowid1=tw.id)
                  WHERE 
                     $itemidssql
                     $hostidssql
@@ -153,7 +204,7 @@ class ItemCorr extends Monda {
                      $corrsql
                      AND ic.corr>? AND ic.corr<? 
                      $notsamesql
-                 ORDER BY ic.loi DESC
+                 ORDER BY $sortsql
                  LIMIT ?
                 ",Opts::getOpt("ic_minloi"),Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
         return($rows);
@@ -266,7 +317,7 @@ class ItemCorr extends Monda {
     * @return Nette\Database\Result
     * @throws Exception
     */
-    static function icTwStats($opts) {
+    static function icTwStats() {
         if (Opts::getOpt("itemids")) {
             $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")),join(",",Opts::getOpt("itemids")));
         } else {
@@ -353,7 +404,7 @@ class ItemCorr extends Monda {
                         AND h1.clock>? AND h1.clock<?
                         AND h2.clock>? AND h2.clock<?
                     GROUP BY h1.itemid,h2.itemid
-                    HAVING COUNT(*)>=?
+                    HAVING (COUNT(*)>=? AND COUNT(*)<=?)
                     
                      UNION
 
@@ -368,14 +419,13 @@ class ItemCorr extends Monda {
                         AND h1.clock>? AND h1.clock<?
                         AND h2.clock>? AND h2.clock<?
                     GROUP BY h1.itemid, h2.itemid
-                    HAVING COUNT(*)>?
-                    ", $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr")
+                    HAVING (COUNT(*)>=? AND COUNT(*)<=?)
+                    ", $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr")
                 );
                 $mincorr = 0;
                 $maxcorr = 0;
                 self::mbegin();
                 foreach ($icrows as $icrow) {
-
                     $icrow->windowid1 = $wid1;
                     $icrow->windowid2 = $wid2;
                     if ($icrow->stddev1 * $icrow->stddev2 >0) {

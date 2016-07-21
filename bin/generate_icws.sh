@@ -17,7 +17,7 @@ EOF
 
 for tw in $tws; do
      gname=icw-${graph}-$tw
-     if ! $monda gm:icw -w $tw --gm_format svg >$outdir/$gname.svg; then
+     if ! $monda gm:icw $* -w $tw --gm_format svg >$outdir/$gname.svg; then
         rm $outdir/$gname.svg
      fi
      echo "<div style='border: 1px solid black'>" >>$html

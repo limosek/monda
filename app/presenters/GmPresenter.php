@@ -20,6 +20,7 @@ class GmPresenter extends MapPresenter {
      Graphviz map operations
      
      gm:icw -w id [common opts]
+     gm:tws [common opts]
      gm:hs [common opts]
      
     [common opts]
@@ -62,7 +63,7 @@ class GmPresenter extends MapPresenter {
         $tree = Tw::twTree($wids);
         $stats = Tw::twStats();
         $this->template->title = "Monda TimeWindows";
-        Opts::setOpt("corr_type", "samehour");
+        Opts::setOpt("corr_type", "samedow");
         Opts::setOpt("hostname_restricted_chars","-");
         if (Opts::isDefault("gm_graph")) {
             Opts::setOpt("gm_graph","dot");

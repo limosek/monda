@@ -59,6 +59,8 @@ class Error4xxPresenter extends ErrorPresenter {
             HsPresenter::Help();
         } elseif ($argv[1]=="gm") {
             GmPresenter::Help();
+        } elseif ($argv[1]=="fann") {
+            FannPresenter::Help();
         } else {
             DefaultPresenter::Help();
         }

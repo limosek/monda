@@ -172,6 +172,7 @@ class ItemStat extends Monda {
             throw New Exception("No windows to process.");
         }
         $windows=Tw::twGet($wids,true);
+
         $widstxt=join(",",$wids);
         $ttable="mwtmp_".rand(1000,9999);
         $crsql="CREATE TEMPORARY TABLE $ttable (s integer, e integer, id integer);";
@@ -344,6 +345,7 @@ class ItemStat extends Monda {
         Opts::setOpt("window_empty",true);
         Opts::setOpt("tw_minloi",-1);
         $wids=Tw::twToIds();
+        if (!$wids) return;
         if (Opts::getOpt("max_windows_per_query") && count($wids)>Opts::getOpt("max_windows_per_query")) {
             foreach (array_chunk($wids,Opts::getOpt("max_windows_per_query")) as $subwids) {
                 self::isCompute($subwids);
