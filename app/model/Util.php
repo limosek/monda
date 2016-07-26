@@ -104,6 +104,40 @@ class Util extends Nette\Object {
     function simple_decrypt($text, $salt) {
         return trim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $salt, base64_decode($text), MCRYPT_MODE_ECB, mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND)));
     }
+    
+    function arr_closestkey($array, $k) {
+        ksort($array);
+        List($prev, $a) = each($array);
+        while (List($key, $a) = each($array)) {
+            if ($key >= $k)
+                return(Array($prev, $key));
+            $prev = $key;
+        }
+        return(false);
+    }
+
+    /*
+     * Interpolate data. 
+     * xy - array of array (x=>y)
+     * Returns array of new Y
+     */
+    function interpolate($xy, $newx) {
+        $y=Array();
+        foreach ($newx as $x) {
+            $oldx=array_keys($xy);
+            if ($x < min($oldx)) {
+                $y[$x] = $xy[min($oldx)];
+            } elseif ($x > max($oldx)) {
+                $y[$x] = $xy[max($oldx)];
+            } else {
+                List($x0, $x1) = self::arr_closestkey($xy, $x);
+                $y0 = $xy[$x0];
+                $y1 = $xy[$x1];
+                $y[$x] = $y0 + ($x - $x0) * ($y1 - $y0) / ($x1 - $x0);
+            }
+        }
+        return($y);
+    }
 
 }
 

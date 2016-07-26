@@ -47,6 +47,11 @@ class ItemCorr extends Monda {
             $sc = Opts::getOpt("ic_sort");
             $so = "+";
         }
+        if (Opts::getOpt("ic_all")) {
+            $full="true";
+        } else {
+            $full="false";
+        }
         switch ($sc) {
             case "start":
                 $sortsql = "tw1.tfrom,is1.itemid,tw2.tfrom,is2.itemid";
@@ -108,7 +113,7 @@ class ItemCorr extends Monda {
                     AND (is1.windowid<=is2.windowid)
                     AND (is1.itemid<=is2.itemid)
                     $sameiwsql
-                    AND is1.loi>? AND is2.loi>?
+                    AND ((is1.loi>? AND is2.loi>?) OR $full)
                     AND ic.corr IS NULL
                  ORDER BY $sortsql
                  LIMIT ?",Opts::getOpt("is_minloi"),Opts::getOpt("is_minloi"),Opts::getOpt("max_rows")
@@ -371,17 +376,40 @@ class ItemCorr extends Monda {
             throw new Exception("No items for correlations (icMultiCompute).");
         }
         $wids = self::extractIds($cids, array("windowid1", "windowid2", "itemid1", "itemid2"));
+        $itemids = Array_unique(Array_merge($wids["itemid1"],$wids["itemid2"]));
+        $windowids = Array_unique(Array_merge($wids["windowid1"],$wids["windowid2"]));
         CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%d items and %d windows, mode %s, seconds=%s)...",
-                count($cids), count($wids["itemid1"])+count($wids["itemid2"]), count($wids["windowid1"]) + count($wids["windowid2"]), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
+                count($cids), count($itemids), count($windowids), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
         if (count($cids) == 0) {
             return(false);
         }
         $i = 0;
-        foreach ($wids["windowid1"] as $wid1) {
+        if (Opts::getOpt("ic_all") && Opts::getOpt("corr_type") == "samewindow") {
+            foreach ($windowids as $wid1) {
+                foreach ($itemids as $itemid1) {
+                    foreach ($itemids as $itemid2) {
+                        try {
+                            $iic = self::mquery("INSERT INTO itemcorr", Array(
+                                        "windowid1" => $wid1,
+                                        "windowid2" => $wid1,
+                                        "itemid1" => $itemid1,
+                                        "itemid2" => $itemid2,
+                                        "corr" => 0,
+                                        "cnt" => 0
+                            ));
+                        } catch (Nette\Database\UniqueConstraintViolationException $e) {
+                            
+                        }
+                        $rows_added++;
+                    }
+                }
+            }
+        }
+        foreach ($windowids as $wid1) {
             $i++;
             $w1 = Tw::twGet($wid1);
             $j = 0;
-            foreach ($wids["windowid2"] as $wid2) {
+            foreach ($windowids as $wid2) {
                 if (!self::IdsSearch(
                                 Array(
                             "windowid1" => $wid1,
@@ -420,10 +448,11 @@ class ItemCorr extends Monda {
                         AND h2.clock>? AND h2.clock<?
                     GROUP BY h1.itemid, h2.itemid
                     HAVING (COUNT(*)>=? AND COUNT(*)<=?)
-                    ", $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr")
+                    ", $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $itemids, $itemids, $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr")
                 );
                 $mincorr = 0;
                 $maxcorr = 0;
+                $rows_added = 0;
                 self::mbegin();
                 foreach ($icrows as $icrow) {
                     $icrow->windowid1 = $wid1;
@@ -436,16 +465,10 @@ class ItemCorr extends Monda {
                     if ($icrow->corr === null || $icrow->cnt < Opts::getOpt("min_values_for_corr")) {
                         $icrow->corr = 0;
                     }
-                    if (abs($icrow->corr) > 1) {
-                        if (abs($icrow->corr) > 1.1) {
-                            CliDebug::err(sprintf("Bad correlation %dx%d=%f! Ignoring.\n", $icrow->itemid1, $icrow->itemid2, $icrow->corr));
-                        } else {
-                            $icrow->corr=round($icrow->corr);
-                        }
-                        continue;
-                    }
                     $mincorr = min($mincorr, abs($icrow->corr));
-                    $maxcorr = max($maxcorr, abs($icrow->corr));
+                    if ($icrow->itemid1<>$icrow->itemid2) {
+                        $maxcorr = max($maxcorr, abs($icrow->corr));
+                    }
                     $wrow = Array(
                         "windowid1" => $icrow->windowid1,
                         "windowid2" => $icrow->windowid2,
@@ -454,13 +477,15 @@ class ItemCorr extends Monda {
                         "corr" => $icrow->corr,
                         "cnt" => $icrow->cnt
                     );
+                    $rows_added++;
                     self::mquery("DELETE FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $icrow->windowid1, $icrow->windowid2, $icrow->itemid1, $icrow->itemid2);
                     $iic = self::mquery("INSERT INTO itemcorr", $wrow);
                 }
-                CliDebug::info(sprintf("<%f,%f>,", $mincorr, $maxcorr));
+                CliDebug::info(sprintf("Rows: $rows_added, interval:<%f,%f>,", $mincorr, $maxcorr));
                 self::mcommit();
             }
         }
+        self::icLoi();
         CliDebug::warn("Done\n");
     }
 
@@ -468,6 +493,7 @@ class ItemCorr extends Monda {
     * Delete item correlations
     */
     static function icDelete() {
+        Opts::setOpt("max_rows",10000);
         $windows=Tw::twToIds();
         CliDebug::warn(sprintf("Will delete item correlations from %d windows.\n",count($windows)));
         if (count($windows)==0) {
@@ -482,6 +508,7 @@ class ItemCorr extends Monda {
     * Update item correlations LOI. 
     */
     static function icLoi() {
+        Opts::setOpt("max_rows",10000);
         $twids=  Tw::twToIds();
         if (count($twids)==0) {
             throw new Exception("No item correlations for loi.");

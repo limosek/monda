@@ -80,12 +80,10 @@ class Monda extends Nette\Object {
                 );
 
         if (self::$zq && self::$mq) {
-            if (Opts::getOpt("zabbix_db_query_timeout")) {
-                self::zquery("set statement_timeout=?",Opts::getOpt("zabbix_db_query_timeout")*1000);
-            }
-            if (Opts::getOpt("monda_db_query_timeout")) {
-                self::mquery("set statement_timeout=?",Opts::getOpt("monda_db_query_timeout")*1000);
-            }
+            self::zquery("set statement_timeout=?",Opts::getOpt("zabbix_db_query_timeout")*1000);
+            CliDebug::info("Setting SQL timeout for Zabbix DB to ".Opts::getOpt("zabbix_db_query_timeout")." seconds.\n");
+            self::mquery("set statement_timeout=?",Opts::getOpt("monda_db_query_timeout")*1000);
+            CliDebug::info("Setting SQL timeout for Monda DB to ".Opts::getOpt("monda_db_query_timeout")." seconds.\n");
             return(true);
         } else {
             throw Exception("Cannot connect to monda or zabbix db");

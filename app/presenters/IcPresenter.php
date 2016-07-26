@@ -50,6 +50,9 @@ class IcPresenter extends BasePresenter {
                 false, "ic_sort", "Sort correlation (to compute or to show) by {start|id|loi}", "loi/-", "loi/-"
         );
         Opts::addOpt(
+                false, "ic_all", "Force to compute all combinations", false, "no"
+        );
+        Opts::addOpt(
                 false, "time_precision", "Time precision (maximum difference in time for correlation) in seconds", 5, 5
         );
         Opts::addOpt(

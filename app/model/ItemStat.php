@@ -74,6 +74,7 @@ class ItemStat extends Monda {
             }
             Opts::setOpt("itemids",$itemids);
         }
+        CliDebug::dbg("Itemids selected: ".join(",",$itemids)."\n");
         return(Opts::getOpt("itemids"));
     }
     
@@ -308,14 +309,18 @@ class ItemStat extends Monda {
     }
     
     static public function IsZabbixHistory() {
-        $itemids = self::IsToIDs();
+        $itemids = Opts::getOpt("itemids");
         $windowids = Tw::twToIds();
         $timesql = "";
+        $from=time();
+        $to=0;
         foreach ($windowids as $wid) {
             $w = Tw::twGet($wid);
             $timesql.="OR (clock BETWEEN $w->fstamp AND $w->tstamp) ";
+            $from=min($from,$w->fstamp);
+            $to=max($to,$w->tstamp);
         }
-        $g = 600;
+        $g = Opts::getOpt("history_granularity");
         $hist = Monda::zcquery("                
               SELECT itemid,CAST((clock/$g) AS INTEGER)*$g AS c,AVG(value) AS v FROM history WHERE (false $timesql) AND itemid IN (?)
                 GROUP BY itemid,CAST((clock/$g) AS INTEGER)*$g
@@ -325,18 +330,21 @@ class ItemStat extends Monda {
               ORDER BY c,itemid
                 ", $itemids, $itemids);
         $ret = Array();
-        $i = 0;
-        $maxi=0;
-        $mini=100000;
         foreach ($hist as $h) {
-            $ret[$h->c]["clock"]=$h->c;
-            $ret[$h->c][$h->itemid]=$h->v;
-            $maxi=max($maxi,sizeof($ret[$h->c]));
-            $mini=max($mini,sizeof($ret[$h->c]));
+            foreach ((array) $h as $c) {
+                $values[$h->itemid][$h->c] = $h->v;
+            }
         }
-        // Strip rows with less items
-        foreach ($ret as $c=>$r) {
-            if (sizeof($r)<$maxi) unset($ret[$c]);
+        $x = range($from, $to, $g);
+        $ip = Array();
+        foreach ($values as $itemid => $column) {
+            $ip[$itemid] = Util::interpolate($column, $x);
+        }
+        foreach ($x as $x1) {
+            foreach ($ip as $itemid => $values) {
+                $ret[$x1]["clock"] = $x1;
+                $ret[$x1][$itemid] = $values[$x1];
+            }
         }
         return($ret);
     }

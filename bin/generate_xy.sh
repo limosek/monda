@@ -21,7 +21,7 @@ fi
 
 octave -q <<EOF
 
-h=dlmread("${outdir}/{graph}.txt");
+h=dlmread("${outdir}/${graph}.txt");
 sy=size(h,1);
 sx=size(h,2)-1;
 x=h(2:sy,1);
@@ -40,7 +40,7 @@ title(sprintf("Item data from %s to %s (%d items)",
 xlabel(sprintf("t[S] (start %s, end %s)",
         strftime("%Y-%m-%d %H:%M:%S",localtime(min(x))),
         strftime("%Y-%m-%d %H:%M:%S",localtime(max(x)))));
-print("${outdir}/{graph}-xy.png");
+print("${outdir}/${graph}-xy.png");
 
 EOF
 

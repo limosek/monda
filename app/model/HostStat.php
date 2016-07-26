@@ -89,6 +89,7 @@ class HostStat extends Monda {
               hoststat.hostid AS hostid,
               hoststat.windowid AS windowid,
               hoststat.cnt AS cnt,
+              hoststat.items AS items,
               hoststat.loi AS loi
             FROM hoststat
             WHERE
@@ -110,6 +111,7 @@ class HostStat extends Monda {
             SELECT
               hoststat.hostid AS hostid,
               AVG(hoststat.cnt) AS cnt,
+              AVG(hoststat.items) AS items,
               AVG(hoststat.loi) AS loi
             FROM hoststat
             WHERE
@@ -144,6 +146,7 @@ class HostStat extends Monda {
     }
 
     static function hsUpdate() {
+        Opts::setOpt("max_rows",1000000);
         $hostids = Opts::getOpt("hostids");
         $itemids = self::hosts2itemids($hostids);
         $wids = Tw::twToIds();
@@ -155,9 +158,9 @@ class HostStat extends Monda {
         if (Opts::getOpt("hs_update_unknown")) {
             $ius = self::mquery("UPDATE itemstat
                 SET hostid=NULL
-                WHERE itemid IN (?) AND windowid IN (?) AND hostid=-1", $hitemids, $wids);
+                WHERE itemid IN (?) AND windowid IN (?) AND hostid=-1", $itemids, $wids);
         }
-        $ius = self::mquery("SELECT COUNT(*) AS cnt FROM itemstat WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", $hitemids, $wids)->fetchAll();
+        $ius = self::mquery("SELECT COUNT(*) AS cnt FROM itemstat WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", $itemids, $wids)->fetchAll();
         if ($ius->cnt > 0) {
             foreach ($hostids as $hostid) {
                 $hitemids = self::hosts2itemids(array($hostid));
@@ -171,22 +174,20 @@ class HostStat extends Monda {
             $ius = self::mquery("
             UPDATE itemstat
             SET hostid=?
-            WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", -1, $hitemids, $wids);
+            WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", -1, $itemids, $wids);
         }
         self::mcommit();
         CliDebug::warn("\n");
     }
 
     static function hsDelete() {
-        $ids = self::hsToIds(true);
-        self::mbegin();
-        foreach ($ids as $id) {
-            $dq = self::mquery("DELETE FROM hoststat WHERE ", $id);
-        }
-        self::mcommit();
+        Opts::setDOpt("max_rows",10000);
+        $tws = Tw::twToIds();
+        $dq = self::mquery("DELETE FROM hoststat WHERE windowid IN (?) AND hostid IN (?)", $tws,Opts::getOpt("hostids"));
     }
 
     static function hsMultiCompute() {
+        Opts::setDOpt("max_rows",10000);
         $wids = Tw::twToIds();
         CliDebug::warn(sprintf("Need to compute HostStat for %d windows...", count($wids)));
         if (count($wids) == 0 || count(Opts::getOpt("hostids")) == 0) {
@@ -197,10 +198,9 @@ class HostStat extends Monda {
                 itemstat.windowid AS windowid,
                 AVG(cv) AS cv,
                 SUM(itemstat.loi) AS loi,
-                COUNT(itemid) AS items,
-                COUNT(itemstat.cnt) AS cnt
+                COUNT(DISTINCT itemid) AS items,
+                SUM(itemstat.cnt) AS cnt
             FROM itemstat
-            LEFT JOIN hoststat ON (hoststat.hostid=itemstat.hostid)
             WHERE itemstat.windowid IN (?) AND itemstat.hostid IN (?)
               AND itemstat.cnt>0
             GROUP BY itemstat.hostid,itemstat.windowid
@@ -239,13 +239,15 @@ class HostStat extends Monda {
         $stats = self::mquery("SELECT
                   windowid,
                   MAX(cnt) AS maxcnt,
-                  MIN(cnt) AS mincnt
+                  MIN(cnt) AS mincnt,
+                  MAX(items) AS maxitems,
+                  MIN(items) AS minitems
                 FROM hoststat
                 WHERE windowid IN (?)
                 GROUP BY windowid", Tw::twToIds())->fetchAll();
         foreach ($stats as $s) {
             foreach (Opts::getOpt("hostids") as $hostid) {
-                $lq = self::mquery("UPDATE hoststat set loi=100*cnt/? WHERE windowid=? AND hostid=?", $s->maxcnt, $s->windowid, $hostid);
+                $lq = self::mquery("UPDATE hoststat set loi=50*(cnt/?)+50*(items/?) WHERE windowid=? AND hostid=?", $s->maxcnt, $s->maxitems, $s->windowid, $hostid);
             }
         }
         self::mcommit();

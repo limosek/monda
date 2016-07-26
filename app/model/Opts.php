@@ -145,6 +145,10 @@ class Opts extends Nette\Object {
         CliDebug::startup(Opts::getOpt("debug"));
     }
 
+    /*
+     * Set Option
+     */
+
     public static function setOpt($opt, $value, $from = "cli") {
         if (!array_key_exists($opt,Opts::$opts)) {
             throw New \Exception("Unknown parameter $opt!");
@@ -154,6 +158,18 @@ class Opts extends Nette\Object {
         Opts::$setfrom[$opt] = $from;
     }
     
+    /*
+     * Set Option only in default state
+     */
+    public static function setDOpt($opt, $value, $from = "cli") {
+        if (!array_key_exists($opt, Opts::$opts)) {
+            throw New \Exception("Unknown parameter $opt!");
+        }
+        if (Opts::isDefault($opt)) {
+            Opts::setOpt($opt, $value, $from);
+        }
+    }
+
     public static function pushOpt($opt, $value) {
         if (!array_key_exists($opt,Opts::$opts)) {
             throw New \Exception("Unknown parameter $opt!");

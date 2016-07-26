@@ -16,6 +16,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     
     public $exportdata;
     public $exportinfo;
+    public $arffinfo;
 
     public function mexit($code = 0, $msg = "") {
         if (!$msg) {
@@ -61,7 +62,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "za", "zabbix_api", "Use Zabbix API to retrieve objects. If this is false, cache is used. If object is not in cache, return empty values.", false, "API disabled"
         );
         Opts::addOpt(
-                "Om", "output_mode", "Use this output mode {brief|cli|env|csv|dump|lrn|st}", "brief", "brief"
+                "Om", "output_mode", "Use this output mode {brief|cli|env|csv|dump|lrn|st|arff}", "brief", "brief"
         );
         Opts::addOpt(
                 false, "csv_separator", "Use this CSV separator", ";", ";"
@@ -91,7 +92,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Zp", "zabbix_db_pw", "Use this zabbix Database password", "", ""
         );
         Opts::addOpt(
-                false, "zabbix_db_query_timeout", "Use this timeout for query to zabbix db [S]", false, false
+                false, "zabbix_db_query_timeout", "Use this timeout for query to zabbix db [S]", 300, 300
         );
         Opts::addOpt(
                 false, "zabbix_db_preconnect", "Use this preconnect cmd (eg ssh tunel) before connecting to monda.", false, false
@@ -109,7 +110,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 false, "monda_db_preconnect", "Use this preconnect cmd (eg ssh tunel) before connecting to monda.", false, false
         );
         Opts::addOpt(
-                false, "monda_db_query_timeout", "Use this timeout for query to monda db [S]", false, false
+                false, "monda_db_query_timeout", "Use this timeout for query to monda db [S]", 300, 300
         );
         Opts::addOpt(
                 "Mu", "monda_db_user", "Use this monda Database user", "monda", "monda"
@@ -319,6 +320,23 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         self::mexit();
     }
     
+    function renderArff() {
+        echo "@Relation monda\n\n";
+        $row=(array) $this->exportdata;
+        $row=$row[0];
+        foreach ($row as $column=>$value) {
+            if (array_key_exists($column,$this->exportinfo)) {
+                echo "@Attribute ".$this->exportinfo[$column]." ".$this->arffinfo[$column]."\n";
+            }
+        }
+        echo "@Data\n";
+        foreach ((array) $this->exportdata as $row) {
+            echo join(",",$row);
+            echo "\n";
+        }
+        self::mexit();
+    }
+    
     function renderDump() {
         var_export($this->exportdata);
         self::mexit();
@@ -343,6 +361,9 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 break;
             case "st":
                 self::renderSt();
+                break;
+            case "arff":
+                self::renderArff();
                 break;
             case "dump":
                 self::renderDump();
