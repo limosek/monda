@@ -80,6 +80,9 @@ class TwPresenter extends BasePresenter {
         }
         if (Opts::isOpt("window_ids")) {
             Opts::optToArray("window_ids");
+            if (!Opts::isDefault("start") || !Opts::isDefault("end")) {
+                self::mexit(3,"You cannot combine window ids and time range!\n");
+            }
         }
         if (Opts::getOpt("start") < 631148400) {
             self::mexit(4, sprintf("Bad start time (%d)?!\n", date("Y-m-d", Opts::getOpt("start"))));

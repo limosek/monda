@@ -106,35 +106,52 @@ class Util extends Nette\Object {
     }
     
     function arr_closestkey($array, $k) {
-        ksort($array);
-        List($prev, $a) = each($array);
+        $cnt=count($array);
+        $i=1;
         while (List($key, $a) = each($array)) {
-            if ($key >= $k)
-                return(Array($prev, $key));
+            if ($i==$cnt && $key < $k) 
+                return(Array($key,false));
+            if ($key > $k)
+                if ($i==1 && $key < $k) {
+                    return(Array(false, $key));
+                } else {
+                    return(Array($prev, $key));
+                }
             $prev = $key;
+            $i++;
         }
-        return(false);
+        return(Array($prev, $key));
     }
 
     /*
      * Interpolate data. 
-     * xy - array of array (x=>y)
+     * $xy - array of array (x=>y)
+     * $newx - array od new x
+     * $const - use only constant values
      * Returns array of new Y
      */
-    function interpolate($xy, $newx) {
+    function interpolate($xy, $newx, $const=false) {
         $y=Array();
+        $oldx=array_keys($xy);
         foreach ($newx as $x) {
-            $oldx=array_keys($xy);
-            if ($x < min($oldx)) {
-                $y[$x] = $xy[min($oldx)];
-            } elseif ($x > max($oldx)) {
-                $y[$x] = $xy[max($oldx)];
-            } else {
-                List($x0, $x1) = self::arr_closestkey($xy, $x);
-                $y0 = $xy[$x0];
-                $y1 = $xy[$x1];
-                $y[$x] = $y0 + ($x - $x0) * ($y1 - $y0) / ($x1 - $x0);
-            }
+                List($x0, $x1) = self::arr_closestkey($xy, $x);  
+                $y0=false;
+                $y1=false;
+                if (!$x0) {
+                    $y0=$xy[$x1];
+                } else {
+                    $y0=$xy[$x0];
+                }
+                if (!$x1) {
+                    $y1=$xy[$x0];
+                } else {
+                    $y1=$xy[$x1];
+                }
+                if ($const) {
+                    $y[$x]=$y0;
+                } else {
+                    $y[$x] = $y0 + ($x - $x0) * ($y1 - $y0) / ($x1 - $x0);
+                }
         }
         return($y);
     }

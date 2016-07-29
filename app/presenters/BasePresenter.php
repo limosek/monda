@@ -322,8 +322,8 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     
     function renderArff() {
         echo "@Relation monda\n\n";
-        $row=(array) $this->exportdata;
-        $row=$row[0];
+        $rows=(array) $this->exportdata;
+        List($key,$row)=each($rows);
         foreach ($row as $column=>$value) {
             if (array_key_exists($column,$this->exportinfo)) {
                 echo "@Attribute ".$this->exportinfo[$column]." ".$this->arffinfo[$column]."\n";

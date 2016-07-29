@@ -7,6 +7,8 @@ use App\Model\ItemStat,
     App\Model\Opts,
     App\Model\CliDebug,
     App\Model\Monda,
+    App\Model\Util,
+    App\Model\Triggerinfo,
     Nette\Utils\DateTime as DateTime;
 
 class IsPresenter extends BasePresenter {
@@ -59,6 +61,9 @@ class IsPresenter extends BasePresenter {
                 false, "history_granularity", "Granularity of history data to fetch in seconds.", 600, 600
         );
         Opts::addOpt(
+                false, "history_interpolate", "Interpolate history data (slow).", true, "yes"
+        );
+        Opts::addOpt(
                 false, "triggerids_history", "Add this triggerids to history", false, false
         );
         Opts::addOpt(
@@ -98,7 +103,10 @@ class IsPresenter extends BasePresenter {
         Opts::optToArray("items", "~");
         Opts::optToArray("triggerids_history", ",");
         if (Opts::getOpt("output_mode")=="arff") {
-            Opts::setOpt("item_restricted_chars","[],. ");
+            Opts::setOpt("item_restricted_chars","{}[],.| ");
+        }
+        if (Opts::getOpt("events_prefetch")) {
+            Opts::setOpt("events_prefetch", Util::timetoseconds(Opts::getOpt("events_prefetch")) - time());
         }
         if (count(Opts::getOpt("itemids"))==0) {
             ItemStat::itemsToIds();
@@ -168,26 +176,13 @@ class IsPresenter extends BasePresenter {
             self::mexit("You must use --items parameter to select items!\n");
         }
         $rows = ItemStat::isZabbixHistory();
-        if (Opts::getOpt("triggerids_history")) {
-            $eq = Array(
-                "time_from" => Opts::getOpt("start") - Opts::getOpt("events_prefetch"),
-                "time_till" => Opts::getOpt("end"),
-                "output" => "extend",
-                "objectids" => Opts::getOpt("triggerids_history"),
-                "selectHosts" => "refer",
-                "selectRelatedObject" => "refer",
-                "select_alerts" => "refer",
-                "select_acknowledges" => "refer",
-                "sortfield" => "clock"
-            );
-            $events = Monda::apiCmd("eventGet", $eq);
-            CliDebug::warn(sprintf("Found %d events for triggerids %s.\n", count($events), join(",", Opts::getOpt("triggerids_history"))));
-        }
         if ($rows) {
-            $clocks = Array();
-            $this->exportdata = array_values($rows);
-            foreach ($this->exportdata as $i => $row) {
-                $clocks[$row["clock"]] = $row["clock"];
+            $clocks=Array();
+            $this->exportdata = $rows;
+            $i=0;
+            foreach ($this->exportdata as $clock => $row) {
+                $i++;
+                $clocks[]=$row["clock"];
                 CliDebug::dbg(sprintf("Processing %d row of %d      \r", $i, count($this->exportdata)));
                 foreach ($row as $column => $value) {
                     if (!array_key_exists($column, $this->exportinfo)) {
@@ -200,44 +195,14 @@ class IsPresenter extends BasePresenter {
                     }
                 }
             }
-            if (Opts::getOpt("triggerids_history")) {
-                $row = 0;
-                $triggers = Array();
-                $values = Array();
-                $firstclock = each($clocks);
-                reset($clocks);
-                foreach (Opts::getOpt("triggerids_history") as $trigger) {
-                    $this->exportinfo["trg_".$trigger] = "trg_".$trigger;
-                    $this->arffinfo["trg_".$trigger] = "{OK,PROBLEM}";
-                }
-                foreach ($events as $e) {
-                    if ($e->clock < $firstclock) {
-                        $values[$e->relatedObject->triggerid] = $e->value;
-                    }
-                }
-                if (count($values) < count(Opts::getOpt("triggerids_history"))) {
-                    self::mexit("Use longer prefetch (--events_prefetch)!\n");
-                }
-                foreach ($clocks as $clock) {
-                    foreach ($events as $e) {
-                        if ($e->clock <= $clock && $e->clock >= $clock - Opts::getOpt("events_prefetch")) {
-                            CliDebug::dbg("Event $e->eventid, clock $e->clock, value $e->value\n");
-                            $triggers[$clock][$e->relatedObject->triggerid] = $e->value;
-                            $values[$e->relatedObject->triggerid] = $e->value;
-                        } else {
-                            CliDebug::dbg("Event $e->eventid, clock $e->clock, value $e->value\n");
-                            $triggers[$clock][$e->relatedObject->triggerid] = $values[$e->relatedObject->triggerid];
-                        }
-                    }
-                }
+            List($tinfo,$trows)=TriggerInfo::History(Opts::getOpt("triggerids_history"),$clocks);
+            foreach ($tinfo as $t=>$ti) {
+                    $this->exportinfo[$t] = $ti["description"];
+                    $this->arffinfo[$t] = "{OK,PROBLEM}";
             }
-            foreach ($this->exportdata as $i => $row) {
-                foreach (Opts::getOpt("triggerids_history") as $trigger) {
-                    if ($triggers[$row["clock"]][$trigger]) {
-                        $this->exportdata[$i]["trg_".$trigger] = "PROBLEM";
-                    } else {
-                        $this->exportdata[$i]["trg_".$trigger] = "OK";
-                    }
+            foreach ($this->exportdata as $i=>$row) {
+                foreach ($tinfo as $t=>$ti) {
+                    $this->exportdata[$i][$t]=$trows[$i][$t];
                 }
             }
             parent::renderShow($this->exportdata);

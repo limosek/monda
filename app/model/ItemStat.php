@@ -335,34 +335,43 @@ class ItemStat extends Monda {
                 $values[$h->itemid][$h->c] = $h->v;
             }
         }
-        $x = range($from, $to, $g);
-        $ip = Array();
-        foreach ($values as $itemid => $column) {
-            $ip[$itemid] = Util::interpolate($column, $x);
-        }
-        foreach ($x as $x1) {
-            foreach ($ip as $itemid => $values) {
-                $ret[$x1]["clock"] = $x1;
-                $ret[$x1][$itemid] = $values[$x1];
+        if (Opts::getOpt("history_interpolate")) {
+            $x = range($from, $to, $g);
+            $ip = Array();
+            foreach ($values as $itemid => $column) {
+                CliDebug::info(sprintf("Interpolating %d values for %s from %d values.\n", count($x), $itemid, count($column)));
+                $ip[$itemid] = Util::interpolate($column, $x);
+            }
+            foreach ($x as $x1) {
+                foreach ($ip as $itemid => $values) {
+                    $ret[$x1]["clock"] = $x1;
+                    $ret[$x1][$itemid] = $values[$x1];
+                }
+            }
+        } else {
+            foreach ($hist as $h) {
+                $ret[$h->c]["clock"] = $h->c;
+                $ret[$h->c][$h->itemid] = $h->v;
             }
         }
         return($ret);
     }
 
     static public function IsMultiCompute() {
-        Opts::setOpt("window_empty",true);
-        Opts::setOpt("tw_minloi",-1);
-        $wids=Tw::twToIds();
-        if (!$wids) return;
-        if (Opts::getOpt("max_windows_per_query") && count($wids)>Opts::getOpt("max_windows_per_query")) {
-            foreach (array_chunk($wids,Opts::getOpt("max_windows_per_query")) as $subwids) {
+        Opts::setOpt("window_empty", true);
+        Opts::setOpt("tw_minloi", -1);
+        $wids = Tw::twToIds();
+        if (!$wids)
+            return;
+        if (Opts::getOpt("max_windows_per_query") && count($wids) > Opts::getOpt("max_windows_per_query")) {
+            foreach (array_chunk($wids, Opts::getOpt("max_windows_per_query")) as $subwids) {
                 self::isCompute($subwids);
             }
-        } else {           
+        } else {
             self::isCompute($wids);
         }
     }
-    
+
     static public function IsDelete() {
         $items=self::IsToIds();
         $windowids=Tw::TwtoIds();
