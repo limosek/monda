@@ -112,7 +112,7 @@ class IsPresenter extends BasePresenter {
             ItemStat::itemsToIds();
         }
         if (!Opts::getOpt("anonymize_key") && Opts::getOpt("anonymize_items")) {
-            self::mexit(2,"You must use anonymize_key to anonymize items.");
+            self::mexit(2,"You must use --anonymize_key to anonymize items.");
         }
     }
     
@@ -136,7 +136,7 @@ class IsPresenter extends BasePresenter {
                 $itxt = $ii[0]->key_;
             }
             if (Opts::getOpt("anonymize_items")) {
-                $itxt=Util::encrypt($itxt,Opts::getOpt("anonymize_key"));
+                $itxt=Util::anonymize($itxt,Opts::getOpt("anonymize_key"));
             } else {
                 if (Opts::getOpt("item_restricted_chars")) {
                     $itxt=strtr($itxt,Opts::getOpt("item_restricted_chars"),"_____________");

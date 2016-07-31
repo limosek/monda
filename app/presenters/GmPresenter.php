@@ -43,6 +43,9 @@ class GmPresenter extends MapPresenter {
         );
         Opts::addOpt(false, "gm_graph", "Selector for graphviz map type to create", "dot", "dot", Array("dot", "circo", "fdp")
         );
+        Opts::addOpt(
+                false, "anonymize_urls", "Anonymize urls", false, "no"
+        );
         Opts::setDefaults();
         Opts::readCfg(Array("Tw", "Is", "Hs", "Ic", "Ec", "Map", "Gm"));
         Opts::readOpts($this->params);

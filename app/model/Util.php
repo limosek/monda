@@ -59,6 +59,9 @@ class Util extends Nette\Object {
             $itemidsstr = "";
         }
         $url=sprintf("%s/history.php?", Opts::getOpt("zabbix_url")) . sprintf("action=batchgraph&%s&graphtype=0&period=%d&stime=%d", $itemidsstr, $seconds, $start);
+        if (Opts::getOpt("anonymize_urls")) {
+            $url=Util::anonymize($url,Opts::getOpt("anonymize_key"));
+        }
         return($url);
     }
     
@@ -74,6 +77,9 @@ class Util extends Nette\Object {
             $itemidsstr = "";
         }
         $url=sprintf("%s/chart.php?", Opts::getOpt("zabbix_url")) . sprintf("period=%d&stime=%s&%s&type=0&batch=1&updateProfile=0&profileIdx=&profileIdx2=&width=1024", $seconds, date("YmdHis",$start), $itemidsstr);
+        if (Opts::getOpt("anonymize_urls")) {
+            $url=Util::anonymize($url,Opts::getOpt("anonymize_key"));
+        }
         return($url);
     }
     
@@ -103,6 +109,10 @@ class Util extends Nette\Object {
 
     function simple_decrypt($text, $salt) {
         return trim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $salt, base64_decode($text), MCRYPT_MODE_ECB, mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB), MCRYPT_RAND)));
+    }
+    
+    function anonymize($text,$key) {
+        return(sha1($text.$key));
     }
     
     function arr_closestkey($array, $k) {

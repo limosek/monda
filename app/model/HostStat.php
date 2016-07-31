@@ -160,10 +160,11 @@ class HostStat extends Monda {
                 SET hostid=NULL
                 WHERE itemid IN (?) AND windowid IN (?) AND hostid=-1", $itemids, $wids);
         }
-        $ius = self::mquery("SELECT COUNT(*) AS cnt FROM itemstat WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", $itemids, $wids)->fetchAll();
+        $ius = self::mquery("SELECT COUNT(*) AS cnt FROM itemstat WHERE itemid IN (?) AND windowid IN (?) AND (hostid IS NULL OR hostid=-1)", $itemids, $wids)->fetch();
         if ($ius->cnt > 0) {
             foreach ($hostids as $hostid) {
                 $hitemids = self::hosts2itemids(array($hostid));
+                CliDebug::info(sprintf("Host %d of %d (%d items),", $hostid, count($hostids), count($hitemids)));
                 if (count($hitemids) < 1)
                     continue;
                 $ius = self::mquery("

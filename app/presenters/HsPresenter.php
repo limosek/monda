@@ -8,6 +8,7 @@ use App\Model\ItemStat,
     Tracy\Debugger,
     App\Model\Opts,
     App\Model\CliDebug,
+    App\Model\Util,
     Nette\Utils\DateTime as DateTime;
 
 class HsPresenter extends BasePresenter {
@@ -96,7 +97,7 @@ class HsPresenter extends BasePresenter {
         $h = Monda::apiCmd("hostGet", $iq);
         if (count($h) > 0) {
             if (Opts::getOpt("anonymize_hosts")) {
-                return(Util::encrypt($h[0]->host,Opts::getOpt("anonymize_key")));
+                return(Util::anonymize($h[0]->host,Opts::getOpt("anonymize_key")));
             } else {
                 if (Opts::getOpt("hostname_restricted_chars")) {
                     return(strtr($h[0]->host,Opts::getOpt("hostname_restricted_chars"),"_____________"));
@@ -157,6 +158,7 @@ class HsPresenter extends BasePresenter {
 
     public function renderUpdate() {
         HostStat::hsUpdate();
+        HostStat::hsLoi();
         self::mexit();
     }
 
