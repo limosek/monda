@@ -1,23 +1,28 @@
 #!/bin/sh
 
 if [ -z "$1" ]; then
-    echo "$0 graphname [monda_options]"
+    echo "$0 graphname start end [icw_options]"
     exit 2
 fi
 graph=$1
 shift
 
-outdir=$(dirname $0)/../out
+outdir=$(dirname $0)/../out/$graph
 monda=$(dirname $0)/monda.php
+mkdir -p $outdir
 
-tws=$($monda tw:show $* | cut -d ' ' -f 1)
-html=$outdir/icw-${graph}.html
+tws=$($monda tw:show -s "$1" -e "$2" | cut -d ' ' -f 1)
+html=$outdir/icws.html
 cat >$html <<EOF
 EOF
 
+shift
+shift
+
 for tw in $tws; do
-     gname=icw-${graph}-$tw
-     if ! $monda gm:icw $* -w $tw --gm_format svg >$outdir/$gname.svg; then
+     echo "Window $tw" >&2
+     gname=icw-$tw
+     if ! $monda gm:icw -w $tw "$@" --loi_sizefactor 0.0001 --gm_format svg >$outdir/$gname.svg; then
         rm $outdir/$gname.svg
      fi
      echo "<div style='border: 1px solid black'>" >>$html

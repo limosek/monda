@@ -29,6 +29,8 @@ shift
 
 if ! psqladmin $@; then
   echo "You are not postgresql admin?"
+  echo "You can setup db manualy like this"
+  echo "psql <$SQLDIR/init_db.sql && psql monda <$SQLDIR/init_schema.sql"
   exit 2
 fi
 

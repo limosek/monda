@@ -19,7 +19,7 @@ class GmPresenter extends MapPresenter {
         CliDebug::warn("
      Graphviz map operations
      
-     gm:icw -w id [common opts]
+     gm:icw [common opts]
      gm:tws [common opts]
      gm:hs [common opts]
      
@@ -66,10 +66,12 @@ class GmPresenter extends MapPresenter {
         $tree = Tw::twTree($wids);
         $stats = Tw::twStats();
         $this->template->title = "Monda TimeWindows";
-        Opts::setOpt("corr_type", "samedow");
+        if (Opts::isDefault("corr_type")) {
+            Opts::setOpt("corr_type", "samedow");
+        }
         Opts::setOpt("hostname_restricted_chars","-");
         if (Opts::isDefault("gm_graph")) {
-            Opts::setOpt("gm_graph","dot");
+            Opts::setOpt("gm_graph","fdp");
         }
         $ics = ItemCorr::icTwStats()->fetchAll();
         if (sizeof($ics) > 0) {
@@ -80,10 +82,13 @@ class GmPresenter extends MapPresenter {
                 $wcorr[$ic->windowid1][$ic->windowid2] = $ic->acorr * 10;
                 $w1 = Tw::twGet($ic->windowid1);
                 $w2 = Tw::twGet($ic->windowid2);
+                $wcorrwids[$ic->windowid1]=1;
+                $wcorrwids[$ic->windowid2]=1;
                 $urls[$ic->windowid1][$ic->windowid2] = Util::ZabbixGraphUrl1($itemids, $w1->fstamp, $w1->seconds);
                 $urls[$ic->windowid2][$ic->windowid1] = Util::ZabbixGraphUrl1($itemids, $w2->fstamp, $w2->seconds);
             }
             $this->template->wcorr = $wcorr;
+            $this->template->wcorrwids = $wcorrwids;
             $this->template->urls = $urls;
         }
         $twids = Array();
@@ -96,6 +101,7 @@ class GmPresenter extends MapPresenter {
         $this->template->map = $map;
         $this->template->stats = $stats;
         $this->template->setFile(APP_DIR . "/templates/gm/tws.latte");
+        ob_start();
         $this->template->render();
         self::pipeOut(ob_get_clean());
     }
@@ -124,7 +130,7 @@ class GmPresenter extends MapPresenter {
                 continue;
             }
             $iccomb[$ic->itemid1 . $ic->itemid2] = 1;
-            $ics[$i]->size = $ic->corr * 5;
+            $ics[$i]->size = min($ic->corr * 5,0.7);
             $ics[$i]->label = sprintf("%.2f", $ic->corr);
             $info1 = ItemStat::iteminfo($ic->itemid1);
             $info2 = ItemStat::iteminfo($ic->itemid2);
@@ -166,6 +172,7 @@ class GmPresenter extends MapPresenter {
     public function renderHs() {
         $this->setLayout(false);
         parent::renderHs();
+        print_r($this->template->windows);exit;
         $this->template->setFile(APP_DIR . "/templates/gm/hs.latte");
         ob_start();
         $this->template->render();

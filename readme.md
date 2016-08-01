@@ -178,8 +178,6 @@ expensive to do cron with subtargets for long time (like last example).
 $ monda cron:1hour
 $ monda cron:1day -Sc
 $ monda cron:1week -Sc
-$ monda cron:1month -Sc
-$ monda cron:1month -s "1 year ago" -Sc
 
 ```
 
@@ -189,14 +187,61 @@ $ monda tw:show -s yesterday -Om csv
 $ monda is:show -s yesterday -Om csv -Ov expanded
 $ monda ic:show -s yesterday -Om csv -Ov expanded
 ```
+## Help 
+To see all possible parameters, use -xh option for given module.
+```
+# Basic help
+monda
+# Basic help on module
+monda is
+# Extended help for module
+monda gm -xh 2>&1 |less
+```
+## Fine-tune your parameters
+It is hard to decide what to analyze without more informations about your setup. You can fine-tune process.
+Monda tries to find most interresting items, host and windows automaticaly. But you can change it by parameters.
+```
+# Select explicitly, which items to correlate
+monda ic:compute --items '@net.if' #will correlate network statictics. @ means regular expression on item key
+monda ic:compute --items '@net.if~@system.cpu' #will correlate network statictics and system statistics. ~ means more items
+# find correlations of same items in same hour day
+monda ic:compute --corr_type samehour
+# find correlations of same items in same day of week
+monda ic:compute --corr_type samedow
+# Select explicitly hosts
+monda ic:compute --hosts server1,server2,server3 
+# Find best window ids
+monda tw:show 
+# Find best items
+monda is:show
+# Find best correlations
+monda ic:show
+# Sometime we want to omit correlation of 1 (similar items which correlate by default)
+monda ic:show --max_corr 0.95
+```
 
 ## Graphical outputs
 
 Monda uses Graphviz to show some results. You must install graphviz. At this time you can use:
 ```
 # Generate timewindows graph with correlations
-$ monda gm:tws -s yesterday -Ov expanded --loi_sizefactor 0.01| fdp -Tsvg >tws.svg
+$ monda gm:tws -s "1 month ago" --loi_sizefactor 0.001 --corr_type samedow --gm_format svg >tws.svg
 # Generate item correlation graph in one window with id wid.
-$ monda gm:ics -w wid -Ov expanded --loi_sizefactor 0.01| fdp -Tsvg >ics.svg
+$ monda gm:ics -w wid -Ov expanded --loi_sizefactor 0.001 --gm_format svg  >ics.svg
 ```
 
+## Outputs for processing by external software
+```
+# Generate data for weka
+monda is:history -w wid -Om arff >history.arff
+# Add trigger values into history. You have to pass triggerids to add
+monda is:history -w wid --triggerids_history 10,20,30 -Om arff >history.arff
+```
+
+## Misc scripts
+To generate more svg window correlations report, use this script which will create 
+files in out directory (out/tws-last_week-id.svg)
+```
+#./bin/generate_icws.sh graphname start end [icw_options]
+./bin/generate_icws.sh last_week "1 week ago" "today" 
+```

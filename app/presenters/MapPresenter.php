@@ -176,7 +176,7 @@ class MapPresenter extends BasePresenter {
                 $props->tstamp = $window->tstamp;
                 $props->loi = $window->loi;
                 $props->loih = $window->loih;
-                $props->size = $window->loi * Opts::getOpt("loi_sizefactor") + Opts::getOpt("loi_minsize");
+                $props->size = min(0.7,$window->loi * Opts::getOpt("loi_sizefactor") + Opts::getOpt("loi_minsize"));
                 if (count(Opts::getOpt("itemids"))>0) {
                     $itemids = Opts::getOpt("itemids");
                 } else {

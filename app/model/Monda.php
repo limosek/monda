@@ -54,6 +54,11 @@ class Monda extends Nette\Object {
             return(false);
         }
     }
+    
+    static function db_type($dsn) {
+        preg_split("/;/",$dsn,$regs);
+        return($regs[1]);
+    }
 
     static function init_sql() {
         CliDebug::dbg("Using Zabbix db (".Opts::getOpt("zabbix_dsn").")\n");
@@ -80,10 +85,14 @@ class Monda extends Nette\Object {
                 );
 
         if (self::$zq && self::$mq) {
-            self::zquery("set statement_timeout=?",Opts::getOpt("zabbix_db_query_timeout")*1000);
             CliDebug::info("Setting SQL timeout for Zabbix DB to ".Opts::getOpt("zabbix_db_query_timeout")." seconds.\n");
-            self::mquery("set statement_timeout=?",Opts::getOpt("monda_db_query_timeout")*1000);
+            if (self::db_type(Opts::getOpt("zabbix_dsn"))=="psql") {
+                self::zquery("set statement_timeout=?",Opts::getOpt("zabbix_db_query_timeout")*1000);
+            } elseif (self::db_type(Opts::getOpt("zabbix_dsn"))=="mysql") {
+                self::zquery("SET STATEMENT max_statement_time=?",Opts::getOpt("zabbix_db_query_timeout"));
+            }
             CliDebug::info("Setting SQL timeout for Monda DB to ".Opts::getOpt("monda_db_query_timeout")." seconds.\n");
+            self::mquery("set statement_timeout=?",Opts::getOpt("monda_db_query_timeout")*1000);
             return(true);
         } else {
             throw Exception("Cannot connect to monda or zabbix db");
