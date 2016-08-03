@@ -27,7 +27,7 @@ class Monda extends Nette\Object {
     const _1MONTH30=2592000;
     const _1MONTH31=2678400;
     const _1YEAR=31536000;
-    const _MAX_ROWS=10000000;
+    const _MAX_ROWS=1000;
     static $cache; // Cache
     static $apicache; // Cache for zabbix api
     static $sqlcache;

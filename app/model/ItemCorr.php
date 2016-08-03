@@ -370,16 +370,15 @@ class ItemCorr extends Monda {
     /**
     * Compute item correlations
     */
-    static function icMultiCompute() {
-        $cids = self::icToIds(true,false);
+   static function icMultiCompute() {
+        $cids = self::icToIds(true, false);
         if (!$cids) {
             throw new Exception("No items for correlations (icMultiCompute).");
         }
         $wids = self::extractIds($cids, array("windowid1", "windowid2", "itemid1", "itemid2"));
-        $itemids = Array_unique(Array_merge($wids["itemid1"],$wids["itemid2"]));
-        $windowids = Array_unique(Array_merge($wids["windowid1"],$wids["windowid2"]));
-        CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%d items and %d windows, mode %s, seconds=%s)...",
-                count($cids), count($itemids), count($windowids), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
+        $itemids = Array_unique(Array_merge($wids["itemid1"], $wids["itemid2"]));
+        $windowids = Array_unique(Array_merge($wids["windowid1"], $wids["windowid2"]));
+        CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%d items and %d windows, mode %s, seconds=%s)...", count($cids), count($itemids), count($windowids), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
         if (count($cids) == 0) {
             return(false);
         }
@@ -420,7 +419,8 @@ class ItemCorr extends Monda {
                 $j++;
                 CliDebug::info(sprintf("Windows %d-%d:", $wid1, $wid2));
                 $w2 = Tw::twGet($wid2);
-                $icrows = self::zcquery("
+                foreach (array_chunk($itemids, Opts::getOpt("ic_max_items_at_once")) as $itemids_part) {
+                    $icrows = self::zcquery("
                     SELECT  h1.itemid AS itemid1,
                             h2.itemid AS itemid2,
                             COUNT(*) AS cnt,
@@ -448,41 +448,61 @@ class ItemCorr extends Monda {
                         AND h2.clock>? AND h2.clock<?
                     GROUP BY h1.itemid, h2.itemid
                     HAVING (COUNT(*)>=? AND COUNT(*)<=?)
-                    ", $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $itemids, $itemids, $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), $w2["fstamp"] - $w1["fstamp"], Opts::getOpt("time_precision"), $wids["itemid1"], $wids["itemid2"], $w1["fstamp"], $w1["tstamp"], $w2["fstamp"], $w2["tstamp"], Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr")
-                );
-                $mincorr = 0;
-                $maxcorr = 0;
-                $rows_added = 0;
-                self::mbegin();
-                foreach ($icrows as $icrow) {
-                    $icrow->windowid1 = $wid1;
-                    $icrow->windowid2 = $wid2;
-                    if ($icrow->stddev1 * $icrow->stddev2 >0) {
-                        $icrow->corr=$icrow->cov/($icrow->stddev1 * $icrow->stddev2);
-                    } else {
-                        $icrow->corr=0;
-                    }
-                    if ($icrow->corr === null || $icrow->cnt < Opts::getOpt("min_values_for_corr")) {
-                        $icrow->corr = 0;
-                    }
-                    $mincorr = min($mincorr, abs($icrow->corr));
-                    if ($icrow->itemid1<>$icrow->itemid2) {
-                        $maxcorr = max($maxcorr, abs($icrow->corr));
-                    }
-                    $wrow = Array(
-                        "windowid1" => $icrow->windowid1,
-                        "windowid2" => $icrow->windowid2,
-                        "itemid1" => $icrow->itemid1,
-                        "itemid2" => $icrow->itemid2,
-                        "corr" => $icrow->corr,
-                        "cnt" => $icrow->cnt
+                    ",      $w2["fstamp"] - $w1["fstamp"], 
+                            Opts::getOpt("time_precision"),
+                            $itemids_part,
+                            $itemids_part,
+                            $w1["fstamp"],
+                            $w1["tstamp"],
+                            $w2["fstamp"],
+                            $w2["tstamp"],
+                            Opts::getOpt("min_values_for_corr"),
+                            Opts::getOpt("max_values_for_corr"),
+                            $w2["fstamp"] - $w1["fstamp"],
+                            Opts::getOpt("time_precision"), 
+                            $itemids_part,
+                            $itemids_part,
+                            $w1["fstamp"], 
+                            $w1["tstamp"],
+                            $w2["fstamp"],
+                            $w2["tstamp"],
+                            Opts::getOpt("min_values_for_corr"),
+                            Opts::getOpt("max_values_for_corr")
                     );
-                    $rows_added++;
-                    self::mquery("DELETE FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $icrow->windowid1, $icrow->windowid2, $icrow->itemid1, $icrow->itemid2);
-                    $iic = self::mquery("INSERT INTO itemcorr", $wrow);
-                }
-                CliDebug::info(sprintf("Rows: $rows_added, interval:<%f,%f>,", $mincorr, $maxcorr));
-                self::mcommit();
+                    $mincorr = 0;
+                    $maxcorr = 0;
+                    $rows_added = 0;
+                    self::mbegin();
+                    foreach ($icrows as $icrow) {
+                        $icrow->windowid1 = $wid1;
+                        $icrow->windowid2 = $wid2;
+                        if ($icrow->stddev1 * $icrow->stddev2 > 0) {
+                            $icrow->corr = $icrow->cov / ($icrow->stddev1 * $icrow->stddev2);
+                        } else {
+                            $icrow->corr = 0;
+                        }
+                        if ($icrow->corr === null || $icrow->cnt < Opts::getOpt("min_values_for_corr")) {
+                            $icrow->corr = 0;
+                        }
+                        $mincorr = min($mincorr, abs($icrow->corr));
+                        if ($icrow->itemid1 <> $icrow->itemid2) {
+                            $maxcorr = max($maxcorr, abs($icrow->corr));
+                        }
+                        $wrow = Array(
+                            "windowid1" => $icrow->windowid1,
+                            "windowid2" => $icrow->windowid2,
+                            "itemid1" => $icrow->itemid1,
+                            "itemid2" => $icrow->itemid2,
+                            "corr" => $icrow->corr,
+                            "cnt" => $icrow->cnt
+                        );
+                        $rows_added++;
+                        self::mquery("DELETE FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $icrow->windowid1, $icrow->windowid2, $icrow->itemid1, $icrow->itemid2);
+                        $iic = self::mquery("INSERT INTO itemcorr", $wrow);
+                    }
+                    CliDebug::info(sprintf("Rows: $rows_added, interval:<%f,%f>,", $mincorr, $maxcorr));
+                    self::mcommit();
+                }               
             }
         }
         self::icLoi();
@@ -490,37 +510,38 @@ class ItemCorr extends Monda {
     }
 
     /**
-    * Delete item correlations
-    */
+     * Delete item correlations
+     */
     static function icDelete() {
-        Opts::setOpt("max_rows",10000);
-        $windows=Tw::twToIds();
-        CliDebug::warn(sprintf("Will delete item correlations from %d windows.\n",count($windows)));
-        if (count($windows)==0) {
+        Opts::setOpt("max_rows", 10000);
+        $windows = Tw::twToIds();
+        CliDebug::warn(sprintf("Will delete item correlations from %d windows.\n", count($windows)));
+        if (count($windows) == 0) {
             return(false);
         }
         self::mbegin();
-        self::mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)",$windows,$windows);
+        self::mquery("DELETE FROM itemcorr WHERE windowid1 IN (?) OR windowid2 IN (?)", $windows, $windows);
         self::mcommit();
     }
-    
+
     /**
-    * Update item correlations LOI. 
-    */
+     * Update item correlations LOI. 
+     */
     static function icLoi() {
-        Opts::setOpt("max_rows",10000);
-        $twids=  Tw::twToIds();
-        if (count($twids)==0) {
+        Opts::setOpt("max_rows", 10000);
+        $twids = Tw::twToIds();
+        if (count($twids) == 0) {
             throw new Exception("No item correlations for loi.");
         }
         Monda::mbegin();
-        $lsql=Monda::mquery("
+        $lsql = Monda::mquery("
             UPDATE itemcorr
             SET loi=ABS(corr)*100
             WHERE windowid1 IN (?) AND windowid2 IN (?)
-            ",$twids,$twids);
+            ", $twids, $twids);
         Monda::mcommit();
     }
+
 }
 
 ?>

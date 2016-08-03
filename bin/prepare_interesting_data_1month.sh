@@ -18,9 +18,9 @@ done
 end=$(date -d "$month-$i" "+%Y-%m-%d")
 
 _monda() {
-  echo
-  echo $(dirname $0)/monda.php "$@" -Om csv -s "$start" -e "$end" --anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls >&2
-  $(dirname $0)/monda.php "$@" -Om csv -s "$start" -e "$end" --anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls
+  echo >&2
+  echo $(dirname $0)/monda.php "$@" --anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls >&2
+  $(dirname $0)/monda.php "$@" --anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls
 }
 
 outdir=$(dirname $0)/../out/$site/month
@@ -32,21 +32,20 @@ mkdir -p $outdir
 
 # Compute item, host and correlations statistics
 (
-_monda cron:1week --sub_cron_targets
-_monda ic:compute --items '@net.if~@system.cpu' -l 1day,1hour
-_monda ic:compute --items '@net.if~@system.cpu' --corr_type samedow -l 1day
-_monda ic:compute --items '@net.if~@system.cpu' --corr_type samehour -l1hour
-_monda is:show >$outdir/is.csv
-_monda is:stats >$outdir/iss.csv
-_monda hs:show >$outdir/hs.csv
-_monda hs:stats >$outdir/hss.csv
-_monda ic:show >$outdir/ic.csv
-_monda ic:show --corr_type samehour >$outdir/is_hour.csv
-_monda ic:show --corr_type samedow >$outdir/is_day.csv
-_monda ic:stats >$outdir/ics.csv
+tws=$(_monda tw:show -Om brief --brief_columns id)
+_monda cron:1month -s "$start" -e "$end" 
+_monda is:show -s "$start" -e "$end"  >$outdir/is.csv
+_monda is:stats -s "$start" -e "$end" >$outdir/iss.csv
+_monda hs:show -s "$start" -e "$end"  >$outdir/hs.csv
+_monda hs:stats -s "$start" -e "$end" >$outdir/hss.csv
+_monda ic:show -s "$start" -e "$end"  >$outdir/ic.csv
+_monda ic:show -s "$start" -e "$end"  --corr_type samehour >$outdir/is_hod.csv
+_monda ic:show -s "$start" -e "$end"  --corr_type samedow >$outdir/is_dow.csv
+_monda ic:stats -s "$start" -e "$end" >$outdir/ics.csv
 _monda gm:tws -s "$start" -e "$end" --corr_type samehour --gm_format svg >$outdir/tws.svg
-tws=$($monda tw:show -s "$1" -e "$2" | sort -n | cut -d ' ' -f 1)
 for tw in $tws; do
-     _monda gm:icw -w $tw --loi_sizefactor 0.0001 --gm_format svg >$outdir/ics-$tw.svg
+     if ! _monda gm:icw -w $tw --loi_sizefactor 0.0001 --gm_format svg >$outdir/ics-$tw.svg; then
+        rm -f $outdir/ics-$tw.svg
+     fi
 done
 ) 2>&1 | tee $outdir/monda.log

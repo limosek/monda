@@ -146,7 +146,7 @@ class HostStat extends Monda {
     }
 
     static function hsUpdate() {
-        Opts::setOpt("max_rows",1000000);
+        Opts::setOpt("max_rows",Monda::_MAX_ROWS);
         $hostids = Opts::getOpt("hostids");
         $itemids = self::hosts2itemids($hostids);
         $wids = Tw::twToIds();
@@ -182,13 +182,13 @@ class HostStat extends Monda {
     }
 
     static function hsDelete() {
-        Opts::setDOpt("max_rows",10000);
+        Opts::setDOpt("max_rows",Monda::_MAX_ROWS);
         $tws = Tw::twToIds();
         $dq = self::mquery("DELETE FROM hoststat WHERE windowid IN (?) AND hostid IN (?)", $tws,Opts::getOpt("hostids"));
     }
 
     static function hsMultiCompute() {
-        Opts::setDOpt("max_rows",10000);
+        Opts::setDOpt("max_rows",Monda::_MAX_ROWS);
         $wids = Tw::twToIds();
         CliDebug::warn(sprintf("Need to compute HostStat for %d windows...", count($wids)));
         if (count($wids) == 0 || count(Opts::getOpt("hostids")) == 0) {

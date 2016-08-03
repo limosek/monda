@@ -92,7 +92,7 @@ class CronPresenter extends IsPresenter {
         }
 
         if (Opts::isDefault("window_length")) {
-            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK));
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY));
         }
         self::renderRange(Monda::_1WEEK, "1week");
     }
@@ -108,7 +108,7 @@ class CronPresenter extends IsPresenter {
         $start = date_format(New DateTime(date("Y-m-01 00:00", $monthago)), "U");
 
         if (Opts::isDefault("window_length")) {
-            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK, Monda::_1MONTH, Monda::_1MONTH28, Monda::_1MONTH30, Monda::_1MONTH31));
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY));
         }
         $end=Opts::getOpt("end");
         while ($start < $end) {

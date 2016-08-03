@@ -6,7 +6,11 @@ using this package. Monda can be performance killer for your Zabbix installation
 
 ## Sample results
 
+## Timewindows with their correlations
+![TW dependency](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f?path=%2Fopf%2Fweek#)
+
 You can find some results [here](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f).
+Please note that data are anonymized so there are only itemids and urls are not working.
 Or you are welcomed to upload your anonymized results (see below).
 
 ## Basics
@@ -242,7 +246,9 @@ monda ic:show --max_corr 0.95
 
 ## Graphical outputs
 
-Monda uses Graphviz to show some results. You must install graphviz. 
+Monda uses Graphviz to show some results. You must install graphviz. If you open svg files in browser and you
+defined zabbix url in your monda config, objects are clickable and follow you to your zabbix site and history for selected 
+items or hosts so you can for example look into zabbix graphs how correlation looks.
 
 Generate time graph with correlations
 ```
@@ -276,7 +282,7 @@ Anonymization is not reversible. It uses sha1 algorithm with combination of key.
 
 There are three scripts prepared for exporting your interresting site data anonymized. You are welcomed to upload results!
 This scripts will process last day, last week or last month of data into out/site_name/{day|month|week}. Please take care, this can really utilize 
-your zabbix database. Longer interval means long time, CPU and disk IO!
+your zabbix database. Longer interval means long time, CPU and disk IO! 
 
 Export data from yesterday midnight to today midnight (last day).
 ```
@@ -292,13 +298,11 @@ Export data for previous month.
 ```
 ./bin/prepare_interesting_data_1month.sh site_name 
 ```
+
 After it, you can upload it to our [owncloud server](https://box.slu.cz/index.php/s/SqOp5bybVup6lzq)
 
-## Misc scripts
-To generate more svg window correlations report, use this script which will create 
-files in out directory (out/last_week/tws-{id}.svg)
+### Export data columns
+is.csv
 ```
-./bin/generate_icws.sh last_week "1 week ago" "today" 
+"itemid";"min_";"max_";"avg_";"stddev_";"loi";"cnt";"hostid";"cv";"windowid";
 ```
-
-
