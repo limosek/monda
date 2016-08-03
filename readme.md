@@ -7,7 +7,9 @@ using this package. Monda can be performance killer for your Zabbix installation
 ## Sample results
 
 ## Timewindows with their correlations
-![TW dependency](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f?path=%2Fopf%2Fweek#)
+![TW dependency](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f/download?path=%2Fopf%2Fweek&files=tws.svg)
+![Item dependency 1](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f/download?path=%2Fopf%2Fweek&files=ics-43902.svg)
+![Item dependency 2](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f/download?path=%2Fopf%2Fweek&files=ics-44227.svg)
 
 You can find some results [here](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f).
 Please note that data are anonymized so there are only itemids and urls are not working.
