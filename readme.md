@@ -305,8 +305,58 @@ Export data for previous month.
 
 After it, you can upload it to our [owncloud server](https://box.slu.cz/index.php/s/SqOp5bybVup6lzq)
 
-### Export data columns
-is.csv
-```
-"itemid";"min_";"max_";"avg_";"stddev_";"loi";"cnt";"hostid";"cv";"windowid";
-```
+### Files inside export
+
+#### is.csv
+Item statistics in timewindow
+
+- itemid - itemid from zabbix
+- hostid - hostid which itemid belongs to
+- min_,max_,avg_,stddev_ - minimum, maximum, average and standard deviation for given item in time window
+- cv - [Coefficient of Variation](https://en.wikipedia.org/wiki/Coefficient_of_variation) 
+- cnt - count of data in history for given item in timewindow
+- windowid - timewindow id
+- loi - Level of interrest. Bigger value mean more important item
+
+#### iss.csv
+Item statistics aggregated for timewindows
+
+- itemid - itemid from zabbix
+- wcnt - count of timewindows with this itemid
+- loi - average loi for given itemid
+- loiw - loi*wcnt
+- min_,max_,avg_,stddev_ - minimum, maximum, average and standard deviation for given item in time windows
+- cnt - average of data count
+- cv - average of [Coefficient of Variation](https://en.wikipedia.org/wiki/Coefficient_of_variation) 
+
+#### hs.csv
+Host statistics in timewindow
+
+- hostid - hostid which itemid belongs to
+- windowid - timewindow id
+- cnt - Total count of data history for host
+- items - Total count of item count in window
+- loi - Level of interrest
+
+#### hss.csv
+Host statistics aggrefated for timewindows
+
+- hostid - hostid which itemid belongs to
+- cnt - Average count of data history for host
+- items - Average count of item count in window
+- loi - Average level of interrest
+
+#### ic.csv
+Item correlation statistics per window
+
+- windowid1,windowid2 - timewindows where correlation found
+- itemid1,itemid2 - itemids which correlated
+- corr - correlation from (-1 to 1)
+- cnt - number of data in history used for correlation
+- icloi - Level of interrest
+
+#### ic_dow.csv
+Item correlation statistics between windows with same day of week.
+
+#### ic_hod.csv
+Item correlation statistics between windows with same hour of day.
