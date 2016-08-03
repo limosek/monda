@@ -4,6 +4,11 @@ This package contains tools to analyze data from monitoring system.
 At this moment, only Zabbix is supported. Please, read documentation before 
 using this package. Monda can be performance killer for your Zabbix installation!
 
+## Sample results
+
+You can find some results [here](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f).
+Or you are welcomed to upload your anonymized results (see below).
+
 ## Basics
 
 Monda will use lot of resources and can be performance killer for Zabbix! 
@@ -261,10 +266,39 @@ Add trigger values into history for external processing. You have to pass trigge
 monda is:history -w wid --triggerids_history 10,20,30 -Om arff >history.arff
 ```
 
+## Exporting and anonymizing data
+It would be nice to share community data and analysis output to some central repository to make monda better.
+But there are security cosiderations. You probably do not want to share internal data from your monitoring server.
+Monda can anonymize data. Please take care, this is not carrefuly tested! There can be still some data not-anonymized. 
+Please take care before submiting. You can create your own site directory in our [owncloud server](https://box.slu.cz/index.php/s/SqOp5bybVup6lzq)
+and submit interresting results. Use *--anonymize_key* , *--anonymize_hosts*, *--anonymize_items*, *--anonymize_urls* directives.
+Anonymization is not reversible. It uses sha1 algorithm with combination of key.
+
+There are three scripts prepared for exporting your interresting site data anonymized. You are welcomed to upload results!
+This scripts will process last day, last week or last month of data into out/site_name/{day|month|week}. Please take care, this can really utilize 
+your zabbix database. Longer interval means long time, CPU and disk IO!
+
+Export data from yesterday midnight to today midnight (last day).
+```
+./bin/prepare_interesting_data_1day.sh site_name 
+```
+
+Export data from week before last monday.
+```
+./bin/prepare_interesting_data_1week.sh site_name 
+```
+
+Export data for previous month. 
+```
+./bin/prepare_interesting_data_1month.sh site_name 
+```
+After it, you can upload it to our [owncloud server](https://box.slu.cz/index.php/s/SqOp5bybVup6lzq)
+
 ## Misc scripts
 To generate more svg window correlations report, use this script which will create 
 files in out directory (out/last_week/tws-{id}.svg)
 ```
 ./bin/generate_icws.sh last_week "1 week ago" "today" 
 ```
+
 
