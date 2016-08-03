@@ -119,8 +119,9 @@ class IcPresenter extends BasePresenter {
     public function renderHistory() {
         Opts::setOpt("ic_sort", "start/+");
         $rows = ItemCorr::icToIds();
-        foreach ($rows as $itemid) {
-            Opts::setOpt("itemids", Array($itemid));
+        $tws = Tw::twToIds();
+        foreach ($tws as $tw) {
+            Opts::setOpt("window_ids", Array($tw));
             $items = ItemCorr::icSearch()->fetchAll();
             foreach ($items as $item) {
                 $this->exportdata[$item->windowid1] = Array(

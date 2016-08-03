@@ -64,14 +64,14 @@ There is no release yet. You must use git to clone monda repository. Git must be
 
 ```
 # su -l monda
-$ git clone git@github.com:limosek/monda.git
-$ cd monda
-$ . env.sh
+git clone git@github.com:limosek/monda.git
+cd monda
+. env.sh
 ```
 Optionaly, you can add PATH for monda account permanently:
 
 ```
-$ cat >>~/.profile <<EOF
+cat >>~/.profile <<EOF
   export PATH=\$PATH:~/monda/
 EOF
 ```
@@ -86,9 +86,9 @@ SQL command. You have to be postgresql admin user to run scripts. There are thre
 - db.sh {init|drop} will try to do all
 
 ```
-# cd ~/monda
-# su postgres
-$ ./misc/db.sh init
+cd ~/monda
+su postgres
+./misc/db.sh init
 ```
 
 ### Configuring
@@ -101,7 +101,7 @@ If you will pass all informations on commandline, you do not need config.
 
 Example config file:
 ```
-$ cat ~/.mondarc
+cat ~/.mondarc
 
 [global]
 # Zabbix API url, user and password
@@ -144,104 +144,127 @@ max_windows_per_query=5
 ```
 Basic help and list of modules can be obtained by runing:
 ```
-$ monda [module]
+monda [module]
 
 ```
 
 Advanced help can be obtained by
 ```
-$ monda [module] -h 2>&1 |less
-```
-or
-```
-$ monda [module] -xh 2>&1 |less
+monda module -xh 2>&1 |less
 ```
 
 ## Running
 
 First we will create timewindows to inspect. This will test MondaDb connection.
 ```
-$ monda tw:create -s yesterday
+monda tw:create -s yesterday
 ```
 
 Next, we will try to compute item statistics for created windows. This will test ZabbixDB
 connection
 ```
-$ monda is:compute -s yesterday
-$ monda is:show -s yesterday
+monda is:compute -s yesterday
+monda is:show -s yesterday
 ```
 
 You can use cron module, which will do all work automaticaly. **-Sc** parameter 
 will do cron subtargets too (eg. all days from week). Take care! This can be very 
 expensive to do cron with subtargets for long time (like last example).
 ```
-$ monda cron:1hour
-$ monda cron:1day -Sc
-$ monda cron:1week -Sc
-
+monda cron:1hour
+monda cron:1day -Sc
+monda cron:1week -Sc
 ```
 
 To see text results, use
 ```
-$ monda tw:show -s yesterday -Om csv
-$ monda is:show -s yesterday -Om csv -Ov expanded
-$ monda ic:show -s yesterday -Om csv -Ov expanded
+monda tw:show -s yesterday -Om csv
+monda is:show -s yesterday -Om csv -Ov expanded
+monda hs:show -s yesterday
+monda ic:show -s yesterday -Om csv -Ov expanded
 ```
-## Help 
-To see all possible parameters, use -xh option for given module.
-```
-# Basic help
-monda
-# Basic help on module
-monda is
-# Extended help for module
-monda gm -xh 2>&1 |less
-```
+
+## Cache
+Monda uses internal caching system. Cache is located in temp/cache directory. Monda tries to cache all
+operations which needs lot of CPU, network or time. For example, all Zabbix API calls are cached by default. 
+Same to zabbix queries which operates over history. You can set default cache timeouts by *--api_cache_expire* and 
+*--sql_cache_expire* options. It is possible even to turn off caching by *--nocache* option but it is not recomended.
+If you want to cleanup cache, simply use *./bin/cache_clean.sh*. 
+
 ## Fine-tune your parameters
 It is hard to decide what to analyze without more informations about your setup. You can fine-tune process.
 Monda tries to find most interresting items, host and windows automaticaly. But you can change it by parameters.
+Select explicitly, which items to correlate
 ```
-# Select explicitly, which items to correlate
 monda ic:compute --items '@net.if' #will correlate network statictics. @ means regular expression on item key
 monda ic:compute --items '@net.if~@system.cpu' #will correlate network statictics and system statistics. ~ means more items
-# find correlations of same items in same hour day
+```
+
+Find correlations of same items in same hour day
+```
 monda ic:compute --corr_type samehour
-# find correlations of same items in same day of week
+```
+
+Find correlations of same items in same day of week
+```
 monda ic:compute --corr_type samedow
-# Select explicitly hosts
+```
+
+Select explicitly hosts
+```
 monda ic:compute --hosts server1,server2,server3 
-# Find best window ids
+```
+
+Find best window ids
+```
 monda tw:show 
-# Find best items
+```
+
+Find best items
+```
 monda is:show
-# Find best correlations
+```
+
+Find best correlations
+```
 monda ic:show
-# Sometime we want to omit correlation of 1 (similar items which correlate by default)
+```
+
+Sometime we want to omit correlation of 1 (similar items which correlate by default)
+```
 monda ic:show --max_corr 0.95
 ```
 
 ## Graphical outputs
 
-Monda uses Graphviz to show some results. You must install graphviz. At this time you can use:
+Monda uses Graphviz to show some results. You must install graphviz. 
+
+Generate time graph with correlations
 ```
-# Generate timewindows graph with correlations
-$ monda gm:tws -s "1 month ago" --loi_sizefactor 0.001 --corr_type samedow --gm_format svg >tws.svg
-# Generate item correlation graph in one window with id wid.
-$ monda gm:ics -w wid -Ov expanded --loi_sizefactor 0.001 --gm_format svg  >ics.svg
+monda gm:tws -s "1 month ago" --loi_sizefactor 0.001 --corr_type samedow --gm_format svg >tws.svg
+```
+
+Generate item correlation graph in one window with id wid.
+```
+monda gm:ics -w wid -Ov expanded --loi_sizefactor 0.001 --gm_format svg  >ics.svg
 ```
 
 ## Outputs for processing by external software
+
+Generate data for weka
 ```
-# Generate data for weka
 monda is:history -w wid -Om arff >history.arff
-# Add trigger values into history. You have to pass triggerids to add
+```
+
+Add trigger values into history for external processing. You have to pass triggerids to add
+```
 monda is:history -w wid --triggerids_history 10,20,30 -Om arff >history.arff
 ```
 
 ## Misc scripts
 To generate more svg window correlations report, use this script which will create 
-files in out directory (out/tws-last_week-id.svg)
+files in out directory (out/last_week/tws-{id}.svg)
 ```
-#./bin/generate_icws.sh graphname start end [icw_options]
 ./bin/generate_icws.sh last_week "1 week ago" "today" 
 ```
+

@@ -11,7 +11,7 @@ outdir=$(dirname $0)/../out/$graph
 monda=$(dirname $0)/monda.php
 mkdir -p $outdir
 
-tws=$($monda tw:show -s "$1" -e "$2" | cut -d ' ' -f 1)
+tws=$($monda tw:show -s "$1" -e "$2" | sort -n | cut -d ' ' -f 1)
 html=$outdir/icws.html
 cat >$html <<EOF
 EOF
@@ -22,6 +22,7 @@ shift
 for tw in $tws; do
      echo "Window $tw" >&2
      gname=icw-$tw
+     echo $monda gm:icw -w $tw "$@" --loi_sizefactor 0.0001 --gm_format svg  >&2
      if ! $monda gm:icw -w $tw "$@" --loi_sizefactor 0.0001 --gm_format svg >$outdir/$gname.svg; then
         rm $outdir/$gname.svg
      fi
