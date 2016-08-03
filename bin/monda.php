@@ -1,12 +1,10 @@
 #!/usr/bin/php
 <?php
 
-use Nette\Utils\Strings,
-    Nette\Security\Passwords,
-    Nette\Diagnostics\Debugger,
-    Nette\Database\Context;
+use Tracy\Debugger;
 
 proc_nice(19);
+
 if (getenv("MONDA_TMP")) {
     $tmpdir=getenv("MONDA_TMP");
 } else {
@@ -15,6 +13,12 @@ if (getenv("MONDA_TMP")) {
 $cachedir="$tmpdir/cache";
 $sqlcachedir="$cachedir/sql";
 $apicachedir="$cachedir/api";
+
+if (getenv("MONDA_LOGDIR")) {
+    $tmpdir=getenv("MONDA_LOGDIR");
+} else {
+    $logdir=__DIR__ . "/../log";
+}
 
 if (!file_exists($sqlcachedir)) {
     mkdir($sqlcachedir,0700,true);
@@ -27,24 +31,12 @@ putenv("MONDA_CACHEDIR=$cachedir");
 putenv("MONDA_SQLCACHEDIR=$sqlcachedir");
 putenv("MONDA_APICACHEDIR=$apicachedir");
 putenv("MONDA_TMP=$tmpdir");
-putenv("MONDA_CLI=yes");
-#putenv("MONDA_LOG=" . __DIR__ . "/../log");
+putenv("MONDA_LOGDIR=$logdir");
 
-if (getenv("MONDARC")) {
-    $cfgf=getenv("MONDARC");
-} else {
-    $cfgf=getenv("HOME")."/.mondarc";
-}
-putenv("MONDARC=$cfgf");
-
-$dbgidx=array_search("-D",$_SERVER["argv"]);
-if ($dbgidx && array_key_exists($dbgidx, $_SERVER["argv"])) {
-        putenv("MONDA_DEBUG=".$_SERVER["argv"][$dbgidx+1]);
+putenv("MONDA_CLI=1");
+if (!getenv("MONDARC")) {
+    putenv("MONDARC=".realpath(getenv("HOME")."/.mondarc"));
 }
 
 $container = require __DIR__ . '/../app/bootstrap.php';
-
-Debugger::$maxDepth = 15;
-Debugger::$maxLen = 2000;
-
-$container->application->run();
+$container->getByType('Nette\Application\Application')->run();

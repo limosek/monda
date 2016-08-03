@@ -3,7 +3,9 @@
 namespace App\Presenters;
 
 use \Exception,Nette,
-	App\Model,
+	App\Model,App\Model\Opts,App\Model\Monda,
+        Tracy\Debugger,
+        App\Model\CliDebug,
         Nette\Utils\DateTime as DateTime;
 
 /**
@@ -11,447 +13,189 @@ use \Exception,Nette,
  */
 abstract class BasePresenter extends Nette\Application\UI\Presenter
 {
-    public $getopts=Array();
-    public $exportdata;
-    const TW_STEP=300;
-    public $cache; // Cache
-    public $apicache; // Cache for zabbix api
-    public $sqlcache;
-    public $api;   // ZabbixApi class
-    public $zq;    // Zabbix query link id
-    public $mq;    // Monda query link id
-    public $dbg;    // Cli debugger
-    public $zabbix_url;
-    public $zabbix_user;
-    public $zabbix_pw;
-    public $zabbix_db_type;
-    public $stats=Array();
-    public $lastns=false;
-    public $opts;
-    public $cpustats;
-    public $cpustatsstamp;
-    public $childpids=Array();
-    public $childs;
-    public $debuglevel="warning";
-    public $lastsql;
-    public $jobstats;
-
-    public function roundTime($tme) {
-        return(round($tme/self::TW_STEP)*self::TW_STEP);
-    }
     
-    function mexit($code=0,$msg="") {
-        if ($code==0) {
-            Model\CliDebug::warn($msg);
-        } else {
-            Model\CliDebug::err($msg);
+    public $exportdata;
+    public $exportinfo;
+    public $arffinfo;
+
+    public function mexit($code = 0, $msg = "") {
+        if (!$msg) {
+            if (array_key_exists("exception", $this->params)) {
+                $msg = $this->params["exception"]->getMessage() . "\n";
+                $code = $this->params["exception"]->getCode();
+                CliDebug::dbg("Used params: " . print_r($this->params, true));
+                echo Debugger::getBlueScreen()->render($this->params["exception"]);
+                echo Debugger::getBar()->render();
+            }
         }
-        if (!getenv("MONDA_CHILD")) {
-            $this->wait();
+        if ($code == 0) {
+            CliDebug::warn($msg);
+        } else {
+            CliDebug::err($msg);
         }
         if (!getenv("MONDA_CLI")) {
-            if ($code!=0) {
-                throw New Exception("Error #$code: $msg");
-            } else {
+            if ($code==0) {
+                echo nl2br(CliDebug::getLog());
+                echo nl2br(CliDebug::getErrorLog());
                 exit;
+            } else {
+                $this->terminate();
             }
         } else {
             exit($code);
         }
     }
     
-    public function renderDefault() {
-        $this->Help();
-        self::mexit();
-    }    
-    public function __call($name, $args) {
-        parent::__call($name, $args);
-    }
-    
-    function timetoseconds($t) {
-        if ($t[0] == "@") {
-            return(substr($t, 1));
-        } elseif (is_numeric($t)) {
-            return($t);
-        } elseif (preg_match("/(\d\d\d\d)\_(\d\d)\_(\d\d)\_(\d\d)(\d\d)/", $t, $r)) {
-            $y = $r[1];
-            $m = $r[2];
-            $d = $r[3];
-            $h = $r[4];
-            $M = $r[5];
-            $dte = New DateTime("$y-$m-$d $h:$M".date("P"));
-            return(date_format($dte, "U"));
-        } elseif (preg_match("/(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)/", $t, $r)) {
-            $y = $r[1];
-            $m = $r[2];
-            $d = $r[3];
-            $h = $r[4];
-            $M = $r[5];
-            $dte = New DateTime("$y-$m-$d $h:$M".date("P"));
-            return(date_format($dte, "U"));
-        } else {
-            $dte = New DateTime($t);
-            return(date_format($dte, "U"));
-        }
-    }
-    
     function startup() {
-        global $container;
-        
-        if (!isset($this->opts)) {
-            $this->opts=New \stdClass();
-        }
-        $this->opts=$this->getOpts($this->opts);
-        if ($this->opts->help) {
-            $this->opts->zapi=false;
-            $this->forward($this->getName().":default");
-        }
-        parent::startup();
-        return($this);
-    }
-    
-    function __construct() {
-        global $container;
-        
-        $c = $container;
-        $this->dbg=New Model\CliDebug();
-        $this->apicache = New Nette\Caching\Cache(
+        CliDebug::startup();
+        Monda::$apicache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_APICACHEDIR")));
-        $this->sqlcache = New Nette\Caching\Cache(
+        Monda::$sqlcache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_SQLCACHEDIR")));
-        $this->cache = New Nette\Caching\Cache(
+        Monda::$cache = New Nette\Caching\Cache(
                     New Nette\Caching\Storages\FileStorage(getenv("MONDA_CACHEDIR")));
-    }
-  
-    function parseOpt($obj,$key,$short,$long,$desc,$default=null,$defaulthelp=false,$choices=false,$params=false) {
-        if (!$params) {
-            if (count($_GET)>0) {
-                $params=$_GET;
-            } else {
-                $params=$this->params;
-            }
-        }
-        $this->getopts[$key]=Array(
-            "short" => $short,
-            "long" => $long,
-            "description" => $desc,
-            "default" => $default,
-            "defaulthelp" => $defaulthelp,
-            "choices" => $choices
+        
+        Opts::addOpt(
+                "R", "dry", "Only show what would be done. Do not touch db.", false, "no"
         );
-        if ($short && array_key_exists($short,$params)) {
-            $value=stripslashes($params[$short]);
-        } elseif (array_key_exists($long,$params)) {
-            $value=stripslashes($params[$long]);
-        } elseif (array_key_exists("_$short",$params)) {
-            $value=!$params["_$short"];
-        } elseif (array_key_exists("_$long",$params)) {
-            $value=!$params["_$long"];
-        } else {
-            $value=$default;
-            $obj->defaults[]=$key;
-        }
-        $obj->$key=$value;
-        if ($choices) {
-            if (array_search($value,$choices)===false) {
-                self::mexit(14,sprintf("Bad option %s for parameter %s(%s). Possible values: {%s}\n",$value,$short,$long,join($choices,"|")));
-            }
-        }
-        if (is_object($this->dbg) && isset($obj->$key)) {
-            Model\CliDebug::dbg("Setting option $long($desc) to ".  strtr(\Nette\Diagnostics\Debugger::dump($obj->$key,true),"\n"," ")."\n");
-        }
-        return($obj);
+        Opts::addOpt(
+                "za", "zabbix_api", "Use Zabbix API to retrieve objects. If this is false, cache is used. If object is not in cache, return empty values.", false, "API disabled"
+        );
+        Opts::addOpt(
+                "Om", "output_mode", "Use this output mode {brief|cli|env|csv|dump|lrn|st|arff}", "brief", "brief"
+        );
+        Opts::addOpt(
+                false, "csv_separator", "Use this CSV separator", ";", ";"
+        );
+        Opts::addOpt(
+                false, "csv_field_enclosure", "Use this CSV enclosure", '"', '"'
+        );
+        Opts::addOpt(
+                false, "csv_header", "Use CSV header", true, true
+        );
+        Opts::addOpt(
+                false, "csv_fields", "Output only this fields", false, false
+        );
+        Opts::addOpt(
+                false, "brief_columns", "Columns of current view to show in brief view", "id", "id"
+        );
+        Opts::addOpt(
+                "Ov", "output_verbosity", "Use this output verbosity {id,expanded}", "ids", "ids"
+        );
+        Opts::addOpt(
+                "Zd", "zabbix_dsn", "Use this zabbix Database settings", "pgsql:host=127.0.0.1;port=5432;dbname=zabbix", "pgsql:host=127.0.0.1;port=5432;dbname=zabbix"
+        );
+        Opts::addOpt(
+                "Zu", "zabbix_db_user", "Use this zabbix Database user", "zabbix", "zabbix"
+        );
+        Opts::addOpt(
+                "Zp", "zabbix_db_pw", "Use this zabbix Database password", "", ""
+        );
+        Opts::addOpt(
+                false, "zabbix_db_query_timeout", "Use this timeout for query to zabbix db [S]", 300, 300
+        );
+        Opts::addOpt(
+                false, "zabbix_db_preconnect", "Use this preconnect cmd (eg ssh tunel) before connecting to monda.", false, false
+        );
+        Opts::addOpt(
+                "Zi", "zabbix_id", "Use this zabbix server ID", "1", "1"
+        );
+        Opts::addOpt(
+                false, "zabbix_alias", "Use this zabbix server alias", getenv("MONDA_ZABBIX_ALIAS"), "\${MONDA_ZABBIX_ALIAS}"
+        );
+        Opts::addOpt(
+                "Md", "monda_dsn", "Use this monda Database settings", "pgsql:host=127.0.0.1;port=5432;dbname=monda", "pgsql:host=127.0.0.1;port=5432;dbname=monda"
+        );
+        Opts::addOpt(
+                false, "monda_db_preconnect", "Use this preconnect cmd (eg ssh tunel) before connecting to monda.", false, false
+        );
+        Opts::addOpt(
+                false, "monda_db_query_timeout", "Use this timeout for query to monda db [S]", 300, 300
+        );
+        Opts::addOpt(
+                "Mu", "monda_db_user", "Use this monda Database user", "monda", "monda"
+        );
+        Opts::addOpt(
+                "Mp", "monda_db_pw", "Use this monda Database password", "M0nda", "M0nda"
+        );
+        Opts::addOpt(
+                "ZU", "zabbix_url", "Base of zabbix urls", "http://localhost/zabbix", "http://localhost/zabbix"
+        );
+        Opts::addOpt(
+                "Za", "zabbix_api_url", "Use this zabbix API url", "<zabbix_url>/api_jsonrpc.php", "{zabbix_url}/api_jsonrpc.php"
+        );
+        Opts::addOpt(
+                "Zau", "zabbix_api_user", "Use this zabbix API user", "monda", "monda"
+        );
+        Opts::addOpt(
+                "Zap", "zabbix_api_pw", "Use this zabbix API password", "", ""
+        );
+        Opts::addOpt(
+                "Zht", "zabbix_history_table", "Zabbix history table to work on", "history", "history"
+        );
+        Opts::addOpt(
+                "Zhut", "zabbix_history_uint_table", "Zabbix history_uint table to work on", "history_uint", "history_uint"
+        );
+        Opts::addOpt(
+                "Ace", "api_cache_expire", "Maximum time to cache api requests. Use 0 to not cache.", "24 hours", "24 hours"
+        );
+        Opts::addOpt(
+                "Im", "max_rows", "Maximum number of rows to get (LIMIT for SELECT)", 300, 300
+        );
+        Opts::addOpt(
+                "Sce", "sql_cache_expire", "Maximum time to cache sql requests. Use 0 to not cache.", "1 hour", "1 hour"
+        );
+        Opts::addOpt(
+                "nc", "nocache", "Disable both SQL and API cache", false, "no"
+        );
+        Opts::addOpt(
+                "sw", "sow", "Star day of week", "Monday", "Monday"
+        );
+        Opts::addOpt(
+                false, "anonymize_key", "Key to anonymize data if requested.", false, "No key"
+        );
+        parent::startup();
     }
     
-    function setOpt($opt,$value) {
-        $this->params[$opt]=$value;
-    }
-    
-    function isOptDefault($key) {
-        if (array_search($key,$this->opts->defaults)===false) {
-            return(false);
-        } else {
-            return(true);
-        }
-    }
-    
-    function helpOpts() {
-        Model\CliDebug::warn(sprintf("[Common options for %s]:\n",$this->getName()));
-        $opts=$this->getopts;
-        if (!$this->opts->xhelp) {
-            return;
-        }
-        foreach ($opts as $key=>$opt) {
-            if (!$opt["defaulthelp"]) {
-                $opt["defaulthelp"]=$opt["default"];
-            }
-            if (array_key_exists("choices",$opt) && is_array($opt["choices"])) {
-                $choicesstr="Choices: {".join("|",$opt["choices"])."}\n";
-            } else {
-                $choicesstr="";
-            }
-            if (self::isOptDefault($key)) {
-                $avalue="Default";
-            } else {
-                if (is_array($this->opts->$key)) {
-                    $avalue=join(",",$this->opts->$key);
-                } elseif (is_bool($this->opts->$key)) {
-                    $avalue=sprintf("%b",$this->opts->$key);    
-                } else {
-                    $avalue=$this->opts->$key;
-                }
-            }
-            Model\CliDebug::warn(sprintf("-%s|--%s 'value':\n   %s\n   Default: <%s>\n   Actual value: %s\n   %s\n",
-                    $opt["short"],$opt["long"],     $opt["description"],    $opt["defaulthelp"], $avalue, $choicesstr));
-        }
-    }
-    
-    function getOpts($ret) {
-        $ret=self::parseOpt($ret,
-                "help",
-                "h","help",
-                "Help. If used with module, help will be module specific",
-                false
-                );
-        $ret=self::parseOpt($ret,
-                "xhelp",
-                "xh","advanced_help",
-                "Advanced help. If used with module, help will be module specific",
-                false
-                );
-        $ret=self::parseOpt($ret,
-                "debug",
-                "D","debug",
-                "Debug level (debug,info,warning,error,critical)",
-                "info"
-                );
-        $this->dbg=New Model\CliDebug($ret->debug);
-        $ret=self::parseOpt($ret,
-                "progress",
-                "P","progress",
-                "Progress informations on stderr",
-                false
-                );
-        $ret=self::parseOpt($ret,
-                "configinfo",
-                "C","config-info",
-                "Configuration information",
-                false
-                );
-        $ret=self::parseOpt($ret,
-                "dry",
-                "R","dry_run",
-                "Only show what would be done. Do not touch db.",
-                false,
-                "no"
-                );
-        $ret=self::parseOpt($ret,
-                "fork",
-                "F","fork_level",
-                "Fork level (how many processes to run simultanously)",
-                false,
-                "no fork"
-                );
-        $ret=self::parseOpt($ret,
-                "maxload",
-                "Ml","max_load",
-                "Run jobs only if OS loadavg is lower than value",
-                10
-                );
-        $ret=self::parseOpt($ret,
-                "maxcpuwait",
-                "Mw","max_cpuwait",
-                "Run jobs only if CPU wait time lower than value[%%]",
-                20
-                );
-       /* $ret=self::parseOpt($ret,
-                "maxbackends",
-                "Mb","max_backends",
-                "Run jobs only if there is less then value connected backends in DB",
-                20
-                ); */
-        $ret=self::parseOpt($ret,
-                "zapi",
-                "za","zabbix_api",
-                "Use Zabbix API to retrieve objects. If this is false, cache is used. If object is not in cache, return empty values.",
-                false,
-                "API disabled"
-                );
-        $ret=self::parseOpt($ret,
-                "outputmode",
-                "Om","output_mode",
-                "Use this output mode {cli|csv|dump}",
-                "cli",
-                "cli"
-                );
-        $ret=self::parseOpt($ret,
-                "outputverb",
-                "Ov","output_verbosity",
-                "Use this output verbosity {id,expanded}",
-                "ids",
-                "ids"
-                );
-        $ret=self::parseOpt($ret,
-                "zdsn",
-                "Zd","zabbix_dsn",
-                "Use this zabbix Database settings",
-                "pgsql:host=127.0.0.1;port=5432;dbname=zabbix",
-                "pgsql:host=127.0.0.1;port=5432;dbname=zabbix"
-                );
-        $ret=self::parseOpt($ret,
-                "zdbuser",
-                "Zu","zabbix_db_user",
-                "Use this zabbix Database user",
-                "zabbix",
-                "zabbix"
-                );
-        $ret=self::parseOpt($ret,
-                "zdbpw",
-                "Zp","zabbix_db_pw",
-                "Use this zabbix Database password",
-                "",
-                ""
-                );
-        $ret=self::parseOpt($ret,
-                "zid",
-                "Zi","zabbix_id",
-                "Use this zabbix server ID",
-                "1",
-                "1"
-                );
-        $ret=self::parseOpt($ret,
-                "mdsn",
-                "Md","monda_dsn",
-                "Use this monda Database settings",
-                "pgsql:host=127.0.0.1;port=5432;dbname=monda",
-                "pgsql:host=127.0.0.1;port=5432;dbname=monda"
-                );
-        $ret=self::parseOpt($ret,
-                "mdbuser",
-                "Mu","monda_db_user",
-                "Use this monda Database user",
-                "monda",
-                "monda"
-                );
-        $ret=self::parseOpt($ret,
-                "mdbpw",
-                "Mp","monda_db_pw",
-                "Use this monda Database password",
-                "M0nda",
-                "M0nda"
-                );
-        $ret=self::parseOpt($ret,
-                "zaburl",
-                "ZU","zabbix_url",
-                "Base of zabbix urls",
-                "http://localhost/zabbix",
-                "http://localhost/zabbix"
-                );
-        $ret=self::parseOpt($ret,
-                "zapiurl",
-                "Za","zabbix_api_url",
-                "Use this zabbix API url",
-                $ret->zaburl."/api_jsonrpc.php",
-                $ret->zaburl."/api_jsonrpc.php"
-                );
-        $ret=self::parseOpt($ret,
-                "zapiuser",
-                "Zau","zabbix_api_user",
-                "Use this zabbix API user",
-                "monda",
-                "monda"
-                );
-        $ret=self::parseOpt($ret,
-                "zapipw",
-                "Zap","zabbix_api_pw",
-                "Use this zabbix API password",
-                "",
-                ""
-                );
-        $ret=self::parseOpt($ret,
-                "csvdelim",
-                false,"csv_delimiter",
-                "Use this delimiter for CSV output",
-                ";",
-                ";"
-                );
-        $ret=self::parseOpt($ret,
-                "csvenc",
-                false,"csv_enclosure",
-                "Use this enclosure for CSV output",
-                '"',
-                '"'
-                );
-        $ret=self::parseOpt($ret,
-                "zabbix_history_table",
-                "Zht","zabbix_history_table",
-                "Zabbix history table to work on",
-                "history",
-                "history"
-                );
-        $ret=self::parseOpt($ret,
-                "zabbix_history_uint_table",
-                "Zhut","zabbix_history_uint_table",
-                "Zabbix history_uint table to work on",
-                "history_uint",
-                "history_uint"
-                );
-        $ret=self::parseOpt($ret,
-                "apicacheexpire",
-                "Ace","api_cache_expire",
-                "Maximum time to cache api requests. Use 0 to not cache.",
-                "24 hours",
-                "24 hours"
-                );
-        $ret=self::parseOpt($ret,
-                "sqlcacheexpire",
-                "Sce","sql_cache_expire",
-                "Maximum time to cache sql requests. Use 0 to not cache.",
-                "1 hour",
-                "1 hour"
-                );
-        $ret=self::parseOpt($ret,
-                "nocache",
-                "nc","nocache",
-                "Disable both SQL and API cache",
-                false,
-                "no"
-                );
-        if (isset($ret->nocache)) {
-            $ret->sql_cache_expire=0;
-            $ret->api_cache_expire=0;
-        }
-        $ret=self::parseOpt($ret,
-                "sow",
-                "sw","sow",
-                "Star day of week",
-                "Monday",
-                "Monday"
-                );
-        return($ret);
-    }
-    
-    function wait() {
-        if (function_exists('pcntl_wait')) {
-            $code=0;
-            return(pcntl_wait($code,WNOHANG));
+    public function beforeRender() {
+        if (Opts::getOpt("help") || Opts::getOpt("xhelp") || Opts::getOpt("config_test")) {
+            $this->Help();
         }
     }
     
-    function beforeRender() {
-        if ($this->opts->configinfo) {
-            dump($this->opts);
-            self::mexit();
+    static public function preCfg() {
+    }
+            
+    static public function postCfg() {
+        Opts::setOpt("csv_separator", htmlspecialchars_decode(Opts::getOpt("csv_separator")),"default");
+        Opts::setOpt("csv_field_enclosure", htmlspecialchars_decode(Opts::getOpt("csv_field_enclosure")),"default");
+        if (!Opts::isDefault("csv_fields")) {
+            Opts::optToArray("csv_fields");
+        }
+        Opts::optToArray("brief_columns");
+        if (Opts::isOpt("nocache")) {
+            Opts::setOpt("sql_cache_expire", 0, "default");
+            Opts::setOpt("api_cache_expire", 0, "default");
+        }
+        if (Opts::isOpt("zabbix_alias")) {
+            Opts::readCfg(Array("zabbix-" . Opts::getOpt("zabbix_alias")));
+        }
+        if (Opts::isOpt("monda_db_preconnect")) {
+            CliDebug::info("Runing monda DB preconnect: '".Opts::getOpt("monda_db_preconnect")."...");
+            exec(Opts::getOpt("monda_db_preconnect"));
+            CliDebug::info("Done\n");
+        }
+        if (Opts::isOpt("zabbix_db_preconnect")) {
+            CliDebug::info("Runing Zabbix DB preconnect: '".Opts::getOpt("zabbix_db_preconnect")."...");
+            exec(Opts::getOpt("zabbix_db_preconnect"));
+            CliDebug::info("Done\n");
         }
     }
     
     function renderCli() {
-        global $container;
-        $httpResponse = $container->getByType('Nette\Http\Response');
-        $httpResponse->setContentType('text/csv', 'UTF-8');
-        
+
        foreach ((array) $this->exportdata as $id=>$row) {
-           echo "#Row $id (size ".count($row).")\n";
+           echo "#Row $id:\n";
             foreach ($row as $r=>$v) {
                 echo "$r='$v'\n";
             }
@@ -460,38 +204,135 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         self::mexit();
     }
     
+    function renderBrief() {
+        foreach (Opts::getOpt("brief_columns") as $id) {
+            CliDebug::log("$id ");
+        }
+        CliDebug::log("\n");
+        foreach ((array) $this->exportdata as $id=>$row) {
+           foreach (Opts::getOpt("brief_columns") as $id) {
+               if (is_float($row->$id)) {
+                    echo sprintf("%6f ",$row->$id);
+               } else {
+                    echo $row->$id." ";
+               }
+           }
+           echo "\n";
+        }
+        self::mexit();
+    }
+    
+    function renderEnv() {
+       foreach ((array) $this->exportdata as $id=>$row) {
+           foreach ($row as $r=>$v) {
+                echo "$r='$v' ";
+            }
+            echo "\n";
+        }
+        self::mexit();
+    }
+    
     function renderCsv() {
-        global $container;
-        $httpResponse = $container->getByType('Nette\Http\Response');
-        $httpResponse->setContentType('text/csv', 'UTF-8');
-        
-        $opts=$this->opts;
         $i = 0;
-        
         foreach ((array) $this->exportdata as $id => $row) {
-            if ($i == 0) {
+            if ($i == 0 && Opts::getOpt("csv_header")) {
                 foreach ($row as $r => $v) {
-                    echo sprintf('%s%s%s;',$opts->csvenc,$r,$opts->csvenc);
+                    echo sprintf('%s%s%s%s',Opts::getOpt("csv_field_enclosure"),$r,Opts::getOpt("csv_field_enclosure"),Opts::getOpt("csv_separator"));
                 }
                 echo "\n";
             }
-            $cnt=count($row);
-            $j=1;
+            $col=1;
             foreach ($row as $r => $v) {
                 if (is_object($v)) { 
                     if (get_class($v)=="Nette\Utils\DateTime") {
                         $v=$v->format("c");
                     }
                 }
-                if ($j!=$cnt) {
-                    echo sprintf('%s%s%s%s',$opts->csvenc,$v,$opts->csvenc,$opts->csvdelim);
-                } else {
-                    echo sprintf('%s%s%s%s',$opts->csvenc,$v,$opts->csvenc);
+                $print=true;
+                if (is_array(Opts::getOpt("csv_fields"))) {
+                    if (array_key_exists($col,Opts::getOpt("csv_fields")) ||array_key_exists($r,Opts::getOpt("csv_fields"))) {
+                        $print=true;
+                    } else {
+                        $print=false;
+                    }
                 }
-                $j++;
+                if ($print) echo sprintf('%s%s%s%s',Opts::getOpt("csv_field_enclosure"),$v,Opts::getOpt("csv_field_enclosure"),Opts::getOpt("csv_separator"));
+                $col++;
             }
             echo "\n";
             $i++;
+        }
+        self::mexit();
+    }
+    
+    function renderLrn() {
+        echo "# Lrn file generated by monda\n";
+        echo "% ".sizeof((array) $this->exportdata)."\n";
+        $i=0;
+        $row=(array) $this->exportdata;
+        $row=$row[0];
+        echo "% ".sizeof($row)."\n";
+        echo "% ";
+        $column=each($row);
+        echo "9 ";
+        foreach ($row as $column) {
+            echo "1 ";
+        }
+        echo "\n";
+        echo "% ";
+        foreach ($row as $column=>$value) {
+            if (array_key_exists($column,$this->exportinfo)) {
+                echo $this->exportinfo[$column]." ";
+            } else {
+                echo " ";
+            }
+        }
+        echo "\n";
+        foreach ((array) $this->exportdata as $row) {
+            foreach ($row as $column) {
+                echo "$column ";
+            }
+            echo "\n";
+        }
+        self::mexit();
+    }
+    
+    function renderSt() {
+        echo "# Data file generated by monda for SOM toolbox\n";
+        $row=(array) $this->exportdata;
+        $row=$row[0];
+        echo sizeof($row)."\n";
+        echo "#n ";
+        foreach ($row as $column=>$value) {
+            if (array_key_exists($column,$this->exportinfo)) {
+                echo $this->exportinfo[$column]." ";
+            } else {
+                echo " ";
+            }
+        }
+        echo "\n";
+        foreach ((array) $this->exportdata as $row) {
+            foreach ($row as $column) {
+                echo "$column ";
+            }
+            echo "\n";
+        }
+        self::mexit();
+    }
+    
+    function renderArff() {
+        echo "@Relation monda\n\n";
+        $rows=(array) $this->exportdata;
+        List($key,$row)=each($rows);
+        foreach ($row as $column=>$value) {
+            if (array_key_exists($column,$this->exportinfo)) {
+                echo "@Attribute ".$this->exportinfo[$column]." ".$this->arffinfo[$column]."\n";
+            }
+        }
+        echo "@Data\n";
+        foreach ((array) $this->exportdata as $row) {
+            echo join(",",$row);
+            echo "\n";
         }
         self::mexit();
     }
@@ -501,14 +342,28 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         self::mexit();
     }
     
-    function renderShow($var) {
-        $this->exportdata=$var;
-        switch ($this->opts->outputmode) {
+    function renderShow() {
+        switch (Opts::getOpt("output_mode")) {
             case "cli":
                 self::renderCli();
                 break;
+            case "brief":
+                self::renderBrief();
+                break;
+            case "env":
+                self::renderEnv();
+                break;
             case "csv":
                 self::renderCsv();
+                break;
+            case "lrn":
+                self::renderLrn();
+                break;
+            case "st":
+                self::renderSt();
+                break;
+            case "arff":
+                self::renderArff();
                 break;
             case "dump":
                 self::renderDump();

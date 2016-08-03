@@ -2,121 +2,150 @@
 
 namespace App\Presenters;
 
-use Nette\Application\Responses\TextResponse,
-    Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI,
-        Nette\Utils\DateTime as DateTime;
+use App\Model\ItemStat,
+    Tracy\Debugger,
+    App\Model\Opts,
+    App\Model\CliDebug,
+    App\Model\Monda,
+    App\Model\Util,
+    App\Model\Triggerinfo,
+    Nette\Utils\DateTime as DateTime;
 
-class IsPresenter extends BasePresenter
-{
-    
+class IsPresenter extends BasePresenter {
+
     public function Help() {
-        \App\Model\CliDebug::warn("
+        CliDebug::warn("
      ItemStats operations
             
      is:show [common opts]
+     is:stats [common opts]
+     is:history [common opts]
      is:compute [common opts]
      is:delete [common opts]
      is:loi [common opts]
-     is:stats [common opts]
 
      [common opts]
     \n");
-        self::helpOpts();
-    }
-    
-    public function getOpts($ret) {
-        $ret=BasePresenter::getOpts($ret);
-        $ret=TwPresenter::getOpts($ret);
-        $ret=HsPresenter::getOpts($ret);
-        $ret=$this->parseOpt($ret,
-                "min_values_per_window",
-                "Mvw","min_values_per_window",
-                "Minimum values for item per window to process",
-                20,
-                20
-                );
-        $ret=$this->parseOpt($ret,
-                "min_avg_for_cv",
-                "Mac","min_avg_for_cv",
-                "Minimum average for CV to process",
-                0.01,
-                0.01
-                );
-        $ret=$this->parseOpt($ret,
-                "min_stddev",
-                "Msd","min_stddev",
-                "Minimum stddev of values to process. Only bigger stddev will be processed",
-                0,
-                0
-                );
-        $ret=$this->parseOpt($ret,
-                "min_cv",
-                "Mcv","min_cv",
-                "Minimum CV to process values.",
-                0.01,
-                0.01
-                );
-        $ret=$this->parseOpt($ret,
-                "itemids",
-                "Ii","itemids",
-                "Itemids to get",
-                false,
-                "All"
-                );
-        $ret=$this->parseOpt($ret,
-                "max_windows_per_query",
-                false,"max_windows_per_query",
-                "Maximum number of windows per one sql query",
-                10,
-                10
-                );
-        if ($ret->itemids) {
-            $ret->itemids=preg_split("/,/",$ret->itemids);
-        }
-        $ret=$this->parseOpt($ret,
-                "items",
-                "Ik","items",
-                "Item keys to get. Use host: to get all items of host. Use @HostGroup: to get all items of hostgroup.",
-                false,
-                "All"
-                );
-        if ($ret->items) {
-            $ret->items=preg_split("/,/",$ret->items);
-        }
-        $ret=$this->parseOpt($ret,
-                "max_items",
-                "Im","max_items",
-                "Maximum number of items to get (LIMIT for SELECT)",
-                false,
-                "All"
-                );
-        $ret=$this->parseOpt($ret,
-                "isloionly",
-                "ISL","itemstat_with_loi",
-                "Search only items with loi>0",
-                false,
-                false
-                );
-        $ret=\App\Model\ItemStat::itemsToIds($ret);
-        if (is_array($ret->itemids)) {
-            \App\Model\CliDebug::dbg(sprintf("Itemids selected: %s\n",join(",",$ret->itemids)));
-        }
-        return($ret);
-    }
-    
-    public function renderIs() {
-        self::Help();
+        Opts::helpOpts();
+        Opts::showOpts();
+        echo "\n";
         self::mexit();
     }
+
+    public function startup() {
+        parent::startup();
+        HsPresenter::startup();
+        
+        Opts::addOpt(
+                false, "min_values_per_window", "Minimum values for item per window to process", 20, 20
+        );
+        Opts::addOpt(
+                false, "min_avg_for_cv", "Minimum average for CV to process", 0.01, 0.01
+        );
+        Opts::addOpt(
+                false, "min_stddev", "Minimum stddev of values to process. Only bigger stddev will be processed", 0, 0
+        );
+        Opts::addOpt(
+                false, "min_cv", "Minimum CV to process values.", 0.01, 0.01
+        );
+        Opts::addOpt(
+                false, "max_cv", "Maximum CV to process values.", 100, 100
+        );
+        Opts::addOpt(
+                false, "is_minloi", "Minimum itemstat loi to search.", 0, 0
+        );
+        Opts::addOpt(
+                false, "itemids", "Itemids to get", false, "All"
+        );
+        Opts::addOpt(
+                false, "history_granularity", "Granularity of history data to fetch in seconds.", 600, 600
+        );
+        Opts::addOpt(
+                false, "history_interpolate", "Interpolate history data (slow).", true, "yes"
+        );
+        Opts::addOpt(
+                false, "triggerids_history", "Add this triggerids to history", false, false
+        );
+        Opts::addOpt(
+                false, "events_prefetch", "Prefetch this number of seconds before history dump", Monda::_1WEEK, "1 week"
+        );
+        Opts::addOpt(
+                false, "max_windows_per_query", "Maximum number of windows per one sql query", 10, 10
+        );
+        Opts::addOpt(
+                false, "items", "Item keys to get. Use ~ to add more items. Prepend item by @ to use regex.", false, "All"
+        );
+        Opts::addOpt(
+                false, "anonymize_items", "Anonymize item names", false, "no"
+        );
+        Opts::addOpt(
+                false, "item_restricted_chars", "Characters mangled in items", false, "none"
+        );
+        
+        Opts::setDefaults();
+        Opts::readCfg(Array("Is"));
+        Opts::readOpts($this->params);
+        self::postCfg();
+        if ($this->action=="stats") {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("itemid","avg_","loi","wcnt"));
+            }
+        } else {
+            if (Opts::isDefault("brief_columns")) {
+                Opts::setOpt("brief_columns",Array("itemid","stddev_","cv","loi"));
+            }
+        }
+    }
+
+    static function postCfg() {
+        HsPresenter::postCfg();
+        Opts::optToArray("itemids");
+        Opts::optToArray("items", "~");
+        Opts::optToArray("triggerids_history", ",");
+        if (Opts::getOpt("output_mode")=="arff") {
+            Opts::setOpt("item_restricted_chars","{}[],.| ");
+        }
+        if (Opts::getOpt("events_prefetch")) {
+            Opts::setOpt("events_prefetch", Util::timetoseconds(Opts::getOpt("events_prefetch")) - time());
+        }
+        if (count(Opts::getOpt("itemids"))==0) {
+            ItemStat::itemsToIds();
+        }
+        if (!Opts::getOpt("anonymize_key") && Opts::getOpt("anonymize_items")) {
+            self::mexit(2,"You must use --anonymize_key to anonymize items.");
+        }
+    }
     
-    public function expandItem($itemid,$withhost=false) {
-        $ii=\App\Model\ItemStat::itemInfo($itemid);
-        if (count($ii)>0) {
-            if ($withhost) {
-                return(HsPresenter::expandHost($ii[0]->hostid).":".$ii[0]->key_);
+    static function expandItemParams($item) {
+        if (preg_match("/\[(.*)\]/",$item[0]->key_,$params)) {
+            $params=preg_split("/,/",$params[1]);
+            foreach ($params as $i=>$p) {
+                $item[0]->name=str_replace('$'.($i+1),$p,$item[0]->name);
+            }
+        }
+        return($item);
+    }
+
+    static function expandItem($itemid, $withhost = false, $desc = false) {
+        $ii = ItemStat::itemInfo($itemid);
+        $ii=self::expandItemParams($ii);
+        if (count($ii) > 0) {
+            if ($desc) {
+                $itxt = $ii[0]->name;
             } else {
-                return($ii[0]->key_);
+                $itxt = $ii[0]->key_;
+            }
+            if (Opts::getOpt("anonymize_items")) {
+                $itxt=Util::anonymize($itxt,Opts::getOpt("anonymize_key"));
+            } else {
+                if (Opts::getOpt("item_restricted_chars")) {
+                    $itxt=strtr($itxt,Opts::getOpt("item_restricted_chars"),"_____________");
+                }
+            }
+            if ($withhost) {
+                return(HsPresenter::expandHost($ii[0]->hostid) . ":" . $itxt);
+            } else {
+                return($itxt);
             }
         } else {
             return("unknown");
@@ -124,77 +153,91 @@ class IsPresenter extends BasePresenter
     }
 
     public function renderShow() {
-        $rows=\App\Model\ItemStat::isSearch($this->opts);
+        $rows = ItemStat::isSearch();
+        if ($rows && $rows->getRowCount()>0) {
+            $this->exportdata = $rows->fetchAll();
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                foreach ($this->exportdata as $i => $row) {
+                    CliDebug::dbg(sprintf("Processing %d row of %d          \r", $i, count($this->exportdata)));
+                    $row["host"] = HsPresenter::expandHost($row->hostid);
+                    $row["key"] = self::expandItem($row->itemid);
+                    $this->exportdata[$i] = $row;
+                }
+            }
+            parent::renderShow($this->exportdata);
+        } else {
+            CliDebug::warn("No rows found. Try to fine-tune parameters (is_minloi, tw_minloi, window_empty, ...).\n");
+        }
+        self::mexit();
+    }
+
+    public function renderHistory() {
+        if (!Opts::getOpt("itemids")) {
+            self::mexit("You must use --items parameter to select items!\n");
+        }
+        $rows = ItemStat::isZabbixHistory();
         if ($rows) {
-            $this->exportdata=$rows->fetchAll();
-            if ($this->opts->outputverb=="expanded") {
-                $i=0;
-                foreach ($this->exportdata as $i=>$row) {
-                    $i++;
-                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
-                    $row["host"]=HsPresenter::expandHost($row->hostid);
-                    $row["key"]=self::expandItem($row->itemid);
-                    $this->exportdata[$i]=$row;
+            $clocks=Array();
+            $this->exportdata = $rows;
+            $i=0;
+            foreach ($this->exportdata as $clock => $row) {
+                $i++;
+                $clocks[]=$row["clock"];
+                CliDebug::dbg(sprintf("Processing %d row of %d      \r", $i, count($this->exportdata)));
+                foreach ($row as $column => $value) {
+                    if (!array_key_exists($column, $this->exportinfo)) {
+                        if ($column=="clock") {
+                            $this->exportinfo[$column] = "clock";
+                        } else {
+                            $this->exportinfo[$column] = self::expandItem($column, true);
+                        }
+                        $this->arffinfo[$column] = "NUMERIC";
+                    }
+                }
+            }
+            List($tinfo,$trows)=TriggerInfo::History(Opts::getOpt("triggerids_history"),$clocks);
+            foreach ($tinfo as $t=>$ti) {
+                    $this->exportinfo[$t] = $ti["description"];
+                    $this->arffinfo[$t] = "{OK,PROBLEM}";
+            }
+            foreach ($this->exportdata as $i=>$row) {
+                foreach ($tinfo as $t=>$ti) {
+                    $this->exportdata[$i][$t]=$trows[$i][$t];
                 }
             }
             parent::renderShow($this->exportdata);
         }
-        self::mexit();
     }
-    
-    public function renderZabbixHistory() {
-        if (!$this->opts->wids) {
-            self::mexit(33,"No windows selected!\n");
-        }
-        $opts=\App\Model\ItemStat::itemsToIds($this->opts);
-        if (!$this->opts->itemids) {
-            self::mexit(33,"No items selected!\n");
-        }
-        $ckey=serialize($opts);
-        $ret=$this->sqlcache->load($ckey);
-        if ($ret===null) {
-            $ret=\App\Model\ItemStat::isZabbixGetHistory($opts);
-            $this->sqlcache->save($ckey,
-                    $ret,
-                    array(
-                        \Nette\Caching\Cache::EXPIRE => $this->opts->sqlcacheexpire,
-                        )
-                    );
-        }
-        parent::renderShow($ret);
-        self::mexit();
-    }
-    
+
     public function renderStats() {
-        $rows=\App\Model\ItemStat::isStats($this->opts);
+        $rows = ItemStat::isStats();
         if ($rows) {
-            $this->exportdata=$rows->fetchAll();
-            if ($this->opts->outputverb=="expanded") {
-                $i=0;
-                foreach ($this->exportdata as $i=>$row) {
-                    $i++;
-                    \App\Model\CliDebug::dbg(sprintf("Processing %d row of %d          \r",$i,count($this->exportdata)));
-                    $row["key"]=self::expandItem($row->itemid);
-                    $this->exportdata[$i]=$row;
+            $this->exportdata = $rows;
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                foreach ($this->exportdata as $i => $row) {
+                    CliDebug::dbg(sprintf("Processing %d row of %d          \r", $i, count($this->exportdata)));
+                    $row["key"] = self::expandItem($row->itemid, true);
+                    $this->exportdata[$i] = $row;
                 }
             }
             parent::renderShow($this->exportdata);
         }
         self::mexit();
     }
-    
+
     public function renderLoi() {
-        \App\Model\ItemStat::IsLoi($this->opts);
+        ItemStat::IsLoi();
         self::mexit();
     }
-    
+
     public function renderCompute() {
-        \App\Model\ItemStat::IsMultiCompute($this->opts);
-        self::mexit(0,"Done\n");
+        ItemStat::IsMultiCompute();
+        self::mexit(0, "Done\n");
     }
-    
+
     public function renderDelete() {
-        \App\Model\ItemStat::IsDelete($this->opts);
-        self::mexit(0,"Done\n");
+        ItemStat::IsDelete();
+        self::mexit(0, "Done\n");
     }
+
 }

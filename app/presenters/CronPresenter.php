@@ -2,24 +2,20 @@
 
 namespace App\Presenters;
 
-use Nette\Application\Responses\TextResponse,
-    Nette\Security\AuthenticationException,
-    Model, Nette\Application\UI,
-        Nette\Utils\DateTime as DateTime;
+use App\Model\ItemStat,
+    App\Model\Tw,
+    App\Model\HostStat,
+    App\Model\ItemCorr,
+    App\Model\EventCorr,
+    App\Model\Monda,
+    Tracy\Debugger,
+    App\Model\Opts,
+    App\Model\CliDebug,
+    Exception,
+    Nette\Utils\DateTime as DateTime;
 
-class CronPresenter extends IsPresenter
-{
-    
-    public function renderDefault() {
-        $this->Help();
-        $this->mexit();
-    }
-    
-    public function renderCron() {
-        $this->Help();
-        $this->mexit();
-    }
-    
+class CronPresenter extends IsPresenter {
+
     public function Help() {
         echo "
      Cron operations
@@ -31,210 +27,218 @@ class CronPresenter extends IsPresenter
      
     [common opts]
      \n";
-        $this->helpOpts();
+        Opts::helpOpts();
+        Opts::showOpts();
+        echo "\n";
+        self::mexit();
+    }
+
+    public function startup() {
+        parent::startup();
+        TwPresenter::startup();
+        HsPresenter::startup();
+        IsPresenter::startup();
+        IcPresenter::startup();
+        EcPresenter::startup();
+
+        Opts::addOpt(
+                false, "sub_cron_targets", "Compute everything even for smaller cron targets (eg. for all weeks in month)", false, false
+        );
+
+        Opts::setDefaults();
+        Opts::readCfg( Array("Is", "Hs", "Tw", "Ic", "Ec", "Cron"));
+        Opts::readOpts($this->params);
+        self::postCfg();
     }
     
-    public function getOpts($opts) {
-        $ret=parent::getOpts($opts);
-        $opts=TwPresenter::getOpts($opts);
-        $opts=HsPresenter::getOpts($opts);
-        $opts=IsPresenter::getOpts($opts);
-        $opts=IcPresenter::getOpts($opts);
-        $ret=self::parseOpt($ret,
-                "subcron",
-                "Sc","sub_cron_targets",
-                "Compute everything even for smaller cron targets (eg. for all weeks in month)",
-                false,
-                false
-                );
-        return($opts);
+    public static function postCfg() {
+        TwPresenter::postCfg();
+        HsPresenter::postCfg();
+        IsPresenter::postCfg();
+        IcPresenter::postCfg();
+        EcPresenter::postCfg();
     }
-    
-    public function render1hour($aopts=false) {
-        if (!$aopts) {
-            $opts=$this->opts;
-        } else {
-            $opts=$aopts;
+
+    public function render1hour() {
+        Opts::setOpt("window_length",Array(Monda::_1HOUR));
+        if (Opts::isDefault("start")) {
+            Opts::setOpt("start",date_format(New DateTime("121 minutes ago"), "U"));
+            Opts::setOpt("end",date_format(New DateTime("61 minutes ago"), "U"));
         }
-        $opts->length=Array(\App\Model\Monda::_1HOUR);
-        if ($this->isOptDefault("start") && !$aopts) {
-            $opts->start=date_format(New DateTime("121 minutes ago"),"U");
-            $opts->end=date_format(New DateTime("61 minutes ago"),"U");
-        }
-        self::renderrange($opts,$opts->start,$opts->end,\App\Model\Monda::_1HOUR,"1hour");
-        if (!$aopts) {
-            parent::mexit();
-        }
+        self::renderRange(Monda::_1HOUR, "1hour");
     }
-    
-    public function render1day($aopts=false) {
-        if (!$aopts) {
-            $opts=$this->opts;
-        } else {
-            $opts=$aopts;
+
+    public function render1day() {      
+        if (Opts::isDefault("start")) {
+            Opts::setOpt("start",date_format(New DateTime("00:00 yesterday"), "U"));
+            Opts::setOpt("end",date_format(New DateTime("00:00 today"), "U"));
         }
-        if ($this->isOptDefault("start") && !$aopts) {
-            $opts->start=date_format(New DateTime("00:00 yesterday"),"U");
-            $opts->end=date_format(New DateTime("00:00 today"),"U");
+        if (Opts::isDefault("window_length")) {
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY));
         }
-        if ($this->isOptDefault("length")) {
-            $opts->length=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY);
-        }
-        
-        self::renderrange($opts,$opts->start,$opts->end,\App\Model\Monda::_1DAY,"1day");
-        if (!$aopts) {
-            parent::mexit();
-        }
+        self::renderRange(Monda::_1DAY, "1day");
     }
-    
-    public function render1week($aopts=false) {
-        if (!$aopts) {
-            $opts=$this->opts;
-        } else {
-            $opts=$aopts;
-        }
-        if ($this->isOptDefault("start") && !$aopts) {
-            $start=date_format(New DateTime("last monday 1 week ago"),"U");
-            $end=date_format(New DateTime("last monday"),"U");
+
+    public function render1week() {
+       
+        if (Opts::isDefault("start")) {
+            $start=date_format(New DateTime("last monday 1 week ago"), "U");
+            $end=date_format(New DateTime("last monday"), "U");
             if ($start==$end) {
-                $end+=\App\Model\Monda::_1WEEK;
+                $end+=Monda::_1WEEK;
             }
-        } else {
-            $start=$opts->start;
-            $end=$opts->end;
+            Opts::setOpt("start",$start);
+            Opts::setOpt("end",$end);
         }
-        
-        if ($this->isOptDefault("length")) {
-            $opts->length=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY,\App\Model\Monda::_1WEEK);
-        }        
-        self::renderRange($opts,$start,$end, \App\Model\Monda::_1WEEK, "1week");
-        if (!$aopts) {
-            parent::mexit();
+
+        if (Opts::isDefault("window_length")) {
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY));
         }
+        self::renderRange(Monda::_1WEEK, "1week");
     }
-    
-    public function render1month($aopts=false) {
-        if (!$aopts) {
-            $opts=$this->opts;
+
+    public function render1month() {
+      
+        if (Opts::isDefault("start")) {
+            $monthago = date_format(New DateTime("1 month ago"), "U");
+            $monthnow = time();
         } else {
-            $opts=$aopts;
+            $monthago = Opts::getOpt("start");
         }
-        if ($this->isOptDefault("start") && !$aopts) {
-            $monthago=date_format(New DateTime("1 month ago"),"U");
-            $monthnow=time();
-        } else {
-            $monthago=$opts->start;
+        $start = date_format(New DateTime(date("Y-m-01 00:00", $monthago)), "U");
+
+        if (Opts::isDefault("window_length")) {
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY));
         }
-        $start=date_format(New DateTime(date("Y-m-01 00:00",$monthago)),"U");
-        
-        if ($this->isOptDefault("length")) {
-            $opts->length=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY,\App\Model\Monda::_1MONTH,\App\Model\Monda::_1MONTH28,\App\Model\Monda::_1MONTH30,\App\Model\Monda::_1MONTH31);
-        }
-        $end=$opts->end;
-        while ($start<$end) {
-            $monthlength=date("t",$start)*\App\Model\Monda::_1DAY;
-            self::renderrange($opts,$start,$start+$monthlength,$monthlength,"1month");
+        $end=Opts::getOpt("end");
+        while ($start < $end) {
+            $monthlength = date("t", $start) * Monda::_1DAY;
+            Opts::setOpt("start",$start);
+            Opts::setOpt("end",$start+$monthlength);
+            self::renderRange($monthlength, "1month");
             $start+=$monthlength;
-        }
-        if (!$aopts) {
-            parent::mexit();
+            Opts::popOpt("start");
+            Opts::popOpt("end");
         }
     }
-    
-    public function renderRange($opts,$start,$end,$step,$name,$preprocess=true,$postprocess=true) {
-        $opts->start=$start;
-        $opts->end=$end;
-        
+
+    public function renderRange($step, $name, $preprocess = true, $postprocess = true) {
+        $start=Opts::getOpt("start");
+        $end=Opts::getOpt("end");
         if ($preprocess) {
-            \App\Model\CliDebug::warn(sprintf("== $name preprocess-cron (%s to %s):\n",date("Y-m-d H:i",$start),date("Y-m-d H:i",$end)));
-            self::precompute($opts);
+            CliDebug::warn(sprintf("== $name preprocess-cron (%s to %s):\n", date("Y-m-d H:i", $start), date("Y-m-d H:i", $end)));
+            self::precompute();
         }
-        for ($s=$start;$s<$end;$s=$s+$step) {
-            $opts->start=$s;
-            $opts->end=$s+$step;
-            $e=$s+$step;
-           
-            \App\Model\CliDebug::warn(sprintf("== $name cron (%s to %s):\n",date("Y-m-d H:i",$s),date("Y-m-d H:i",$e)));
-            if ($opts->subcron) {
+        for ($s = $start; $s < $end; $s = $s + $step) {
+            Opts::setOpt("start",$s);
+            Opts::setOpt("end",$s+$step);
+            $e = $s + $step;
+
+            CliDebug::warn(sprintf("== $name cron (%s to %s):\n", date("Y-m-d H:i", $s), date("Y-m-d H:i", $e)));
+            if (Opts::isOpt("sub_cron_targets")) {
                 switch ($name) {
                     case "1month":
-                        self::renderRange($opts,$s,$e, \App\Model\Monda::_1WEEK,"1week",false,false);
-                        self::compute($opts,$s,$e);
+                        self::renderRange(Monda::_1WEEK, "1week", false, false);
+                        self::compute($s, $e);
                         break;
                     case "1week":
-                        self::renderRange($opts,$s,$e, \App\Model\Monda::_1DAY,"1day",false,false);
-                        self::compute($opts,$s,$e);
+                        self::renderRange(Monda::_1DAY, "1day", false, false);
+                        self::compute($s, $e);
                         break;
                     case "1day":
-                        self::renderRange($opts,$s,$e, \App\Model\Monda::_1HOUR,"1hour",false,false);
-                        self::compute($opts,$s,$e);
+                        self::renderRange(Monda::_1HOUR, "1hour", false, false);
+                        self::compute($s, $e);
                         break;
                     case "1hour":
-                        self::compute($opts,$s,$e,3600);
+                        self::compute($s, $e, Monda::_1HOUR);
                         break;
                 }
             } else {
-                self::compute($opts,$start,$end,$step);
+                self::compute($start, $end, $step);
             }
         }
         if ($postprocess) {
-            \App\Model\CliDebug::warn(sprintf("== $name postprocess-cron (%s to %s):\n",date("Y-m-d H:i",$start),date("Y-m-d H:i",$end)));
-            self::postcompute($opts);
+            Opts::setOpt("start",$start);
+            Opts::setOpt("end",$end);
+            Opts::setOpt("window_empty",false);
+            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK, Monda::_1MONTH, Monda::_1MONTH28, Monda::_1MONTH30, Monda::_1MONTH31));
+            CliDebug::warn(sprintf("== $name postprocess-cron (%s to %s):\n", date("Y-m-d H:i", $start), date("Y-m-d H:i", $end)));
+            self::postcompute();
+        }
+        if ($preprocess && $postprocess) {
+            self::mexit();
         }
     }
-    
-    public function precompute($opts) {
-        if ($opts->dry) {
+
+    public function precompute() {
+        $s=Tw::twStats();
+        CliDebug::info(sprintf("Window statistics: cnt=%d,minloi=%d,maxloi=%d,minprocessed=%d,maxprocessed=%d\n",$s->cnt,$s->minloi,$s->maxloi,$s->minprocessed,$s->maxprocessed));
+        if (Opts::isOpt("dry")) {
             return(false);
         }
-        \App\Model\Tw::twMultiCreate($opts);
-        $opts->empty=true;
-        $opts->wsort="start/+";
-        \App\Model\ItemStat::IsMultiCompute($opts);
-        $opts->empty=false;
-        \App\Model\Tw::twLoi($opts);
-        \App\Model\ItemStat::IsLoi($opts);
-        \App\Model\HostStat::hsUpdate($opts);
-        \App\Model\HostStat::hsMultiCompute($opts);
-        \App\Model\HostStat::hsLoi($opts);
-        \App\Model\EventCorr::ecLoi($opts);
+        try {
+            Tw::twMultiCreate();
+            Opts::setOpt("window_empty", true);
+            Opts::setOpt("tw_minloi", -1);
+            Opts::setOpt("window_sort", "start/+");
+            ItemStat::IsMultiCompute();
+            Tw::twLoi();
+            ItemStat::IsLoi();
+            HostStat::hsUpdate();
+            HostStat::hsMultiCompute();
+            HostStat::hsLoi();
+            EventCorr::ecLoi();
+        } catch (Exception $e) {
+            CliDebug::warn("No itemstat to compute.\n");
+        }
     }
-    
-    public function compute($opts,$s,$e,$l=false) {
-        if ($opts->dry) {
+
+    public function compute($s, $e, $l = false) {
+        if (Opts::isOpt("dry")) {
             return(false);
-        }
-        
-        $opts->start=$s;
-        $opts->end=$e;
-        if (!$l) {
-            $l=\App\Model\Monda::_1WEEK;
         }
 
-        $lengths=Array(\App\Model\Monda::_1HOUR,\App\Model\Monda::_1DAY,\App\Model\Monda::_1WEEK);
-        $opts->isloionly=true;
-        foreach ($lengths as $length) {
-            if ($length>$l) continue; 
-            $opts->corr="samewindow";
-            $opts->length=Array($length);
-            \App\Model\ItemCorr::IcMultiCompute($opts);
-            if ($length==\App\Model\Monda::_1HOUR) {
-                $opts->corr="samehour";
-                $opts->length=Array(\App\Model\Monda::_1HOUR);
-                \App\Model\ItemCorr::IcMultiCompute($opts);
+        Opts::setOpt("start", $s);
+        Opts::setOpt("end", $e);
+        if (!$l) {
+            $l = Monda::_1WEEK;
+        }
+        try {
+            $lengths = Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK);
+            foreach ($lengths as $length) {
+                if ($length > $l)
+                    continue;
+                Opts::setOpt("corr_type", "samewindow");
+                Opts::setOpt("window_length", Array($l));
+                ItemCorr::IcMultiCompute();
+                if ($length == Monda::_1HOUR) {
+                    Opts::setOpt("corr_type", "samehour");
+                    Opts::setOpt("window_length", Array(Monda::_1HOUR));
+                    ItemCorr::IcMultiCompute();
+                }
+                if ($length >= Monda::_1DAY) {
+                    Opts::setOpt("corr_type", "samedow");
+                    Opts::setOpt("window_length", Array(Monda::_1DAY));
+                    ItemCorr::IcMultiCompute();
+                }
             }
-            if ($length>=\App\Model\Monda::_1DAY) {
-                $opts->corr="samedow";
-                $opts->length=Array(\App\Model\Monda::_1HOUR);
-                \App\Model\ItemCorr::IcMultiCompute($opts);
-            }
+        } catch (Exception $e) {
+            CliDebug::warn("No interresting items found.\n");
         }
     }
-    
-    public function postcompute($opts) {
-        if ($opts->dry) {
+
+    public function postcompute() {
+        $s=Tw::twStats();
+        CliDebug::info(sprintf("Window statistics: cnt=%d,minloi=%d,maxloi=%d,minprocessed=%d,maxprocessed=%d\n",$s->cnt,$s->minloi,$s->maxloi,$s->minprocessed,$s->maxprocessed));
+
+        if (Opts::isOpt("dry")) {
             return(false);
         }
-        \App\Model\ItemCorr::IcLoi($opts);
+        try {
+            ItemCorr::IcLoi();
+        } catch (Exception $e) {
+            
+        }
     }
+
 }

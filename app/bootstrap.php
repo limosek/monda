@@ -1,78 +1,36 @@
 <?php
 
+use Tracy\Debugger,App\Model\Opts;
+
 require __DIR__ . '/../vendor/autoload.php';
 
 $configurator = new Nette\Configurator;
 $configurator->setTempDirectory(getenv("MONDA_TMP"));
+$configurator->enableDebugger(getenv("MONDA_LOGDIR"));
 
-if (!getenv("MONDA_CLI")) {
-    $configurator->setDebugMode(Array('127.0.0.1'));
-    if (getenv("MONDA_LOG")) {
-        $configurator->enableDebugger(getenv("MONDA_LOG"));
-    }
-} else {
-    $configurator->setDebugMode(true); 
+if (getenv("MONDA_WWW")) {
+    $o=fopen(getenv("MONDA_LOGDIR")."/stdout.log","a");
+    $e=fopen(getenv("MONDA_LOGDIR")."/stderr.log","a");
+    define("STDERR",$e);
+    define("STDOUT",$o);
 }
+
+define("APP_DIR",__DIR__);
 
 $configurator->createRobotLoader()
 	->addDirectory(__DIR__)
-	->addDirectory(__DIR__ . '/../vendor/others')
-	->register();
+	->addDirectory(__DIR__ . '/../vendor/')
+	->register()->getIndexedClasses();
 
 $configurator->addConfig(__DIR__ . '/config/config.neon');
 
+Debugger::$maxDepth = 15;
+Debugger::$maxLen = 2000;
+Debugger::$strictMode = false;
+
+Opts::startup();
+Opts::preReadOpts();
+
 $container = $configurator->createContainer();
-
-define("TCHARS"," \t\n\r\0\x0B'\"");
-define("WCHARS"," -\t\n\r\0\x0B'\"");
-
-if (file_exists(getenv("MONDARC")) && !getenv("MONDA_PASS2")) {
-    $cfgargs="";
-    $cfggetargs=Array();
-    foreach (file(getenv("MONDARC")) as $line) {
-        if (preg_match("#^-#",$line)) {
-            if (preg_match("#^(-[a-zA-Z0-9_\-]*)[ =]{1,4}(.*)$#",$line,$regs)) {
-                $option=trim($regs[1],TCHARS);
-                $woption=trim($regs[1],WCHARS);
-                $value=trim($regs[2],TCHARS);
-                $cfgargs .= " '$option' '$value' ";
-                $cfggetargs[$woption]=$value;
-            } else {
-                $cfgargs.=" '".trim($line,TCHARS)."' ";
-                $cfggetargs[trim($line,WCHARS)]=true;
-            }
-        }
-    }
-    if (getenv("MONDA_CLI")) {
-        $cmdargs=$_SERVER["argv"];
-        foreach ($cmdargs as $id=>$cmd) {
-            $cmd=trim($cmd,TCHARS);
-            $cmdargs[$id]="'$cmd'";
-        }
-        putenv("MONDA_PASS2=true");
-        $cmd=trim(array_shift($cmdargs),TCHARS);
-        $presenter=trim(array_shift($cmdargs),TCHARS);
-        if (!$presenter) {
-            $presenter="default";
-        }
-        if (preg_match("/:/",$presenter)) {
-            List($p,$a)=preg_split("/:/",$presenter);
-        } else {
-            $p=$presenter;
-            $a="Default";
-        }
-        $presenter="$p:$a";
-        $cmd=sprintf("'%s' '%s' %s --foo %s",$cmd,$presenter,$cfgargs,join(" ",$cmdargs));
-        //echo $cmd;
-        system($cmd,$ret);
-        exit($ret);
-    } else {
-        foreach ($cfggetargs as $var=>$value) {
-            if (!array_key_exists($var,$_REQUEST)) {
-                $_GET[$var]=$value;
-            }
-        }
-    }
-}
 
 return $container;

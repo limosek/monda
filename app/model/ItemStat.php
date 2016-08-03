@@ -4,28 +4,35 @@ namespace App\Model;
 use Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
-    Nette\Diagnostics\Debugger,
+    Tracy\Debugger,
+    Exception,
     Nette\Utils\DateTime as DateTime,
-    Nette\Database\Context,
-    \ZabbixApi;
+    Nette\Database\Context;
 
 /**
  * ItemStat global class
  */
 class ItemStat extends Monda {
     
-    function itemSearch($key = false, $host = false, $hostgroup = false) {
+    static function itemSearch($key = false, $host = false, $hostgroup = false) {
         $iq = Array(
             "monitored" => true
         );
         if ($host) {
             $iq["host"] = $host;
         }
+        if (Opts::getOpt("hostids")) {
+            $iq["hostids"] = Opts::getOpt("hostids");
+        }
         if ($hostgroup) {
             $iq["hostgroup"] = $hostgroup;
         }
         if ($key) {
-            $iq["filter"] = Array("key_" => $key);
+            if (substr($key,0,1)!="@") {
+                $iq["filter"] = Array("key_" => $key);
+            } else {
+                $iq["search"] = Array("key_" => substr($key,1));
+            }
         }
         $i = Monda::apiCmd("itemGet",$iq);
         $ret = Array();
@@ -35,7 +42,7 @@ class ItemStat extends Monda {
         return($ret);
     }
     
-    function itemInfo($itemid) {
+    static function itemInfo($itemid) {
         $iq = Array(
             "monitored" => true,
             "output" => "extend",
@@ -45,63 +52,51 @@ class ItemStat extends Monda {
         return($item);
     }
     
-    function searchToIds($opts) {
-        $wids=Tw::searchToIds($opts);
+    function searchToIds() {
+        $wids=Tw::searchToIds();
         
     }
     
-    function itemsToIds($opts) {
-        if (is_array($opts->items)) {
-            if (!is_array($opts->itemids)) {
-                $opts->itemids=Array();
+    static function itemsToIds() {
+        if (is_array(Opts::getOpt("items"))) {
+            if (!is_array(Opts::getOpt("itemids"))) {
+                $itemids=Array();
+            } else {
+                $itemids=Opts::getOpt("itemids");
             }
-            foreach ($opts->items as $item) {
-                if (preg_match("/@(.*):\$/",$item,$regs)) {
-                    $hostgroup=$regs[1];
-                    $hostids = HostStat::HostGroupsToIds($hostgroup);
-                    $opts->itemids = array_merge($opts->itemids, HostStat::hostids2itemids($hostids));
-                } elseif (preg_match("/(.*):\$/",$item,$regs)) {
-                    $host=$regs[1];
-                    $opts->itemids = array_merge($opts->itemids, HostStat::hostids2itemids(
-                                                                    HostStat::hosts2ids($host)));
+            foreach (Opts::getOpt("items") as $item) {
+                $i=self::itemSearch($item,false,Opts::getOpt("hostgroups"));
+                if (count($i)>0) {
+                    $itemids=array_merge($itemids,$i);
                 } else {
-                    $i=self::itemSearch($item,false,$opts->hostgroups);
-                    if (count($i)>0) {
-                        $opts->itemids=array_merge($opts->itemids,$i);
-                    } else {
-                        CliDebug::warn("Item $item not found! Continuing.\n");
-                    }
+                    CliDebug::warn("Item $item not found! Continuing.\n");
                 }
             }
+            Opts::setOpt("itemids",$itemids);
         }
-        return($opts);
+        CliDebug::dbg("Itemids selected: ".join(",",$itemids)."\n");
+        return(Opts::getOpt("itemids"));
     }
     
-    function isSearch($opts) {
-        if ($opts->itemids) {
-            $itemidssql=sprintf("i.itemid IN (%s) AND",join(",",$opts->itemids));
+    static function isSearch() {
+        if (count(Opts::getOpt("itemids"))>0) {
+            $itemidssql=sprintf("i.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")));
         } else {
             $itemidssql="";
         }
-        if ($opts->hostids) {
-            $hostidssql=sprintf("i.hostid IN (%s) AND",join(",",$opts->hostids));
+        if (count(Opts::isOpt("hostids"))>0) {
+            $hostidssql=sprintf("i.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";
         }
-        if ($opts->isloionly) {
-            $loisql="i.loi>0 AND";
-        } else {
-            $loisql="";
-        }
-
-        $wids=Tw::twToIds($opts);
+        $wids=Tw::twToIds();
         if (count($wids)>0) {
             $windowidsql=sprintf("windowid IN (%s) AND",join(",",$wids));
         } else {
             return(false);
         }
-        if ($opts->max_items) {
-            $limit="LIMIT ".$opts->max_items;
+        if (Opts::getOpt("max_rows")) {
+            $limit="LIMIT ".Opts::getOpt("max_rows");
         } else {
             $limit="";
         }
@@ -118,17 +113,40 @@ class ItemStat extends Monda {
                         i.windowid AS windowid
                     FROM itemstat i
                     JOIN timewindow tw ON (i.windowid=tw.id)
-                 WHERE $itemidssql $hostidssql $windowidsql $loisql true
+                 WHERE i.loi>? AND i.loi IS NOT NULL AND tw.loi>? AND i.loi IS NOT NULL AND $itemidssql $hostidssql $windowidsql true
                 ORDER by i.loi DESC "
-                . "$limit"
+                . "$limit",Opts::getOpt("is_minloi"),Opts::getOpt("tw_minloi")
                 );
         return($rows);
     }
     
-    function isToIds($opts,$pkey=false) {
-        $ids=self::isSearch($opts);
+    static function isStats() {
+        $itemids=self::isToIds();
+        $rows=self::mquery("SELECT 
+                i.itemid AS itemid,
+                        AVG(i.loi)::integer AS loi,
+                        AVG(i.loi)*COUNT(i.windowid)::float AS loiw,
+                        MIN(i.min_) AS min_,
+                        MAX(i.max_) AS max_,
+                        AVG(i.avg_) AS avg_,
+                        AVG(i.stddev_) AS stddev_,
+                        AVG(i.cnt)::integer AS cnt,
+                        AVG(i.cv) AS cv,
+                        COUNT(i.windowid) AS wcnt
+                    FROM itemstat i
+                 WHERE i.itemid IN (?)
+                 AND i.loi IS NOT NULL
+                 GROUP BY i.itemid
+                 ORDER BY AVG(i.loi)*COUNT(i.windowid) DESC
+                 LIMIT ?
+                ",$itemids,Opts::getOpt("max_rows"));
+        return($rows->fetchAll());
+    }
+    
+    static function isToIds($pkey=false) {
+        $ids=self::isSearch();
         if (!$ids) {
-            return(false);
+            throw New Exception("No items found.");
         }
         $rows=$ids->fetchAll();
         $itemids=Array();
@@ -148,78 +166,31 @@ class ItemStat extends Monda {
         }
         return($itemids);
     }
-    
-    function isZabbixGetHistory($opts,$samples=false) {
-        $opts=$this->opts;
-        $w=Tw::twGet($opts->wids);
-        $items=$opts->itemids;
-        $ttable="mistmp_".rand(1000,9999);
         
-        if (!$samples) $samples=100;
-        self::monda2zabbix(ItemStat::isSearch($opts),$ttable);
-        if ($opts->max_items) {
-            $limit="LIMIT ".$opts->max_items;
-        } else {
-            $limit="";
+    static function isCompute($wids) {
+        
+        if (!$wids) {
+            throw New Exception("No windows to process.");
         }
-        $step=round(($w->tstamp-$w->fstamp)/$samples);
-        $rows=self::zquery(
-            "SELECT
-                zh.itemid,((clock/$step)::bigint)*$step AS clock,
-                    AVG(value),
-                    CASE WHEN (tt.max_-tt.min_)<>0 THEN AVG(value)/(tt.max_-tt.min_) ELSE NULL END AS value
-                  FROM ".$opts->zabbix_history_table." zh
-                  JOIN $ttable tt ON (zh.itemid=tt.itemid)
-                  WHERE clock BETWEEN ? AND ?
-                  GROUP BY zh.itemid,((clock/$step)::bigint)*$step,tt.max_,tt.min_
-                  UNION ALL
-                  SELECT zhu.itemid,((clock/$step)::bigint)*$step AS clock,
-                     AVG(value) AS value,
-                     CASE WHEN (tt.max_-tt.min_)<>0 THEN AVG(value)/(tt.max_-tt.min_) ELSE NULL END AS value
-                  FROM ".$opts->zabbix_history_uint_table." zhu
-                  JOIN $ttable tt ON (zhu.itemid=tt.itemid)
-                  WHERE clock BETWEEN ? AND ?
-                  GROUP BY zhu.itemid,((clock/$step)::bigint)*$step,tt.max_,tt.min_
-                  $limit
-                 ",$w->fstamp,$w->tstamp,$w->fstamp,$w->tstamp);
-        $items=Array();
-        while ($row=$rows->fetch()) {
-            $items[$row->clock]["time"]=date("Y/m/d H:i",$row->clock);
-            $items[$row->clock][$row->itemid]=$row->value;
-        }
-        return($items);
-    }
-        
-    function isCompute($opts,$wids) {
-        
         $windows=Tw::twGet($wids,true);
+
         $widstxt=join(",",$wids);
         $ttable="mwtmp_".rand(1000,9999);
-        self::monda2zabbix(
-                Tw::twSearch($opts),
-                $ttable
-             );
-        $wstats=Tw::twStats($opts);
-        CliDebug::warn("Computing item statistics (zabbix_id:$opts->zid,<$wstats->minfstamp-$wstats->maxtstamp,max ".($wstats->maxtstamp-$wstats->minfstamp)." seconds>),".count($wids)." windows\n");
-        $opts=$this->opts;
-        $opts->isloionly=false;
-        $items=$opts->itemids;
-        if ($items && count($items)>0) {
+        $crsql="CREATE TEMPORARY TABLE $ttable (s integer, e integer, id integer);";
+        Monda::zquery($crsql);
+        foreach ($windows as $w) {
+            $crsqli="INSERT INTO $ttable VALUES ($w->fstamp,$w->tstamp,$w->id);\n";
+            Monda::zquery($crsqli);
+            $crsql.=$crsqli;
+        }
+        $wstats=Tw::twStats();
+        CliDebug::warn(sprintf("Computing item statistics (zabbix_id: %d, from %s to %s (%d) windows...",Opts::getOpt("zabbix_id"),Util::dateTime($wstats->minfstamp),Util::dateTime($wstats->maxtstamp),count($wids)));
+        $items=self::isToIds();
+        if (count($items)>0) {
             $itemidsql=sprintf("AND itemid IN (%s)",join(",",$items));
         } else {
             $itemidsql="";
         }
-        /*
-        $mitems=self::mquery("SELECT DISTINCT itemid FROM itemstat WHERE windowid IN ($widstxt)");
-        $mitemids=Array();
-        while ($row=$mitems->fetch()) {
-            $mitemids[]=$row->itemid;
-        }
-        if (count($mitemids)>0) {
-            $mitemidsql=sprintf("AND itemid NOT IN (%s)",join(",",$mitemids));
-        } else {
-            $mitemidsql="AND true";
-        }*/
         $rows=self::zquery(
             "SELECT w.id AS windowid,
                  itemid AS itemid,
@@ -230,35 +201,39 @@ class ItemStat extends Monda {
                     count(*) AS cnt
                  FROM
                  (
-                  SELECT itemid,clock,value FROM ".$opts->zabbix_history_table."
+                  SELECT itemid,clock,value FROM ".Opts::getOpt("zabbix_history_table")."
                   WHERE clock BETWEEN ? AND ?
                   UNION ALL
-                  SELECT itemid,clock,value FROM ".$opts->zabbix_history_uint_table."
+                  SELECT itemid,clock,value FROM ".Opts::getOpt("zabbix_history_uint_table")."
                   WHERE clock BETWEEN ? AND ?
                  ) AS h
-                 JOIN $ttable w ON (clock BETWEEN w.fstamp AND w.tstamp)
+                 JOIN $ttable w ON (clock BETWEEN w.s AND w.e)
                   $itemidsql
                  GROUP BY windowid,itemid
                  ORDER BY windowid,itemid",
                 $wstats->minfstamp,$wstats->maxtstamp,$wstats->minfstamp,$wstats->maxtstamp);
         self::mbegin();
+        self::mquery("DELETE FROM itemstat WHERE windowid IN (?)",$wids);
         Monda::sreset();
         $wid=false;
+        $sumcv=0;
+        $sumcnt=0;
         while ($row=$rows->fetch()) {
+            CliDebug::info(".");
             Monda::sadd("found");
-            if ($row->stddev_<=$opts->min_stddev) {
+            if ($row->stddev_<=Opts::getOpt("min_stddev")) {
                 Monda::sadd("ignored");
                 Monda::sadd("lowstddev");
-                continue;
+                continue;   
             }
-            if ($row->cnt<$opts->min_values_per_window) {
+            if ($row->cnt<Opts::getOpt("min_values_per_window")) {
                 Monda::sadd("ignored");
                 Monda::sadd("lowcnt");
                 continue;
             }
-            if ($row->avg_>$opts->min_avg_for_cv) {
+            if ($row->avg_>Opts::getOpt("min_avg_for_cv")) {
                 $cv=$row->stddev_/$row->avg_;
-                if ($cv<=$opts->min_cv) {
+                if ($cv<=Opts::getOpt("min_cv")) {
                     Monda::sadd("ignored");
                     Monda::sadd("lowcv");
                     continue;
@@ -269,7 +244,8 @@ class ItemStat extends Monda {
                 continue;
             }
             Monda::sadd("processed");
-            Monda::mquery("DELETE FROM itemstat WHERE windowid=? AND itemid=?",$row->windowid,$row->itemid);
+            $sumcv+=$cv;
+            $sumcnt+=$row->cnt;
             Monda::mquery("INSERT INTO itemstat "
                     . "       (windowid,    itemid, min_,   max_,   avg_,   stddev_,    cnt,    cv) "
                     . "VALUES (?       ,    ?,      ?,      ?,      ?,      ?,          ?,      ?)",
@@ -285,7 +261,7 @@ class ItemStat extends Monda {
             if ($wid!=$row->windowid) {
                 if ($wid) {
                     Monda::mquery("UPDATE timewindow
-                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?
+                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?, avgcv=?, avgcnt=?
                     WHERE id=?",
                     New DateTime(),
                     Monda::sget("found"),
@@ -295,15 +271,20 @@ class ItemStat extends Monda {
                     Monda::sget("lowavg"),
                     Monda::sget("lowstddev"),
                     Monda::sget("lowcv"),
+                    $sumcv/Monda::sget("processed"),
+                    $sumcnt/Monda::sget("found"),
                     $wid);
                 }
                 Monda::sreset();
+                $sumcv=0;
+                $sumcnt=0;
                 $wid=$row->windowid;
             }
         }
         if (Monda::sget("found")>0) {
-            Monda::mquery("UPDATE timewindow
-                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?
+            if ($wid) {
+                Monda::mquery("UPDATE timewindow
+                    SET updated=?, found=?, processed=?, ignored=?, lowcnt=?, lowavg=?, lowstddev=?, lowcv=?, avgcv=?, avgcnt=?
                     WHERE id=?",
                     New DateTime(),
                     Monda::sget("found"),
@@ -313,80 +294,120 @@ class ItemStat extends Monda {
                     Monda::sget("lowavg"),
                     Monda::sget("lowstddev"),
                     Monda::sget("lowcv"),
+                    $sumcv/Monda::sget("processed"),
+                    $sumcnt/Monda::sget("found"),
                     $wid);
-            
+            }          
             $ret=Monda::sget();
         } else {
             $ret=false;
         }
         Monda::mcommit();
         Monda::zquery("DROP TABLE $ttable");
+        CliDebug::warn("Done.\n");
         return($ret);
     }
     
-    public function IsMultiCompute($opts) {
-        $wids=Tw::twToIds($this->opts);
-        if ($opts->max_windows_per_query && count($wids)>$opts->max_windows_per_query) {
-            foreach (array_chunk($wids,$opts->max_windows_per_query) as $subwids) {
-                self::isCompute($opts,$subwids);
+    static public function IsZabbixHistory() {
+        $itemids = Opts::getOpt("itemids");
+        $windowids = Tw::twToIds();
+        $timesql = "";
+        $from=time();
+        $to=0;
+        foreach ($windowids as $wid) {
+            $w = Tw::twGet($wid);
+            $timesql.="OR (clock BETWEEN $w->fstamp AND $w->tstamp) ";
+            $from=min($from,$w->fstamp);
+            $to=max($to,$w->tstamp);
+        }
+        $g = Opts::getOpt("history_granularity");
+        $hist = Monda::zcquery("                
+              SELECT itemid,CAST((clock/$g) AS INTEGER)*$g AS c,AVG(value) AS v FROM history WHERE (false $timesql) AND itemid IN (?)
+                GROUP BY itemid,CAST((clock/$g) AS INTEGER)*$g
+              UNION ALL 
+              SELECT itemid,CAST((clock/$g) AS INTEGER)*$g AS c,AVG(value) AS v FROM history_uint WHERE (false $timesql) AND itemid IN (?)
+                GROUP BY itemid,CAST((clock/$g) AS INTEGER)*$g
+              ORDER BY c,itemid
+                ", $itemids, $itemids);
+        $ret = Array();
+        foreach ($hist as $h) {
+            foreach ((array) $h as $c) {
+                $values[$h->itemid][$h->c] = $h->v;
             }
-            CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($wids),date("Y-m-d H:i",$opts->start),date("Y-m-d H:i",$opts->end)));
-            
+        }
+        if (Opts::getOpt("history_interpolate")) {
+            $x = range($from, $to, $g);
+            $ip = Array();
+            foreach ($values as $itemid => $column) {
+                CliDebug::info(sprintf("Interpolating %d values for %s from %d values.\n", count($x), $itemid, count($column)));
+                $ip[$itemid] = Util::interpolate($column, $x);
+            }
+            foreach ($x as $x1) {
+                foreach ($ip as $itemid => $values) {
+                    $ret[$x1]["clock"] = $x1;
+                    $ret[$x1][$itemid] = $values[$x1];
+                }
+            }
         } else {
-            CliDebug::warn(sprintf("Need to compute itemstat for %d windows (from %s to %s).\n",count($wids),date("Y-m-d H:i",$opts->start),date("Y-m-d H:i",$opts->end)));
-            self::isCompute($opts,$wids);
+            foreach ($hist as $h) {
+                $ret[$h->c]["clock"] = $h->c;
+                $ret[$h->c][$h->itemid] = $h->v;
+            }
+        }
+        return($ret);
+    }
+
+    static public function IsMultiCompute() {
+        Opts::setOpt("window_empty", true);
+        Opts::setOpt("tw_minloi", -1);
+        $wids = Tw::twToIds();
+        if (!$wids)
+            return;
+        if (Opts::getOpt("max_windows_per_query") && count($wids) > Opts::getOpt("max_windows_per_query")) {
+            foreach (array_chunk($wids, Opts::getOpt("max_windows_per_query")) as $subwids) {
+                self::isCompute($subwids);
+            }
+        } else {
+            self::isCompute($wids);
         }
     }
-    
-    public function IsDelete($opts) {
-        $items=self::IsToIds($opts);
-        $windowids=Tw::TwtoIds($opts);
-        CliDebug::warn(sprintf("Will delete %d itemstat entries (%d windows).\n",count($items),count($windowids)));
+
+    static public function IsDelete() {
+        $items=self::IsToIds();
+        $windowids=Tw::TwtoIds();
+        CliDebug::warn(sprintf("Will delete %d itemstat entries (%d windows)...",count($items),count($windowids)));
         if (count($items)>0 && count($windowids)>0) {
             self::mbegin();
             self::mquery("DELETE FROM itemstat WHERE ?", $items);
             self::mquery("UPDATE timewindow SET updated=NULL,loi=0 WHERE id IN (?)",$windowids);
             self::mcommit();
         }
+        CliDebug::warn("Done\n");
     }
     
-    public function IsStats($opts) {
-        $windowids=Tw::TwToIds($opts);
-        $itemids=self::IsToIds($opts);
+    static public function IsShow() {
         $stats=self::mquery("
             SELECT 
-                itemid, MIN(min_) AS min_, MAX(max_) AS max_, AVG(avg_) AS avg_,
-                MIN(itemstat.loi) AS minloi, MAX(itemstat.loi) AS maxloi, AVG(itemstat.loi) AS avgloi, SUM(itemstat.loi) AS sumloi,
-                MIN(cv) AS mincv, AVG(cv) AS avgcv, MAX(cv) AS maxcv,
-                MIN(cnt) AS mincnt, AVG(cnt) AS avgcnt, MAX(cnt) AS maxcnt,
-                COUNT(*) AS cnt
+                MIN(value),MAX(value),
             FROM itemstat
             JOIN timewindow ON (id=windowid)
-            WHERE timewindow.serverid=? AND windowid IN (?) AND itemid IN (?)
+            WHERE timewindow.serverid=?
             GROUP BY itemid
-            ORDER BY AVG(itemstat.loi) DESC
-            ",$opts->zid,$windowids,$itemids);
+            ",Opts::getOpt("zabbix_id"));
         return($stats);
     }
     
-    public function IsLoi($opts) {
-        $wids=Tw::twToIds($opts);
-        CliDebug::warn(sprintf("Need to compute itemstat loi for %d windows.\n",count($wids)));
+    static public function IsLoi() {
+        $wids=Tw::twToIds();
+        CliDebug::warn(sprintf("Need to compute itemstat loi for %d windows...",count($wids)));
         if (count($wids)>0) {
-            $stat=self::mquery("
-                SELECT MIN(cv) AS mincv,
-                    MAX(cv) AS maxcv,
-                    MIN(cnt) AS mincnt,
-                    MAX(cnt) AS maxcnt
-                FROM itemstat
-                WHERE windowid IN (?)",$wids)->fetch();
-
             $lsql=self::mquery("
                 UPDATE itemstat 
-                SET loi=100*(cv/?)
+                SET loi=cnt*(cv/?)
                 WHERE windowid IN (?)
-                ",$stat->maxcv,$wids);
+                ",Opts::getOpt("max_cv"),$wids);
         }
+        CliDebug::warn("Done\n");
     }
 }
 

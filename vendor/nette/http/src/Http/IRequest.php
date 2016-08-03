@@ -1,19 +1,15 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Http;
 
-use Nette;
-
 
 /**
  * IHttpRequest provides access scheme for request sent via HTTP.
- *
- * @author     David Grudl
  */
 interface IRequest
 {
@@ -23,7 +19,8 @@ interface IRequest
 		POST = 'POST',
 		HEAD = 'HEAD',
 		PUT = 'PUT',
-		DELETE = 'DELETE';
+		DELETE = 'DELETE',
+		PATCH = 'PATCH';
 
 	/**
 	 * Returns URL object.
@@ -53,8 +50,8 @@ interface IRequest
 
 	/**
 	 * Returns uploaded file.
-	 * @param  string key (or more keys)
-	 * @return FileUpload
+	 * @param  string key
+	 * @return FileUpload|NULL
 	 */
 	function getFile($key);
 
@@ -122,19 +119,19 @@ interface IRequest
 
 	/**
 	 * Returns the IP address of the remote client.
-	 * @return string
+	 * @return string|NULL
 	 */
 	function getRemoteAddress();
 
 	/**
 	 * Returns the host of the remote client.
-	 * @return string
+	 * @return string|NULL
 	 */
 	function getRemoteHost();
 
 	/**
 	 * Returns raw content of HTTP request body.
-	 * @return string
+	 * @return string|NULL
 	 */
 	function getRawBody();
 

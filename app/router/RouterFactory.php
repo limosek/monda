@@ -5,6 +5,7 @@ namespace App;
 use Nette,
     Nette\Application\Routers\RouteList,
     Nette\Application\Routers\Route,
+    Nette\Application\Routers\CliRouter,
     Nette\Application\Routers\SimpleRouter;
 
 /**
@@ -16,24 +17,16 @@ class RouterFactory {
      * @return \Nette\Application\IRouter
      */
     public function createRouter() {
-        $router = new RouteList();
-        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
-            $secured = Route::SECURED;
-        } else {
-            $secured=0;
-        }
         
+        $router = new RouteList();
         if (getenv("MONDA_CLI")) {
-            $router[] = new Nette\Application\Routers\CliRouter(
-                        array('action' => 'Default'
-                            )
-            );
+           $router[] = new CliRouter(
+                   Array('action' => 'Default:default')
+                    );
+        } else {
+            $router[] = new Route('/', 'Map:tl', Route::ONE_WAY);
+            $router[] = new Route('/<presenter>/<action>', 'Default:default');
         }
-        $router[] = new Route('/monda/<presenter>/<action>',
-                array(
-                 'presenter' => 'Html',
-                 'action' => 'tl',
-                ),$secured);
         return $router;
     }
 

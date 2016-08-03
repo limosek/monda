@@ -8,7 +8,7 @@ require __DIR__ . '/../src/tracy.php';
 
 use Tracy\Debugger;
 
-Debugger::enable();
+Debugger::enable(Debugger::DETECT, __DIR__ . '/log');
 
 
 function first($arg1, $arg2)
@@ -16,13 +16,10 @@ function first($arg1, $arg2)
 	second(TRUE, FALSE);
 }
 
-
-
 function second($arg1, $arg2)
 {
 	third(array(1, 2, 3));
 }
-
 
 function third($arg1)
 {

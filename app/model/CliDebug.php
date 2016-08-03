@@ -4,7 +4,7 @@ namespace App\Model;
 use Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
-    Nette\Diagnostics\Debugger,
+    Tracy\Debugger,
     Nette\Database\Context,
     \ZabbixApi;
 
@@ -21,8 +21,8 @@ class CliDebug {
         "critical" => 4
     );
     private static $level;
-    private static $logf;
-    private static $writef;
+    private static $obuff;
+    private static $ebuff;
     
     static function comparelevel($l1,$l2) {
         if (!is_numeric($l1)) {
@@ -33,54 +33,46 @@ class CliDebug {
         }
         return($l1>=$l2);
     }
-  
-    public function __construct($level=false) {
+    
+    static public function startup($level=false) {
         if (!$level) {
             if (getenv("MONDA_DEBUG")) {
                 $level=getenv("MONDA_DEBUG");
             } else {
-                if (isset(Monda::$debuglevel)) {
-                    $level=Monda::$debuglevel;
-                } else {
-                    $level="info";
-                }
+                $level="warning";
             }
         }
-        if (getenv("MONDA_LOG")) {
-            self::$logf=fopen(getenv("MONDA_LOG")."/stderr.log","w");
-        } else {
-            self::$logf=fopen("php://stderr","w");
-        }
-        self::$writef=fopen("php://stdout","a");
         if (!array_key_exists($level, self::$levels)) {
-            fprintf(self::$logf,"Unknown log level ".self::getLevel()."!\n");
+            fwrite(STDERR,"Unknown log level ".self::getLevel()."!\n");
         } else {
             self::$level=$level;
         }
     }
     
-    public function getLevel() {
+    static public function getLevel() {
         return(self::$level);
+    }
+    
+    static public function setLevel($level) {
+       self::$level=$level;
     }
             
     static function log($message,$priority=Debugger::INFO) {
         if (self::comparelevel($priority,self::getLevel())) {
-            fprintf(self::$logf,$message);
+            fwrite(STDERR,$message);
+            self::$obuff.=$message;
         }
      }
      
      static function write($message,$priority=Debugger::WARNING) {
         if (self::comparelevel($priority,self::getLevel())) {
-            fprintf(self::$writef,$message);
+            fwrite(STDOUT,$message);
+            self::$ebuff.=$message;
         }
      }
      
      static function dbg($message) {
          self::log($message,Debugger::DEBUG);
-     }
-     
-     static function progress($message) {
-         fprintf(self::$logf,$message);
      }
      
      static function info($message) {
@@ -97,6 +89,13 @@ class CliDebug {
      
      static function crit($message) {
          self::log($message,Debugger::CRITICAL);
+     }
+     
+     static function getLog() {
+         return(self::$obuff);
+     }
+     static function getErrorLog() {
+         return(self::$ebuff);
      }
 }
     

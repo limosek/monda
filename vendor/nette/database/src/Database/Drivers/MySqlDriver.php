@@ -1,8 +1,8 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Database\Drivers;
@@ -12,8 +12,6 @@ use Nette;
 
 /**
  * Supplemental MySQL database driver.
- *
- * @author     David Grudl
  */
 class MySqlDriver extends Nette\Object implements Nette\Database\ISupplementalDriver
 {
@@ -27,18 +25,44 @@ class MySqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 
 	/**
 	 * Driver options:
-	 *   - charset => character encoding to set (default is utf8)
+	 *   - charset => character encoding to set (default is utf8 or utf8mb4 since MySQL 5.5.3)
 	 *   - sqlmode => see http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html
 	 */
 	public function __construct(Nette\Database\Connection $connection, array $options)
 	{
 		$this->connection = $connection;
-		$charset = isset($options['charset']) ? $options['charset'] : 'utf8';
+		$charset = isset($options['charset'])
+			? $options['charset']
+			: (version_compare($connection->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION), '5.5.3', '>=') ? 'utf8mb4' : 'utf8');
 		if ($charset) {
 			$connection->query("SET NAMES '$charset'");
 		}
 		if (isset($options['sqlmode'])) {
 			$connection->query("SET sql_mode='$options[sqlmode]'");
+		}
+	}
+
+
+	/**
+	 * @return Nette\Database\DriverException
+	 */
+	public function convertException(\PDOException $e)
+	{
+		$code = isset($e->errorInfo[1]) ? $e->errorInfo[1] : NULL;
+		if (in_array($code, array(1216, 1217, 1451, 1452, 1701), TRUE)) {
+			return Nette\Database\ForeignKeyConstraintViolationException::from($e);
+
+		} elseif (in_array($code, array(1062, 1557, 1569, 1586), TRUE)) {
+			return Nette\Database\UniqueConstraintViolationException::from($e);
+
+		} elseif ($code >= 2001 && $code <= 2028) {
+			return Nette\Database\ConnectionException::from($e);
+
+		} elseif (in_array($code, array(1048, 1121, 1138, 1171, 1252, 1263, 1566), TRUE)) {
+			return Nette\Database\NotNullConstraintViolationException::from($e);
+
+		} else {
+			return Nette\Database\DriverException::from($e);
 		}
 	}
 
@@ -75,6 +99,15 @@ class MySqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 
 
 	/**
+	 * Formats date-time interval for use in a SQL statement.
+	 */
+	public function formatDateInterval(\DateInterval $value)
+	{
+		return $value->format("'%r%h:%I:%S'");
+	}
+
+
+	/**
 	 * Encodes string for use in a LIKE statement.
 	 */
 	public function formatLike($value, $pos)
@@ -89,10 +122,13 @@ class MySqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 	 */
 	public function applyLimit(& $sql, $limit, $offset)
 	{
-		if ($limit >= 0 || $offset > 0) {
+		if ($limit < 0 || $offset < 0) {
+			throw new Nette\InvalidArgumentException('Negative offset or limit.');
+
+		} elseif ($limit !== NULL || $offset) {
 			// see http://dev.mysql.com/doc/refman/5.0/en/select.html
-			$sql .= ' LIMIT ' . ($limit < 0 ? '18446744073709551615' : (int) $limit)
-				. ($offset > 0 ? ' OFFSET ' . (int) $offset : '');
+			$sql .= ' LIMIT ' . ($limit === NULL ? '18446744073709551615' : (int) $limit)
+				. ($offset ? ' OFFSET ' . (int) $offset : '');
 		}
 	}
 
@@ -114,11 +150,6 @@ class MySqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 	 */
 	public function getTables()
 	{
-		/*$this->connection->query("
-			SELECT TABLE_NAME as name, TABLE_TYPE = 'VIEW' as view
-			FROM INFORMATION_SCHEMA.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-		");*/
 		$tables = array();
 		foreach ($this->connection->query('SHOW FULL TABLES') as $row) {
 			$tables[] = array(
@@ -135,11 +166,6 @@ class MySqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 	 */
 	public function getColumns($table)
 	{
-		/*$this->connection->query("
-			SELECT *
-			FROM INFORMATION_SCHEMA.COLUMNS
-			WHERE TABLE_NAME = {$this->connection->quote($table)} AND TABLE_SCHEMA = DATABASE()
-		");*/
 		$columns = array();
 		foreach ($this->connection->query('SHOW FULL COLUMNS FROM ' . $this->delimite($table)) as $row) {
 			$type = explode('(', $row['Type']);
@@ -165,12 +191,6 @@ class MySqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 	 */
 	public function getIndexes($table)
 	{
-		/*$this->connection->query("
-			SELECT *
-			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-			WHERE TABLE_NAME = {$this->connection->quote($table)} AND TABLE_SCHEMA = DATABASE()
-			AND REFERENCED_COLUMN_NAME IS NULL
-		");*/
 		$indexes = array();
 		foreach ($this->connection->query('SHOW INDEX FROM ' . $this->delimite($table)) as $row) {
 			$indexes[$row['Key_name']]['name'] = $row['Key_name'];
@@ -213,8 +233,8 @@ class MySqlDriver extends Nette\Object implements Nette\Database\ISupplementalDr
 			$meta = $statement->getColumnMeta($col);
 			if (isset($meta['native_type'])) {
 				$types[$meta['name']] = $type = Nette\Database\Helpers::detectType($meta['native_type']);
-				if ($type === Nette\Database\IReflection::FIELD_TIME) {
-					$types[$meta['name']] = Nette\Database\IReflection::FIELD_TIME_INTERVAL;
+				if ($type === Nette\Database\IStructure::FIELD_TIME) {
+					$types[$meta['name']] = Nette\Database\IStructure::FIELD_TIME_INTERVAL;
 				}
 			}
 		}

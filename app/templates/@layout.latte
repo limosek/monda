@@ -1,35 +1,24 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 
-	<title>{$title}</title>
+    <meta name="description" content="Monda">
 
-	<link rel="stylesheet" media="screen,projection,tv" href="/monda/css/screen.css">
-	<link rel="stylesheet" media="print" href="/monda/css/print.css">
-	<link rel="shortcut icon" href="/monda/favicon.ico">
-        <link href="/monda/css/bootstrap.min.css" rel="stylesheet">
-        <!link href="/monda/css/jsplumb.css" rel="stylesheet">
-        
-	{block head}{/block}
-	<script src="/monda/js/jquery-1.11.1.min.js"></script>
-        <script src="/monda/js/jquery-ui.min.js"></script>
-	<script src="/monda/js/netteForms.js"></script>
-	<script src="/monda/js/main.js"></script>
-        <script src="/monda/js/bootstrap.min.js"></script>
-        <script type="text/javascript" src="/monda/js/dygraph-combined.js"></script>
-        {ifset #script}
-        {include script}
-        {/ifset}
+    <title>{$title}</title>
+
+    <link rel="stylesheet" media="screen,projection,tv" href="{$basePath}/css/screen.css" type="text/css">
+    <link rel="stylesheet" media="print" href="{$basePath}/css/print.css" type="text/css">
+    <link rel="shortcut icon" href="{$basePath}/favicon.ico" type="image/x-icon">
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
+    {block head}{/block}
 </head>
 
 <body>
-	<script> document.documentElement.className+=' js' </script>
-
-	<div n:foreach="$flashes as $flash" class="flash {$flash->type}">{$flash->message}</div>
-
-	{include content}
-	
+<div id="header">
+    
+</div>
+    {include #content}
 </body>
 </html>
