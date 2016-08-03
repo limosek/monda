@@ -4,17 +4,6 @@ This package contains tools to analyze data from monitoring system.
 At this moment, only Zabbix is supported. Please, read documentation before 
 using this package. Monda can be performance killer for your Zabbix installation!
 
-## Sample results
-
-## Timewindows with their correlations
-![TW dependency](/example-outputs/Tw_correlations.png?raw=true)
-![Item dependency 1](/example-outputs/Item_correlations_inside_timewindow1.png?raw=true)
-![Item dependency 2](/example-outputs/Item_correlations_inside_timewindow2.png?raw=true)
-
-You can find some more results [here](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f).
-Please note that data are anonymized so there are only itemids and urls are not working.
-You are welcomed to upload your anonymized results (see below).
-
 ## Basics
 
 Monda will use lot of resources and can be performance killer for Zabbix! 
@@ -273,6 +262,19 @@ Add trigger values into history for external processing. You have to pass trigge
 ```
 monda is:history -w wid --triggerids_history 10,20,30 -Om arff >history.arff
 ```
+
+## Sample results
+
+### Timewindows with their correlations
+![TW dependency](/example-outputs/Tw_correlations.png?raw=true)
+
+### Items and their correlations inside timewindow
+![Item dependency 1](/example-outputs/Item_correlations_inside_timewindow1.png?raw=true)
+![Item dependency 2](/example-outputs/Item_correlations_inside_timewindow2.png?raw=true)
+
+You can find some more results [here](https://box.slu.cz/index.php/s/VkjZDPWZZ7Fmy7f).
+Please note that data are anonymized so there are only itemids and urls are not working.
+You are welcomed to upload your anonymized results (see below).
 
 ## Exporting and anonymizing data
 It would be nice to share community data and analysis output to some central repository to make monda better.
