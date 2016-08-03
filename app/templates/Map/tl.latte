@@ -1,0 +1,12 @@
+{block content}
+{foreach $tl as $w}
+    <div id="tw{$w->id}" class="twbox {join(" ",$w->class)}">
+        <a href="{link Map:tw,w=>$w->id}">{$w->description}</a>
+        <a target="_blank" href="{$w->url1}">g</a><br>
+        {$w->loi}<br>
+        {$w->processed}/{$row->ignored}<br>
+        {$w->cv|number:3}<br>
+        {$w->cnt}<br>
+    </div>
+{/foreach}
+{/block}
