@@ -254,9 +254,10 @@ class Tw extends Monda {
     }
 
     static function twStats($zabbix=false) {
+        Opts::setOpt("max_rows",Monda::_MAX_ROWS);
         $wids = self::twToIds();
         if (!$wids) return(false);
-        $row = Monda::mcquery("
+        $row = Monda::mquery("
             SELECT
                 COUNT(*) AS cnt,
                 MIN(tfrom) AS mintfrom,
@@ -280,7 +281,7 @@ class Tw extends Monda {
                 MAX(loi::float/(seconds/3600)) AS maxloih,
                 STDDEV(loi) AS stddevloi
             FROM timewindow
-            WHERE id IN (?) AND serverid=?", $wids,Opts::getOpt("zabbix_id"));
+            WHERE id IN (?) AND serverid=?", $wids,Opts::getOpt("zabbix_id"))->fetchAll();
         if (!$zabbix) {
             return($row[0]);
         } else {
