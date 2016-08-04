@@ -150,7 +150,6 @@ class IcPresenter extends BasePresenter {
                 }
             }
         }
-        print_r($this->exportdata[45850]);exit;
         parent::renderShow($this->exportdata);
         self::mexit();
     }

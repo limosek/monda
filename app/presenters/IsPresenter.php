@@ -109,7 +109,7 @@ class IsPresenter extends BasePresenter {
         if (Opts::getOpt("events_prefetch")) {
             Opts::setOpt("events_prefetch", Util::timetoseconds(Opts::getOpt("events_prefetch")) - time());
         }
-        if (count(Opts::getOpt("itemids"))==0) {
+        if (!is_array(Opts::getOpt("itemids"))) {
             ItemStat::itemsToIds();
         }
         if (!Opts::getOpt("anonymize_key") && Opts::getOpt("anonymize_items")) {
