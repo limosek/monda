@@ -38,6 +38,9 @@ mkdir -p $outdir
 (
 _monda cron:1week -s "$start" -e "$end" 
 tws=$(_monda tw:show -Om brief --brief_columns id)
+for tw in $tws; do
+ _monda ic:compute -w $tw
+done
 _monda is:show -s "$start" -e "$end" --output_mode csv $expanded >$outdir/is.csv
 _monda is:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/iss.csv
 _monda hs:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/hs.csv

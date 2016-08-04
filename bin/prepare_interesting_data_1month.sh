@@ -44,14 +44,17 @@ mkdir -p $outdir
 # Compute item, host and correlations statistics
 (
 _monda cron:1month -s "$start" -e "$end" 
+for tw in $tws; do
+ _monda ic:compute -w $tw
+done
 tws=$(_monda tw:show -Om brief --brief_columns id)  
 _monda is:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/is.csv
 _monda is:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/iss.csv
 _monda hs:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/hs.csv
 _monda hs:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/hss.csv
 _monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/ic.csv
-_monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded --corr_type samehour >$outdir/is_hod.csv
-_monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded --corr_type samedow >$outdir/is_dow.csv
+_monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded --corr_type samehour >$outdir/ic_hod.csv
+_monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded --corr_type samedow >$outdir/ic_dow.csv
 _monda ic:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/ics.csv
 if ! _monda gm:tws -s "$start" -e "$end" $expanded --corr_type samehour --gm_format svg >$outdir/tws.svg; then
     rm -f $outdir/tws.svg
