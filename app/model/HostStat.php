@@ -107,6 +107,11 @@ class HostStat extends Monda {
         if (count($wids) == 0) {
             throw New Exception("No windows to process.");
         }
+        if (is_array(Opts::getOpt("hostids"))) {
+            $hostidsql="AND hoststat.hostid IN (".join(",",Opts::getOpt("hostids")).") ";
+        } else {
+            $hostidsql="";
+        }
         $ids = self::mquery("
             SELECT
               hoststat.hostid AS hostid,
@@ -116,12 +121,12 @@ class HostStat extends Monda {
             FROM hoststat
             WHERE
              hoststat.windowid IN (?)
-             AND hoststat.hostid IN (?)
+             $hostidsql
              AND hoststat.loi>?
              GROUP BY hoststat.hostid
              ORDER BY AVG(hoststat.loi) DESC
              LIMIT ?
-            ", $wids, Opts::getOpt("hostids"), Opts::getOpt("hs_minloi"), Opts::getOpt("max_rows"));
+            ", $wids, Opts::getOpt("hs_minloi"), Opts::getOpt("max_rows"));
         return($ids);
     }
 
@@ -191,8 +196,13 @@ class HostStat extends Monda {
         Opts::setDOpt("max_rows",Monda::_MAX_ROWS);
         $wids = Tw::twToIds();
         CliDebug::warn(sprintf("Need to compute HostStat for %d windows...", count($wids)));
-        if (count($wids) == 0 || count(Opts::getOpt("hostids")) == 0) {
-            throw New Exception("No hosts to process.");
+        if (count($wids) == 0) {
+            throw New Exception("No windows to process.");
+        }
+        if (is_array(Opts::getOpt("hostids"))) {
+            $hostidssql="AND itemstat.hostid IN (".join(",",Opts::getOpt("hostids")).") ";
+        } else {
+            $hostidssql="";
         }
         $stat = self::mquery("
             SELECT itemstat.hostid AS hostid,
@@ -202,10 +212,11 @@ class HostStat extends Monda {
                 COUNT(DISTINCT itemid) AS items,
                 SUM(itemstat.cnt) AS cnt
             FROM itemstat
-            WHERE itemstat.windowid IN (?) AND itemstat.hostid IN (?)
+            WHERE itemstat.windowid IN (?)
+              $hostidssql
               AND itemstat.cnt>0
             GROUP BY itemstat.hostid,itemstat.windowid
-            ", $wids, Opts::getOpt("hostids"));
+            ", $wids);
         $rows = $stat->fetchAll();
         $i = 0;
         foreach ($rows as $row) {

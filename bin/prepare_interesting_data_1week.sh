@@ -2,8 +2,10 @@
 
 if [ -z "$1" ]; then
     echo "$0 site_name [noanon]"
-    echo "Data are anonymized by default. If you do not want to anonymise, use noanon parameter."
+    echo "Data are anonymized by default."
+    echo "If you do not want to anonymise, use noanon parameter."
     echo "No data will be sent. Only local output."
+    echo 
     exit 2
 fi
 site="$1"
@@ -12,6 +14,7 @@ shift
 if [ -z "$1" ]; then
   anonymize="--anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls"
 else 
+  export expanded="--output_verbosity=expanded"
   shift
 fi
 

@@ -79,8 +79,8 @@ class HsPresenter extends BasePresenter {
         TwPresenter::postCfg();
         Opts::optToArray("hostgroups");
         Opts::optToArray("hostids");
-        $ret=Opts::optToArray("hosts");
-        if (count(Opts::getOpt("hostids"))==0) {
+        Opts::optToArray("hosts");
+        if (!is_array(Opts::getOpt("hostids"))) {
             HostStat::hostsToIds();
         }
         if (is_array(Opts::getOpt("hostids"))) {
@@ -147,6 +147,8 @@ class HsPresenter extends BasePresenter {
                 }
             }
             parent::renderShow($this->exportdata);
+        } else {
+            self::helpEmpty();
         }
         self::mexit();
     }
@@ -162,6 +164,7 @@ class HsPresenter extends BasePresenter {
     }
 
     public function renderUpdate() {
+        
         HostStat::hsUpdate();
         HostStat::hsLoi();
         self::mexit();
