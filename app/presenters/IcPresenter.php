@@ -101,7 +101,7 @@ class IcPresenter extends BasePresenter {
     public function renderShow() {
         $rows = ItemCorr::icSearch()->fetchAll();
         if ($rows) {
-            $this->exportdata = $rows->fetchAll();
+            $this->exportdata = $rows;
             if (Opts::getOpt("output_verbosity") == "expanded") {
                 $i = 0;
                 foreach ($this->exportdata as $i => $row) {
