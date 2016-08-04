@@ -1,8 +1,8 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Loaders;
@@ -14,9 +14,6 @@ use SplFileInfo;
 
 /**
  * Nette auto loader is responsible for loading classes and interfaces.
- *
- * @property-read array $indexedClasses
- * @property   Nette\Caching\IStorage $cacheStorage
  */
 class RobotLoader extends Nette\Object
 {

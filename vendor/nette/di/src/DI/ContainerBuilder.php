@@ -408,6 +408,9 @@ class ContainerBuilder extends Nette\Object
 						throw new ServiceCreationException("Type hint for \${$param->getName()} in $interface::$methodName() doesn't match type hint in $class constructor.");
 					}
 					$def->getFactory()->arguments[$arg->getPosition()] = self::literal('$' . $arg->getName());
+				} elseif (!$def->getSetup()) {
+					$hint = Nette\Utils\ObjectMixin::getSuggestion(array_keys($ctorParams), $param->getName());
+					throw new ServiceCreationException("Unused parameter \${$param->getName()} when implementing method $interface::$methodName()" . ($hint ? ", did you mean \${$hint}?" : '.'));
 				}
 				$paramDef = $hint . ' ' . $param->getName();
 				if ($param->isOptional()) {
@@ -572,7 +575,7 @@ class ContainerBuilder extends Nette\Object
 					throw new ServiceCreationException('Name contains invalid characters.');
 				}
 				$containerClass->addMethod($methodName)
-					->addDocument('@return ' . ($def->getImplement() ?: $def->getClass()))
+					->addComment('@return ' . ($def->getImplement() ?: $def->getClass()))
 					->setBody($name === self::THIS_CONTAINER ? 'return $this;' : $this->generateService($name))
 					->setParameters($def->getImplement() ? array() : $this->convertParameters($def->parameters));
 			} catch (\Exception $e) {

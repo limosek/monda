@@ -1,8 +1,8 @@
 <?php
 
 /**
- * This file is part of the Nette Framework (http://nette.org)
- * Copyright (c) 2004 David Grudl (http://davidgrudl.com)
+ * This file is part of the Nette Framework (https://nette.org)
+ * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
 
 namespace Nette\Security;
@@ -16,11 +16,6 @@ use Nette;
  * This solution is mostly based on Zend_Acl (c) Zend Technologies USA Inc. (http://www.zend.com), new BSD license
  *
  * @copyright  Copyright (c) 2005, 2007 Zend Technologies USA Inc.
- *
- * @property-read array $roles
- * @property-read array $resources
- * @property-read mixed $queriedRole
- * @property-read mixed $queriedResource
  */
 class Permission extends Nette\Object implements IAuthorizator
 {

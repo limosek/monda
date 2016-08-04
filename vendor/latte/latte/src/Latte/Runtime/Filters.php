@@ -38,7 +38,7 @@ class Filters
 		if ($quotes !== ENT_NOQUOTES && strpos($s, '`') !== FALSE && strpbrk($s, ' <>"\'') === FALSE) {
 			$s .= ' ';
 		}
-		return htmlSpecialChars($s, $quotes, 'UTF-8');
+		return htmlSpecialChars($s, ENT_QUOTES, 'UTF-8');
 	}
 
 
@@ -138,7 +138,7 @@ class Filters
 	public static function strip($s)
 	{
 		return preg_replace_callback(
-			'#(</textarea|</pre|</script|^).*?(?=<textarea|<pre|<script|\z)#si',
+			'#(</textarea|</pre|</script|^(?!<textarea|<pre|<script)).*?(?=<textarea|<pre|<script|\z)#si',
 			function ($m) {
 				return trim(preg_replace('#[ \t\r\n]+#', ' ', $m[0]));
 			},

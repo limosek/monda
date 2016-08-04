@@ -1,5 +1,7 @@
 ## PhpZabbixApi
 
+> __I'M LOOKING FOR CONTRIBUTORS, [CLICK HERE FOR MORE INFORMATIONS](https://github.com/confirm/PhpZabbixApi/issues/28)__
+
 ### About
 
 PhpZabbixApi is an open-source PHP class library to communicate with the Zabbix™ JSON-RPC API.
@@ -141,8 +143,6 @@ $api = new ZabbixApi('http://zabbix.confirm.ch/api_jsonrpc.php', 'zabbix_user', 
 ```
 
 ## Examples
-
-Please see also [the old project page](http://zabbixapi.confirm.ch/) for more examples.
 
 ### Simple request
 

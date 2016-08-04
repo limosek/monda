@@ -311,7 +311,30 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 	 */
 	public function add($child)
 	{
+		return $this->addHtml($child);
+	}
+
+
+	/**
+	 * Adds new element's child.
+	 * @param  Html|string Html node or raw HTML string
+	 * @return self
+	 */
+	public function addHtml($child)
+	{
 		return $this->insert(NULL, $child);
+	}
+
+
+	/**
+	 * Appends plain-text string to element content.
+	 * @param  string plain-text string
+	 * @return self
+	 */
+	public function addText($text)
+	{
+		$text = htmlspecialchars($text, ENT_NOQUOTES, 'UTF-8');
+		return $this->insert(NULL, $text);
 	}
 
 
@@ -330,7 +353,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Inserts child node.
-	 * @param  int|NULL position of NULL for appending
+	 * @param  int|NULL position or NULL for appending
 	 * @param  Html|string Html node or raw HTML string
 	 * @param  bool
 	 * @return self
@@ -356,7 +379,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	/**
 	 * Inserts (replaces) child node (\ArrayAccess implementation).
-	 * @param  int|NULL position of NULL for appending
+	 * @param  int|NULL position or NULL for appending
 	 * @param  Html|string Html node or raw HTML string
 	 * @return void
 	 */
@@ -412,7 +435,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 
 	/**
-	 * Removed all children.
+	 * Removes all children.
 	 * @return void
 	 */
 	public function removeChildren()
@@ -422,7 +445,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 
 	/**
-	 * Iterates over a elements.
+	 * Iterates over elements.
 	 * @return \ArrayIterator
 	 */
 	public function getIterator()
@@ -432,7 +455,7 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 
 	/**
-	 * Returns all of children.
+	 * Returns all children.
 	 * @return array
 	 */
 	public function getChildren()
@@ -476,7 +499,12 @@ class Html extends Nette\Object implements \ArrayAccess, \Countable, \IteratorAg
 
 	public function __toString()
 	{
-		return $this->render();
+		try {
+			return $this->render();
+		} catch (\Throwable $e) {
+		} catch (\Exception $e) {
+		}
+		trigger_error("Exception in " . __METHOD__ . "(): {$e->getMessage()} in {$e->getFile()}:{$e->getLine()}", E_USER_ERROR);
 	}
 
 

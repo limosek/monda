@@ -73,7 +73,11 @@ class GmPresenter extends MapPresenter {
         if (Opts::isDefault("gm_graph")) {
             Opts::setOpt("gm_graph","fdp");
         }
-        $ics = ItemCorr::icTwStats()->fetchAll();
+        $ics = ItemCorr::icTwStats();
+        if (!$ics) {
+            self::mexit(2,"No items to correlate.\n");
+        }
+        $ics=$ics->fetchAll();
         if (sizeof($ics) > 0) {
             foreach ($ics as $ic) {
                 Opts::setOpt("window_ids", Array($ic->windowid1, $ic->windowid2));

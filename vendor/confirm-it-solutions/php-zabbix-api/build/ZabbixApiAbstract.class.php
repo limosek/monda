@@ -128,6 +128,12 @@ abstract class ZabbixApiAbstract
     private $extraHeaders = '';
 
     /**
+     * @brief   SSL context.
+     */
+
+    private $sslContext = array();
+
+    /**
      * @brief   Class constructor.
      *
      * @param   $apiUrl         API url (e.g. http://FQDN/zabbix/api_jsonrpc.php)
@@ -135,9 +141,11 @@ abstract class ZabbixApiAbstract
      * @param   $password       Password for Zabbix API.
      * @param   $httpUser       Username for HTTP basic authorization.
      * @param   $httpPassword   Password for HTTP basic authorization.
+     * @param   $authToken      Already issued auth token (e.g. extracted from cookies)
+     * @param   $sslContext     SSL context for SSL-enabled connections
      */
 
-    public function __construct($apiUrl='', $user='', $password='', $httpUser='', $httpPassword='')
+    public function __construct($apiUrl='', $user='', $password='', $httpUser='', $httpPassword='', $authToken='', $sslContext=NULL)
     {
         if($apiUrl)
             $this->setApiUrl($apiUrl);
@@ -145,7 +153,12 @@ abstract class ZabbixApiAbstract
         if ($httpUser && $httpPassword)
             $this->setBasicAuthorization($httpUser, $httpPassword);
 
-        if($user && $password)
+        if($sslContext)
+            $this->setSslContext($sslContext);
+
+        if ($authToken)
+            $this->setAuthToken($authToken);
+        elseif($user && $password)
             $this->userLogin(array('user' => $user, 'password' => $password));
     }
 
@@ -175,6 +188,20 @@ abstract class ZabbixApiAbstract
     }
 
     /**
+     * @brief   Sets the API authorization ID.
+     *
+     * @param   $authToken     API auth ID.
+     *
+     * @retval  ZabbixApiAbstract
+     */
+
+    public function setAuthToken($authToken)
+    {
+        $this->authToken = $authToken;
+        return $this;
+    }
+
+    /**
      * @brief   Sets the username and password for the HTTP basic authorization.
      *
      * @param   $user       HTTP basic authorization username
@@ -190,6 +217,22 @@ abstract class ZabbixApiAbstract
         else
             $this->extraHeaders = '';
 
+        return $this;
+    }
+
+    /**
+     * @brief   Sets the context for SSL-enabled connections.
+     *
+     * See http://php.net/manual/en/context.ssl.php for more informations.
+     *
+     * @param   $context    Array with the SSL context
+     *
+     * @retval  ZabbixApiAbstract
+     */
+
+    public function setSslContext($context)
+    {
+        $this->sslContext = $context;
         return $this;
     }
 
@@ -244,7 +287,7 @@ abstract class ZabbixApiAbstract
      *
      * @param   $method     Name of the API method.
      * @param   $params     Additional parameters.
-     * @param   $auth       Enable auth string (default TRUE).
+     * @param   $auth       Enable authentication (default TRUE).
      *
      * @retval  stdClass    API JSON response.
      */
@@ -260,25 +303,16 @@ abstract class ZabbixApiAbstract
         $this->id = number_format(microtime(true), 4, '', '');
 
         // build request array
+        $this->request = array(
+            'jsonrpc' => '2.0',
+            'method'  => $method,
+            'params'  => $params,
+            'id'      => $this->id
+        );
+
+        // add auth token if required
         if ($auth)
-        {
-            $this->request = array(
-                'jsonrpc' => '2.0',
-                'method'  => $method,
-                'params'  => $params,
-                'auth'    => ($this->auth ? $this->auth : NULL),
-                'id'      => $this->id
-            );
-        }
-        else
-        {
-            $this->request = array(
-                'jsonrpc' => '2.0',
-                'method'  => $method,
-                'params'  => $params,
-                'id'      => $this->id
-            );
-        }
+            $this->request['auth'] = ($this->authToken ? $this->authToken : NULL);
 
         // encode request array
         $this->requestEncoded = json_encode($this->request);
@@ -287,12 +321,19 @@ abstract class ZabbixApiAbstract
         if($this->printCommunication)
             echo 'API request: '.$this->requestEncoded;
 
-        // do request
-        $streamContext = stream_context_create(array('http' => array(
-            'method'  => 'POST',
-            'header'  => 'Content-type: application/json-rpc'."\r\n".$this->extraHeaders,
-            'content' => $this->requestEncoded
-        )));
+        // initialize context
+        $context = array(
+            'http' => array(
+                'method'  => 'POST',
+                'header'  => 'Content-type: application/json-rpc'."\r\n".$this->extraHeaders,
+                'content' => $this->requestEncoded
+            )
+        );
+        if($this->sslContext)
+            $context['ssl'] = $this->sslContext;
+
+        // create stream context
+        $streamContext = stream_context_create($context);
 
         // get file handler
         $fileHandler = @fopen($this->getApiUrl(), 'rb', false, $streamContext);
@@ -364,14 +405,14 @@ abstract class ZabbixApiAbstract
             return $objectArray;
 
         // loop through array and replace keys
+        $newObjectArray = array();
         foreach($objectArray as $key => $object)
         {
-            unset($objectArray[$key]);
-            $objectArray[$object->{$useObjectProperty}] = $object;
+            $newObjectArray[$object->{$useObjectProperty}] = $object;
         }
 
         // return associative array
-        return $objectArray;
+        return $newObjectArray;
     }
 
     /**
@@ -450,11 +491,11 @@ abstract class ZabbixApiAbstract
     final public function userLogin($params=array(), $arrayKeyProperty='', $tokenCacheDir='/tmp')
     {
         // reset auth token
-        $this->auth = '';
+        $this->authToken = '';
 
         // build filename for cached auth token
         if($tokenCacheDir && array_key_exists('user', $params) && is_dir($tokenCacheDir))
-            $tokenCacheFile = $tokenCacheDir.'/.zabbixapi-token-'.md5($params['user']);
+            $tokenCacheFile = $tokenCacheDir.'/.zabbixapi-token-'.md5($params['user'].'|'.posix_getuid());
 
         // try to read cached auth token
         if(isset($tokenCacheFile) && is_file($tokenCacheFile))
@@ -462,33 +503,33 @@ abstract class ZabbixApiAbstract
             try
             {
                 // get auth token and try to execute a user.get (dummy check)
-                $this->auth = file_get_contents($tokenCacheFile);
+                $this->authToken = file_get_contents($tokenCacheFile);
                 $this->userGet();
             }
             catch(Exception $e)
             {
                 // user.get failed, token invalid so reset it and remove file
-                $this->auth = '';
+                $this->authToken = '';
                 unlink($tokenCacheFile);
             }
         }
 
         // no cached token found so far, so login (again)
-        if(!$this->auth)
+        if(!$this->authToken)
         {
             // login to get the auth token
-            $params = $this->getRequestParamsArray($params);
-            $this->auth = $this->request('user.login', $params, $arrayKeyProperty, FALSE);
+            $params          = $this->getRequestParamsArray($params);
+            $this->authToken = $this->request('user.login', $params, $arrayKeyProperty, FALSE);
 
             // save cached auth token
             if(isset($tokenCacheFile))
             {
-                file_put_contents($tokenCacheFile, $this->auth);
+                file_put_contents($tokenCacheFile, $this->authToken);
                 chmod($tokenCacheFile, 0600);
             }
         }
 
-        return $this->auth;
+        return $this->authToken;
     }
 
     /**
@@ -515,9 +556,9 @@ abstract class ZabbixApiAbstract
 
     final public function userLogout($params=array(), $arrayKeyProperty='')
     {
-        $params   = $this->getRequestParamsArray($params);
-        $response = $this->request('user.logout', $params, $arrayKeyProperty);
-        $this->auth = '';
+        $params          = $this->getRequestParamsArray($params);
+        $response        = $this->request('user.logout', $params, $arrayKeyProperty);
+        $this->authToken = '';
         return $response;
     }
 

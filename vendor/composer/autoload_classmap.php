@@ -34,7 +34,6 @@ return array(
     'Latte\\Token' => $vendorDir . '/latte/latte/src/Latte/Token.php',
     'Latte\\TokenIterator' => $vendorDir . '/latte/latte/src/Latte/TokenIterator.php',
     'Latte\\Tokenizer' => $vendorDir . '/latte/latte/src/Latte/Tokenizer.php',
-    'NetteExtras\\XDebugHelper' => $vendorDir . '/jsmitka/nette-xdebug-helper/XDebugHelper.php',
     'NetteModule\\ErrorPresenter' => $vendorDir . '/nette/application/src/Application/ErrorPresenter.php',
     'NetteModule\\MicroPresenter' => $vendorDir . '/nette/application/src/Application/MicroPresenter.php',
     'Nette\\Application\\AbortException' => $vendorDir . '/nette/application/src/Application/exceptions.php',
@@ -343,4 +342,7 @@ return array(
     'Tracy\\ILogger' => $vendorDir . '/tracy/tracy/src/Tracy/ILogger.php',
     'Tracy\\Logger' => $vendorDir . '/tracy/tracy/src/Tracy/Logger.php',
     'Tracy\\OutputDebugger' => $vendorDir . '/tracy/tracy/src/Tracy/OutputDebugger.php',
+    'ZabbixApi\\Exception' => $vendorDir . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApiAbstract.class.php',
+    'ZabbixApi\\ZabbixApi' => $vendorDir . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApi.class.php',
+    'ZabbixApi\\ZabbixApiAbstract' => $vendorDir . '/confirm-it-solutions/php-zabbix-api/build/ZabbixApiAbstract.class.php',
 );

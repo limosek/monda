@@ -150,11 +150,13 @@ class Route extends Nette\Object implements Application\IRouter
 		if ($this->type === self::HOST) {
 			$host = $url->getHost();
 			$path = '//' . $host . $url->getPath();
-			$host = ip2long($host) ? array($host) : array_reverse(explode('.', $host));
+			$parts = ip2long($host) ? array($host) : array_reverse(explode('.', $host));
 			$re = strtr($re, array(
 				'/%basePath%/' => preg_quote($url->getBasePath(), '#'),
-				'%tld%' => preg_quote($host[0], '#'),
-				'%domain%' => preg_quote(isset($host[1]) ? "$host[1].$host[0]" : $host[0], '#'),
+				'%tld%' => preg_quote($parts[0], '#'),
+				'%domain%' => preg_quote(isset($parts[1]) ? "$parts[1].$parts[0]" : $parts[0], '#'),
+				'%sld%' => preg_quote(isset($parts[1]) ? $parts[1] : '', '#'),
+				'%host%' => preg_quote($host, '#'),
 			));
 
 		} elseif ($this->type === self::RELATIVE) {
@@ -380,7 +382,18 @@ class Route extends Nette\Object implements Application\IRouter
 		} while (TRUE);
 
 
-		if ($this->type !== self::HOST) {
+		if ($this->type === self::HOST) {
+			$host = $refUrl->getHost();
+			$parts = ip2long($host) ? array($host) : array_reverse(explode('.', $host));
+			$url = strtr($url, array(
+				'/%basePath%/' => $refUrl->getBasePath(),
+				'%tld%' => $parts[0],
+				'%domain%' => isset($parts[1]) ? "$parts[1].$parts[0]" : $parts[0],
+				'%sld%' => isset($parts[1]) ? $parts[1] : '',
+				'%host%' => $host,
+			));
+			$url = ($this->flags & self::SECURED ? 'https:' : 'http:') . $url;
+		} else {
 			if ($this->lastRefUrl !== $refUrl) {
 				$scheme = ($this->flags & self::SECURED ? 'https://' : 'http://');
 				$basePath = ($this->type === self::RELATIVE ? $refUrl->getBasePath() : '');
@@ -388,16 +401,6 @@ class Route extends Nette\Object implements Application\IRouter
 				$this->lastRefUrl = $refUrl;
 			}
 			$url = $this->lastBaseUrl . $url;
-
-		} else {
-			$host = $refUrl->getHost();
-			$host = ip2long($host) ? array($host) : array_reverse(explode('.', $host));
-			$url = strtr($url, array(
-				'/%basePath%/' => $refUrl->getBasePath(),
-				'%tld%' => $host[0],
-				'%domain%' => isset($host[1]) ? "$host[1].$host[0]" : $host[0],
-			));
-			$url = ($this->flags & self::SECURED ? 'https:' : 'http:') . $url;
 		}
 
 		if (strpos($url, '//', 7) !== FALSE) {
@@ -453,7 +456,7 @@ class Route extends Nette\Object implements Application\IRouter
 			}
 		}
 
-		if (strpbrk($mask, '?<[') === FALSE) {
+		if (strpbrk($mask, '?<[]') === FALSE) {
 			$this->re = '#' . preg_quote($mask, '#') . '/?\z#A';
 			$this->sequence = array($mask);
 			$this->metadata = $metadata;
@@ -611,7 +614,7 @@ class Route extends Nette\Object implements Application\IRouter
 		} while (TRUE);
 
 		if ($brackets) {
-			throw new Nette\InvalidArgumentException("Missing closing ']' in mask '$mask'.");
+			throw new Nette\InvalidArgumentException("Missing '[' in mask '$mask'.");
 		}
 
 		$this->aliases = $aliases;
@@ -798,7 +801,7 @@ class Route extends Nette\Object implements Application\IRouter
 		trigger_error(__METHOD__ . '() is deprecated.', E_USER_DEPRECATED);
 		if (isset(static::$styles[$style])) {
 			throw new Nette\InvalidArgumentException("Style '$style' already exists.");
-		}
+}
 
 		if ($parent !== NULL) {
 			if (!isset(static::$styles[$parent])) {

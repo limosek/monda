@@ -350,6 +350,7 @@ class Form extends Container implements Nette\Utils\IHtmlString
 	/**
 	 * Sets the submittor control.
 	 * @return self
+	 * @internal
 	 */
 	public function setSubmittedBy(ISubmitterControl $by = NULL)
 	{
@@ -630,7 +631,7 @@ class Form extends Container implements Nette\Utils\IHtmlString
 	public function getToggles()
 	{
 		$toggles = array();
-		foreach ($this->getControls() as $control) {
+		foreach ($this->getComponents(TRUE, 'Nette\Forms\Controls\BaseControl') as $control) {
 			$toggles = $control->getRules()->getToggleStates($toggles);
 		}
 		return $toggles;

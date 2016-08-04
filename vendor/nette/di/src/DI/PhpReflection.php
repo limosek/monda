@@ -123,7 +123,7 @@ class PhpReflection
 		} elseif (self::isBuiltinType($lower)) {
 			return $lower;
 
-		} elseif ($lower === 'self' || $lower === 'static') {
+		} elseif ($lower === 'self' || $lower === 'static' || $lower === '$this') {
 			return $rc->getName();
 
 		} elseif ($name[0] === '\\') { // fully qualified name
@@ -163,7 +163,7 @@ class PhpReflection
 		while (list(, $token) = each($tokens)) {
 			switch (is_array($token) ? $token[0] : $token) {
 				case T_NAMESPACE:
-					$namespace = self::fetch($tokens, array(T_STRING, T_NS_SEPARATOR)) . '\\';
+					$namespace = ltrim(self::fetch($tokens, array(T_STRING, T_NS_SEPARATOR)) . '\\', '\\');
 					$uses = array();
 					break;
 
@@ -182,8 +182,9 @@ class PhpReflection
 
 				case T_USE:
 					while (!$class && ($name = self::fetch($tokens, array(T_STRING, T_NS_SEPARATOR)))) {
+						$name = ltrim($name, '\\');
 						if (self::fetch($tokens, T_AS)) {
-							$uses[self::fetch($tokens, T_STRING)] = ltrim($name, '\\');
+							$uses[self::fetch($tokens, T_STRING)] = $name;
 						} else {
 							$tmp = explode('\\', $name);
 							$uses[end($tmp)] = $name;

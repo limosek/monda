@@ -99,7 +99,7 @@ class IcPresenter extends BasePresenter {
     }
 
     public function renderShow() {
-        $rows = ItemCorr::icSearch();
+        $rows = ItemCorr::icSearch()->fetchAll();
         if ($rows) {
             $this->exportdata = $rows->fetchAll();
             if (Opts::getOpt("output_verbosity") == "expanded") {
@@ -115,26 +115,42 @@ class IcPresenter extends BasePresenter {
                 }
             }
             parent::renderShow($this->exportdata);
+        } else {
+            self::helpEmpty();
         }
         self::mexit();
     }
     
     public function renderHistory() {
         Opts::setOpt("ic_sort", "start/+");
-        $rows = ItemCorr::icToIds();
+        Opts::setOpt("ic_notsame",true);
+        if (!Opts::getOpt("itemids")) {
+            self::mexit("You must select items!\n");
+        }
+        $itemids=Opts::getOpt("itemids");
         $tws = Tw::twToIds();
         foreach ($tws as $tw) {
+            foreach ($itemids as $itemid1) {
+                foreach ($itemids as $itemid2) {
+                    $this->exportdata[$tw]["windowid"]=$tw;
+                    if ($itemid1==$itemid2) {
+                        $this->exportdata[$tw][$itemid1."-".$itemid2]=1;
+                    } elseif ($itemid1<$itemid2) {
+                        $this->exportdata[$tw][$itemid1."-".$itemid2]=0;
+                    } else {
+                        continue;
+                    }
+                }
+            }
             Opts::setOpt("window_ids", Array($tw));
             $items = ItemCorr::icSearch()->fetchAll();
             foreach ($items as $item) {
-                $this->exportdata[$item->windowid1] = Array(
-                    "windowid" => $item->windowid1,
-                    "itemid1" => $item->itemid1,
-                    "itemid2" => $item->itemid2,
-                    "corr" => $item->corr
-                );
+                if ($item->itemid1<$item->itemid2) { 
+                    $this->exportdata[$tw][$item->itemid1."-".$item->itemid2] = $item->corr;
+                }
             }
         }
+        print_r($this->exportdata[45850]);exit;
         parent::renderShow($this->exportdata);
         self::mexit();
     }

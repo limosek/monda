@@ -72,6 +72,7 @@ class UploadControl extends BaseControl
 
 	/**
 	 * @return self
+	 * @internal
 	 */
 	public function setValue($value)
 	{
@@ -86,6 +87,20 @@ class UploadControl extends BaseControl
 	public function isFilled()
 	{
 		return $this->value instanceof FileUpload ? $this->value->isOk() : (bool) $this->value; // ignore NULL object
+	}
+
+
+	/**
+	 * Have been all files succesfully uploaded?
+	 * @return bool
+	 */
+	public function isOk()
+	{
+		return $this->value instanceof FileUpload
+			? $this->value->isOk()
+			: $this->value && array_reduce($this->value, function ($carry, $fileUpload) {
+				return $carry && $fileUpload->isOk();
+			}, TRUE);
 	}
 
 }
