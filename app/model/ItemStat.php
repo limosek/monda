@@ -79,12 +79,12 @@ class ItemStat extends Monda {
     }
     
     static function isSearch() {
-        if (count(Opts::getOpt("itemids"))>0) {
+        if (is_array(Opts::getOpt("itemids"))) {
             $itemidssql=sprintf("i.itemid IN (%s) AND",join(",",Opts::getOpt("itemids")));
         } else {
             $itemidssql="";
         }
-        if (count(Opts::isOpt("hostids"))>0) {
+        if (is_array(Opts::getOpt("hostids"))) {
             $hostidssql=sprintf("i.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";
@@ -113,7 +113,7 @@ class ItemStat extends Monda {
                         i.windowid AS windowid
                     FROM itemstat i
                     JOIN timewindow tw ON (i.windowid=tw.id)
-                 WHERE i.loi>? AND i.loi IS NOT NULL AND tw.loi>? AND i.loi IS NOT NULL AND $itemidssql $hostidssql $windowidsql true
+                 WHERE i.loi>? AND i.loi IS NOT NULL AND tw.loi>? AND tw.loi IS NOT NULL AND $itemidssql $hostidssql $windowidsql true
                 ORDER by i.loi DESC "
                 . "$limit",Opts::getOpt("is_minloi"),Opts::getOpt("tw_minloi")
                 );

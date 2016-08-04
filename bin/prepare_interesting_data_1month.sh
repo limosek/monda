@@ -1,11 +1,25 @@
 #!/bin/sh
 
 if [ -z "$1" ]; then
-    echo "$0 site_name"
+    echo "$0 site_name [noanon]"
+    echo "Data are anonymized by default. If you do not want to anonymise, use noanon parameter."
+    echo "No data will be sent. Only local output."
     exit 2
 fi
 site="$1"
 shift
+
+if [ -z "$1" ]; then
+  anonymize="--anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls"
+else 
+  shift
+fi
+
+_monda() {
+  echo >&2
+  echo $(dirname $0)/monda.php "$@" $anonymize >&2
+  $(dirname $0)/monda.php "$@" $anonymize
+}
 
 month=$(date -d '1 month ago' "+%Y-%m")
 start=$(date -d "$month-01" "+%Y.%m.%d")
@@ -17,12 +31,6 @@ done
 
 end=$(date -d "$month-$i" "+%Y-%m-%d")
 
-_monda() {
-  echo >&2
-  echo $(dirname $0)/monda.php "$@" --anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls >&2
-  $(dirname $0)/monda.php "$@" --anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls
-}
-
 outdir=$(dirname $0)/../out/$site/month
 if [ -d $outdir ]; then
     echo "Directory $outdir already exists. Please remove it before run."
@@ -32,8 +40,8 @@ mkdir -p $outdir
 
 # Compute item, host and correlations statistics
 (
-tws=$(_monda tw:show -Om brief --brief_columns id)
 _monda cron:1month -s "$start" -e "$end" 
+tws=$(_monda tw:show -Om brief --brief_columns id)  
 _monda is:show -s "$start" -e "$end"  >$outdir/is.csv
 _monda is:stats -s "$start" -e "$end" >$outdir/iss.csv
 _monda hs:show -s "$start" -e "$end"  >$outdir/hs.csv

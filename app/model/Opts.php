@@ -217,7 +217,10 @@ class Opts extends Nette\Object {
         } else {
             $arr=Array(Opts::getOpt($param));
         }
-        Opts::setOpt($param,$arr);
+        if (count($arr)>0 && array_key_exists(0,$arr) && $arr[0] != "") {
+            Opts::setOpt($param,$arr);
+            return($arr);
+        }
         return($arr);
     }
 

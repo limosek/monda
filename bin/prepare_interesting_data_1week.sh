@@ -1,20 +1,28 @@
 #!/bin/sh
 
 if [ -z "$1" ]; then
-    echo "$0 site_name"
+    echo "$0 site_name [noanon]"
+    echo "Data are anonymized by default. If you do not want to anonymise, use noanon parameter."
+    echo "No data will be sent. Only local output."
     exit 2
 fi
 site="$1"
 shift
 
-start="last monday -7 day"
-end="last monday"
+if [ -z "$1" ]; then
+  anonymize="--anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls"
+else 
+  shift
+fi
 
 _monda() {
   echo >&2
-  echo $(dirname $0)/monda.php "$@" --anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls >&2
-  $(dirname $0)/monda.php "$@" --anonymize_key MONDA --anonymize_items --anonymize_hosts --anonymize_urls
+  echo $(dirname $0)/monda.php "$@" $anonymize >&2
+  $(dirname $0)/monda.php "$@" $anonymize
 }
+
+start="last monday -7 day"
+end="last monday"
 
 outdir=$(dirname $0)/../out/$site/week
 if [ -d $outdir ]; then
@@ -25,8 +33,8 @@ mkdir -p $outdir
 
 # Compute item, host and correlations statistics
 (
-tws=$(_monda tw:show -Om brief --brief_columns id)
 _monda cron:1week -s "$start" -e "$end" 
+tws=$(_monda tw:show -Om brief --brief_columns id)
 _monda is:show -s "$start" -e "$end"  >$outdir/is.csv
 _monda is:stats -s "$start" -e "$end" >$outdir/iss.csv
 _monda hs:show -s "$start" -e "$end"  >$outdir/hs.csv

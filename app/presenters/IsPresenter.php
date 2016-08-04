@@ -9,6 +9,7 @@ use App\Model\ItemStat,
     App\Model\Monda,
     App\Model\Util,
     App\Model\Triggerinfo,
+    App\Model\Tw,
     Nette\Utils\DateTime as DateTime;
 
 class IsPresenter extends BasePresenter {
@@ -166,11 +167,11 @@ class IsPresenter extends BasePresenter {
             }
             parent::renderShow($this->exportdata);
         } else {
-            CliDebug::warn("No rows found. Try to fine-tune parameters (is_minloi, tw_minloi, window_empty, ...).\n");
+            self::helpEmpty();
         }
         self::mexit();
     }
-
+    
     public function renderHistory() {
         if (!Opts::getOpt("itemids")) {
             self::mexit("You must use --items parameter to select items!\n");
@@ -232,6 +233,7 @@ class IsPresenter extends BasePresenter {
 
     public function renderCompute() {
         ItemStat::IsMultiCompute();
+        Tw::twLoi();
         self::mexit(0, "Done\n");
     }
 

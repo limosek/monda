@@ -49,6 +49,9 @@ class HsPresenter extends BasePresenter {
                 false, "hosts", "Hostnames to get", false, "All"
         );
         Opts::addOpt(
+                false, "hs_minloi", "Minimum LOI to select hosts", 0, 0
+        );
+        Opts::addOpt(
                 false, "anonymize_hosts", "Anonymize host names", false, "no"
         );
         Opts::addOpt(
@@ -76,7 +79,7 @@ class HsPresenter extends BasePresenter {
         TwPresenter::postCfg();
         Opts::optToArray("hostgroups");
         Opts::optToArray("hostids");
-        Opts::optToArray("hosts");
+        $ret=Opts::optToArray("hosts");
         if (count(Opts::getOpt("hostids"))==0) {
             HostStat::hostsToIds();
         }
@@ -124,6 +127,8 @@ class HsPresenter extends BasePresenter {
                 }
             }
             parent::renderShow($this->exportdata);
+        } else {
+            self::helpEmpty();
         }
         self::mexit();
     }
