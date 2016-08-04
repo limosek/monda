@@ -121,6 +121,7 @@ class ItemStat extends Monda {
     }
     
     static function isStats() {
+        Opts::setOpt("max_rows",Monda::_MAX_ROWS);
         $itemids=self::isToIds();
         $rows=self::mquery("SELECT 
                 i.itemid AS itemid,

@@ -103,6 +103,7 @@ class HostStat extends Monda {
     }
 
     static function hsStats() {
+        Opts::setOpt("max_rows",Monda::_MAX_ROWS);
         $wids = Tw::twToIds();
         if (count($wids) == 0) {
             throw New Exception("No windows to process.");

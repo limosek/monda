@@ -45,17 +45,19 @@ mkdir -p $outdir
 (
 _monda cron:1month -s "$start" -e "$end" 
 tws=$(_monda tw:show -Om brief --brief_columns id)  
-_monda is:show -s "$start" -e "$end"  >$outdir/is.csv
-_monda is:stats -s "$start" -e "$end" >$outdir/iss.csv
-_monda hs:show -s "$start" -e "$end"  >$outdir/hs.csv
-_monda hs:stats -s "$start" -e "$end" >$outdir/hss.csv
-_monda ic:show -s "$start" -e "$end"  >$outdir/ic.csv
-_monda ic:show -s "$start" -e "$end"  --corr_type samehour >$outdir/is_hod.csv
-_monda ic:show -s "$start" -e "$end"  --corr_type samedow >$outdir/is_dow.csv
-_monda ic:stats -s "$start" -e "$end" >$outdir/ics.csv
-_monda gm:tws -s "$start" -e "$end" --corr_type samehour --gm_format svg >$outdir/tws.svg
+_monda is:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/is.csv
+_monda is:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/iss.csv
+_monda hs:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/hs.csv
+_monda hs:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/hss.csv
+_monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/ic.csv
+_monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded --corr_type samehour >$outdir/is_hod.csv
+_monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded --corr_type samedow >$outdir/is_dow.csv
+_monda ic:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/ics.csv
+if ! _monda gm:tws -s "$start" -e "$end" $expanded --corr_type samehour --gm_format svg >$outdir/tws.svg; then
+    rm -f $outdir/tws.svg
+fi
 for tw in $tws; do
-     if ! _monda gm:icw -w $tw --loi_sizefactor 0.0001 --gm_format svg >$outdir/ics-$tw.svg; then
+     if ! _monda gm:icw -w $tw $expanded --loi_sizefactor 0.0001 --gm_format svg >$outdir/ics-$tw.svg; then
         rm -f $outdir/ics-$tw.svg
      fi
 done
