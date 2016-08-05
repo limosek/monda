@@ -133,7 +133,7 @@ class Opts extends Nette\Object {
                 }
             }
             if (!$found && $final) {
-                CliDebug::err("Option '$p' unknown!\n");
+                \App\Presenters\BasePresenter::mexit(55,"Option '$p' unknown!\n");
             }
         }
         $configurator = new Nette\Configurator;

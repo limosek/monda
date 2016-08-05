@@ -6,6 +6,7 @@ use App\Model\ItemStat,
     App\Model\Tw,
     App\Model\ItemCorr,
     App\Model\Monda, 
+    App\Model\TriggerInfo, 
     Tracy\Debugger,
     App\Model\Opts,
     App\Model\CliDebug,
@@ -70,6 +71,9 @@ class IcPresenter extends BasePresenter {
         Opts::addOpt(
                 false, "max_corr", "Maximum correlation to report (less than)", 1, 1
         );
+        Opts::addOpt(
+                false, "ic_history_interval", "When getting history of event, get this seconds of history arround.", 3600, "1hour"
+        );
         
         Opts::setDefaults();
         Opts::readCfg(Array("Ic"));
@@ -118,12 +122,16 @@ class IcPresenter extends BasePresenter {
         }
         self::mexit();
     }
-    
+
     public function renderHistory() {
+        if (Opts::getOpt("output_mode")=="brief") {
+            self::mexit(3,"This action is possible only with csv output mode.\n");
+        }
         Opts::setOpt("ic_sort", "start/+");
         $rows = ItemCorr::icToIds();
         $tws = Tw::twToIds();
         foreach ($tws as $tw) {
+<<<<<<< Updated upstream
             Opts::setOpt("window_ids", Array($tw));
             $items = ItemCorr::icSearch()->fetchAll();
             foreach ($items as $item) {
@@ -133,6 +141,59 @@ class IcPresenter extends BasePresenter {
                     "itemid2" => $item->itemid2,
                     "corr" => $item->corr
                 );
+=======
+            $this->exportdata[$tw]=ItemCorr::TwCorrelations($tw,$itemids);
+        }
+        parent::renderShow($this->exportdata);
+        self::mexit();
+    }
+    
+    public function renderTHistory() {
+        if (Opts::getOpt("output_mode")=="brief") {
+            self::mexit(3,"This action is possible only with csv output mode.\n");
+        }
+        Opts::setOpt("ic_sort", "start/+");
+        $items=TriggerInfo::Triggers2Items(Opts::getOpt("triggerids"));
+        $hosts=Array();
+        foreach ($items as $item) {
+            $ii=ItemStat::itemInfo($item);
+            $hosts[$ii[0]->hostid]=$ii[0]->hostid;
+        }
+        CliDebug::info(sprintf("Trigger items: %s, hosts: %s\n",join(",",$items),join(",",$hosts)));
+        $events=TriggerInfo::Triggers2Events(Opts::getOpt("start"), Opts::getOpt("end"), Opts::getOpt("triggerids"));
+        $evtw=Array();
+        foreach ($events as $event) {
+            $start=$event->clock-Opts::getOpt("ic_history_interval");
+            $end=$event->clock+Opts::getOpt("ic_history_interval");
+            $tws=Tw::twSearchClock($start,false,$end,true);
+            if ($tws) $tws=$tws->fetchAll();
+            foreach ($tws as $tw) {
+                $wid=$tw->id;
+                $this->exportdata[$wid]=ItemCorr::TwCorrelations($wid,Opts::getOpt("itemids"));
+                $tid=$event->relatedObject->triggerid;
+                if ($event->value) {
+                    $this->exportdata[$wid][$tid]="PROBLEM";
+                    $evtw["$wid$tid"]=1;
+                } else {
+                    if (!array_key_exists("$wid$tid",$evtw)) {
+                        $this->exportdata[$wid][$tid]="OK";
+                        $evtw["$wid$tid"]=1;
+                    } else {
+                        $this->exportdata[$wid][$tid]="PROBLEM";
+                    }
+                }
+                $this->exportinfo[$tid]=TriggerInfo::expandTrigger($tid);
+                $this->arffinfo[$tid]="{OK,PROBLEM}";
+                $this->exportinfo["windowid"]="windowid";
+                $this->arffinfo["windowid"]="NUMERIC";
+                foreach (array_keys($this->exportdata[$wid]) as $itempair) {
+                    List($item1,$item2)=preg_split("/-/",$itempair);
+                    if ($item2) {
+                        $this->exportinfo[$item1."-".$item2]=  IsPresenter::expandItem($item1)."__".IsPresenter::expandItem($item2);
+                        $this->arffinfo[$item1."-".$item2] = "NUMERIC";
+                    }
+                }
+>>>>>>> Stashed changes
             }
         }
         parent::renderShow($this->exportdata);
