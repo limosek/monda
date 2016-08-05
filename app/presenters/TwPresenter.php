@@ -136,9 +136,13 @@ class TwPresenter extends BasePresenter {
     }
 
     public function renderShow() {
-        $windows = Tw::twSearch();
-        $this->exportdata = $windows->fetchAll();
-        parent::renderShow($this->exportdata);
+        $windows = Tw::twSearch()->fetchAll();
+        if ($windows) {
+            $this->exportdata = $windows;
+            parent::renderShow($this->exportdata);
+        } else {
+            self::helpEmpty();
+        }
         self::mexit();
     }
 

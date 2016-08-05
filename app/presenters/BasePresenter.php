@@ -163,6 +163,14 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         }
     }
     
+    static public function helpEmpty($moreinfo) {
+        CliDebug::warn("No rows found.\nTry to fine-tune parameters (--is_minloi, --tw_minloi, --window_empty, --hs_minloi, --ic_minloi).\n");
+        CliDebug::warn("Use negative numbers to get results equal to zero.\nEg. --tw_minloi=-1 will select windows with zero loi.\n");
+        if ($moreinfo) {
+            CliDebug::warn("$moreinfo\n");
+        }
+    }
+    
     static public function preCfg() {
     }
             

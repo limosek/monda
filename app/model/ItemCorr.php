@@ -29,7 +29,7 @@ class ItemCorr extends Monda {
         } else {
             $itemidssql="";
         }
-        if (Opts::getOpt("hostids")) {
+        if (is_array(Opts::getOpt("hostids"))) {
             $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")),join(",",Opts::getOpt("hostids")));
         } else {
             $hostidssql="";

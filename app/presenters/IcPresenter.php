@@ -103,9 +103,9 @@ class IcPresenter extends BasePresenter {
     }
 
     public function renderShow() {
-        $rows = ItemCorr::icSearch();
+        $rows = ItemCorr::icSearch()->fetchAll();
         if ($rows) {
-            $this->exportdata = $rows->fetchAll();
+            $this->exportdata = $rows;
             if (Opts::getOpt("output_verbosity") == "expanded") {
                 $i = 0;
                 foreach ($this->exportdata as $i => $row) {
@@ -119,6 +119,8 @@ class IcPresenter extends BasePresenter {
                 }
             }
             parent::renderShow($this->exportdata);
+        } else {
+            self::helpEmpty();
         }
         self::mexit();
     }
@@ -128,20 +130,13 @@ class IcPresenter extends BasePresenter {
             self::mexit(3,"This action is possible only with csv output mode.\n");
         }
         Opts::setOpt("ic_sort", "start/+");
-        $rows = ItemCorr::icToIds();
+        Opts::setOpt("ic_notsame",true);
+        if (!Opts::getOpt("itemids")) {
+            self::mexit("You must select items!\n");
+        }
+        $itemids=Opts::getOpt("itemids");
         $tws = Tw::twToIds();
         foreach ($tws as $tw) {
-<<<<<<< Updated upstream
-            Opts::setOpt("window_ids", Array($tw));
-            $items = ItemCorr::icSearch()->fetchAll();
-            foreach ($items as $item) {
-                $this->exportdata[$item->windowid1] = Array(
-                    "windowid" => $item->windowid1,
-                    "itemid1" => $item->itemid1,
-                    "itemid2" => $item->itemid2,
-                    "corr" => $item->corr
-                );
-=======
             $this->exportdata[$tw]=ItemCorr::TwCorrelations($tw,$itemids);
         }
         parent::renderShow($this->exportdata);
@@ -193,7 +188,6 @@ class IcPresenter extends BasePresenter {
                         $this->arffinfo[$item1."-".$item2] = "NUMERIC";
                     }
                 }
->>>>>>> Stashed changes
             }
         }
         parent::renderShow($this->exportdata);
