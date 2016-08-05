@@ -475,7 +475,7 @@ class ItemCorr extends Monda {
                     HAVING (COUNT(*)>=? AND COUNT(*)<=?)
                     ", $w2_start - $w1_start, $tp, $itemids, $itemids,
                        $w1_start, $w1_end, $w2_start, $w2_end, $minv, $maxv,
-                   $w2_start - $w1_start, $tp, $itemids, $itemids, $itemids,
+                   $w2_start - $w1_start, $tp, $itemids, $itemids,
                 $w1_start, $w1_end, $w2_start, $w2_end, $minv, $maxv
         );
         $mincorr = 0;
