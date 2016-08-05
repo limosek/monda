@@ -65,7 +65,7 @@ class IsPresenter extends BasePresenter {
                 false, "history_interpolate", "Interpolate history data (slow).", true, "yes"
         );
         Opts::addOpt(
-                false, "triggerids_history", "Add this triggerids to history", false, false
+                false, "triggerids", "Select this triggerids to history", (int) 0, 0
         );
         Opts::addOpt(
                 false, "events_prefetch", "Prefetch this number of seconds before history dump", Monda::_1WEEK, "1 week"
@@ -102,7 +102,7 @@ class IsPresenter extends BasePresenter {
         HsPresenter::postCfg();
         Opts::optToArray("itemids");
         Opts::optToArray("items", "~");
-        Opts::optToArray("triggerids_history", ",");
+        Opts::optToArray("triggerids", ",");
         if (Opts::getOpt("output_mode")=="arff") {
             Opts::setOpt("item_restricted_chars","{}[],.| ");
         }
@@ -176,6 +176,9 @@ class IsPresenter extends BasePresenter {
         if (!Opts::getOpt("itemids")) {
             self::mexit("You must use --items parameter to select items!\n");
         }
+        if (Opts::getOpt("output_mode")=="brief") {
+            self::mexit(3,"This action is possible only with csv output mode.\n");
+        }
         $rows = ItemStat::isZabbixHistory();
         if ($rows) {
             $clocks=Array();
@@ -196,7 +199,7 @@ class IsPresenter extends BasePresenter {
                     }
                 }
             }
-            List($tinfo,$trows)=TriggerInfo::History(Opts::getOpt("triggerids_history"),$clocks);
+            List($tinfo,$trows)=TriggerInfo::History(Opts::getOpt("triggerids"),$clocks);
             foreach ($tinfo as $t=>$ti) {
                     $this->exportinfo[$t] = $ti["description"];
                     $this->arffinfo[$t] = "{OK,PROBLEM}";

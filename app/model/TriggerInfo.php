@@ -63,24 +63,47 @@ class TriggerInfo extends Monda {
         }
         return($ret);
     }
+    
+    static public function Triggers2Items($triggerids) {
+        $tq=Array(
+            "triggerids" => $triggerids,
+            "output" => "extend",
+            "selectFunctions" => "extend"
+        );
+        $tr=Monda::apiCmd("triggerGet",$tq);
+        $itemids=Array();
+        foreach ($tr as $trigger) {
+            if ($trigger->functions) {
+                foreach ($trigger->functions as $function) {
+                    $itemids[$function->itemid]=$function->itemid;
+                }
+            }
+        }
+        return($itemids);
+    }
+    
+    static public function Triggers2Events($start, $end, $triggerids) {
+        $eq = Array(
+            "time_from" => $start,
+            "time_till" => $end,
+            "output" => "extend",
+            "objectids" => $triggerids,
+            "selectHosts" => "refer",
+            "selectRelatedObject" => "refer",
+            "select_alerts" => "refer",
+            "select_acknowledges" => "refer",
+            "sortfield" => "clock"
+        );
+        $events = Monda::apiCmd("eventGet", $eq);
+        CliDebug::warn(sprintf("Found %d events for triggerids (<%d,%d>)%s.\n", count($events), $start, $end, join(",", $triggerids)));
+        return($events);
+    }
 
     static public function History($triggerids, $clocks) {
         if (!$triggerids) {
             return(false);
         } else {
-            $eq = Array(
-                "time_from" => min($clocks) - Opts::getOpt("events_prefetch"),
-                "time_till" => max($clocks),
-                "output" => "extend",
-                "objectids" => $triggerids,
-                "selectHosts" => "refer",
-                "selectRelatedObject" => "refer",
-                "select_alerts" => "refer",
-                "select_acknowledges" => "refer",
-                "sortfield" => "clock"
-            );
-            $events = Monda::apiCmd("eventGet", $eq);
-            CliDebug::warn(sprintf("Found %d events for triggerids (<%d,%d>)%s.\n", count($events), min($clocks), max($clocks), join(",", Opts::getOpt("triggerids_history"))));
+            $events=self::Triggers2Events(min($clocks) - Opts::getOpt("events_prefetch"),  max($clocks), Opts::getOpt("triggerids"));
             $rows = Array();
             $tdata = Array();
             $tinfo = Array();

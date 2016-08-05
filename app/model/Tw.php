@@ -80,13 +80,9 @@ class Tw extends Monda {
             $tmesql="";
         } else {
             $widssql = "AND true";
-            $tmesql=sprintf("AND tfrom>='%s' AND (tfrom+seconds*interval '1 second')<='%s'", New DateTime("@".Opts::getOpt("start")), New DateTime("@".Opts::getOpt("end")));
-            if (Opts::getOpt("window_length")) {
-                if (!is_array(Opts::getOpt("window_length"))) {
-                    $secondssql="AND seconds=".Opts::getOpt("window_length");
-                } else {
-                    $secondssql="AND seconds IN (".join(",",Opts::getOpt("window_length")).") ";
-                }
+            $tmesql=sprintf("AND tfrom>='%s' AND (tfrom+seconds*interval '1 second')<='%s'", New DateTime("@".Opts::getOpt("start")), New DateTime("@".Opts::getOpt("end"))); 
+            if (is_array(Opts::getOpt("window_length"))) {
+                $secondssql = "AND seconds IN (" . join(",", Opts::getOpt("window_length")) . ") ";
             }
         }
         $onlyemptysql = "";
@@ -171,13 +167,52 @@ class Tw extends Monda {
         return($rows);
     }
 
-    static function twSearchClock($clock,$empty=true,$toclock=false) {
+    static function twSearchClock($clock,$empty=true,$toclock=false,$partonly=false) {
         if ($empty) {
             $emptysql="found>0";
         } else {
             $emptysql="true";
         }
+        if (is_array(Opts::getOpt("window_length"))) {
+            $secondssql = "AND seconds IN (" . join(",", Opts::getOpt("window_length")) . ") ";
+        }
         if (!$toclock) $toclock=$clock;
+        if (preg_match("#/#", Opts::getOpt("window_sort"))) {
+            List($sc, $so) = preg_split("#/#", Opts::getOpt("window_sort"));
+        } else {
+            $sc = Opts::getOpt("window_sort");
+            $so = "+";
+        }
+        switch ($sc) {
+            case "random":
+                $sortsql = "RANDOM()";
+                break;
+            case "start":
+                $sortsql = "tfrom";
+                break;
+            case "length":
+                $sortsql = "seconds";
+                break;
+            case "loi":
+                $sortsql = "timewindow.loi";
+                break;
+            case "loih":
+                $sortsql = "timewindow.loi/(seconds/3600)";
+                break;
+            case "updated":
+                $sortsql = "updated";
+                break;
+            default:
+                $sortsql = "id";
+        }
+        if ($so == "-") {
+            $sortsql.=" DESC";
+        }
+        if ($partonly) {
+            $timequery="((extract(epoch from tfrom)<=$clock AND extract(epoch from tfrom)+seconds>=$clock) OR (extract(epoch from tfrom)<=$toclock AND extract(epoch from tfrom)+seconds>=$toclock))";
+        } else {
+            $timequery="extract(epoch from tfrom)<=$clock AND extract(epoch from tfrom)+seconds>=$toclock";
+        }
         $rows = Monda::mquery("
             SELECT 
                 id,parentid,
@@ -200,8 +235,10 @@ class Tw extends Monda {
                 timewindow.avgcnt AS cnt,
                 serverid
             FROM timewindow
-            WHERE extract(epoch from tfrom)>=? AND extract(epoch from tfrom)+seconds<=? AND $emptysql AND serverid=?
-            ", $clock, $toclock,Opts::getOpt("zabbix_id"));
+            WHERE $timequery AND $emptysql AND serverid=?
+                $secondssql
+            ORDER BY $sortsql
+            ",Opts::getOpt("zabbix_id"));
         return($rows);
     }
 
