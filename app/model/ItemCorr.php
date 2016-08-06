@@ -423,6 +423,7 @@ class ItemCorr extends Monda {
                 $w2 = Tw::twGet($wid2);
                 foreach (array_chunk($itemids, Opts::getOpt("ic_max_items_at_once")) as $itemids_part) {
                     self::IcCompute(
+                            $wid1,$wid2,
                             $itemids_part,
                             $w1["fstamp"],$w1["tstamp"],
                             $w2["fstamp"],$w2["tstamp"],
@@ -444,7 +445,7 @@ class ItemCorr extends Monda {
                             Opts::getOpt("min_values_for_corr"),
                             Opts::getOpt("max_values_for_corr") 
      */
-    public function IcCompute($itemids,$w1_start,$w1_end,$w2_start,$w2_end,$tp,$minv,$maxv) {
+    public function IcCompute($wid1,$wid2,$itemids,$w1_start,$w1_end,$w2_start,$w2_end,$tp,$minv,$maxv) {
         $icrows = self::zcquery("
                     SELECT  h1.itemid AS itemid1,
                             h2.itemid AS itemid2,
@@ -475,7 +476,7 @@ class ItemCorr extends Monda {
                     HAVING (COUNT(*)>=? AND COUNT(*)<=?)
                     ", $w2_start - $w1_start, $tp, $itemids, $itemids,
                        $w1_start, $w1_end, $w2_start, $w2_end, $minv, $maxv,
-                   $w2_start - $w1_start, $tp, $itemids, $itemids, $itemids,
+                   $w2_start - $w1_start, $tp, $itemids, $itemids,
                 $w1_start, $w1_end, $w2_start, $w2_end, $minv, $maxv
         );
         $mincorr = 0;

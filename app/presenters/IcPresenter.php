@@ -60,7 +60,7 @@ class IcPresenter extends BasePresenter {
                 false, "min_values_for_corr", "Minimum values to make correlation", 40, 40
         );
         Opts::addOpt(
-                false, "max_values_for_corr", "Maximum values to make correlation", 1000, 1000
+                false, "max_values_for_corr", "Maximum values to make correlation", 5000, 5000
         );
         Opts::addOpt(
                 false, "ic_max_items_at_once", "Maximum itemids for one query to correlate", 20, 20
