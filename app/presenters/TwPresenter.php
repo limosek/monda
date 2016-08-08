@@ -32,7 +32,7 @@ class TwPresenter extends BasePresenter {
                 false, "window_empty", "Work only with empty (non-computed) windows.", false, "All"
         );
         Opts::addOpt(
-                "ws", "window_sort", "Sort order of windows to select ({random|start|length|loi|loih|updated}/{+|-}", "loi/-", "loi/-"
+                "ws", "tw_sort", "Sort order of windows to select ({random|start|length|loi|loih|updated}/{+|-}", "loi/-", "loi/-"
         );
         Opts::addOpt(
                 "u", "window_updated_before", "Select only windows which were updated less than datetime", false, "no care"
@@ -48,6 +48,12 @@ class TwPresenter extends BasePresenter {
         );
         Opts::addOpt(
                 false, "tw_minloi", "Minimum timewindow loi to search.", 0, 0
+        );
+        Opts::addOpt(
+                false, "tw_filter_dow", "Filter day of week (0(sunday)-6)", 0, "all"
+        );
+        Opts::addOpt(
+                false, "tw_filter_hod", "Filter hour of day (0-23)", false, "all"
         );
         Opts::setDefaults();
         Opts::readCfg(Array("global", "Tw"));
@@ -86,6 +92,12 @@ class TwPresenter extends BasePresenter {
         }
         if (Opts::getOpt("start") < 631148400) {
             self::mexit(4, sprintf("Bad start time (%d)?!\n", date("Y-m-d", Opts::getOpt("start"))));
+        }
+        if (Opts::isOpt("tw_filter_dow")) {
+            Opts::optToArray("tw_filter_dow",",");
+        }
+        if (Opts::isOpt("tw_filter_hod")) {
+            Opts::optToArray("tw_filter_hod",",");
         }
     }
     

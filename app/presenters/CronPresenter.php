@@ -180,7 +180,7 @@ class CronPresenter extends IsPresenter {
             Tw::twMultiCreate();
             Opts::setOpt("window_empty", true);
             Opts::setOpt("tw_minloi", -1);
-            Opts::setOpt("window_sort", "start/+");
+            Opts::setOpt("tw_sort", "start/+");
             ItemStat::IsMultiCompute();
             Tw::twLoi();
             ItemStat::IsLoi();

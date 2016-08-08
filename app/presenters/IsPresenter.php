@@ -82,6 +82,12 @@ class IsPresenter extends BasePresenter {
         Opts::addOpt(
                 false, "item_restricted_chars", "Characters mangled in items", false, "none"
         );
+        Opts::addOpt(
+                false, "wevent_problem_treshold", "Ratio for timewindow if there are more events when to classify as problem", 0.02, 0.02
+        );
+        Opts::addOpt(
+                false, "event_value_filter", "Filter trigger history to only this values {OK|PROBLEM|50}. 50 means distribute to 50%.", false, false,Array("OK","PROBLEM","50")
+        );
         
         Opts::setDefaults();
         Opts::readCfg(Array("Is"));
@@ -103,11 +109,24 @@ class IsPresenter extends BasePresenter {
         Opts::optToArray("itemids");
         Opts::optToArray("items", "~");
         Opts::optToArray("triggerids", ",");
+        if (!Opts::isOpt("itemids")) {
+            if (Opts::getOpt("triggerids")) {
+                $itemids = TriggerInfo::Triggers2Items(Opts::getOpt("triggerids"));
+                if (count($itemids) == 0) {
+                    self::mexit(2, "No itemids for triggerids found.");
+                }
+                Opts::setOpt("itemids", $itemids);
+            }
+        }
         if (Opts::getOpt("output_mode")=="arff") {
             Opts::setOpt("item_restricted_chars","{}[],.| ");
         }
         if (Opts::getOpt("events_prefetch")) {
-            Opts::setOpt("events_prefetch", Util::timetoseconds(Opts::getOpt("events_prefetch")) - time());
+            if (Util::timetoseconds(Opts::getOpt("events_prefetch")) - time()>0) {
+                Opts::setOpt("events_prefetch", Util::timetoseconds(Opts::getOpt("events_prefetch")) - time());
+            } else {
+                Opts::setOpt("events_prefetch", Util::timetoseconds(Opts::getOpt("events_prefetch")));
+            }
         }
         if (!is_array(Opts::getOpt("itemids"))) {
             ItemStat::itemsToIds();
@@ -176,21 +195,22 @@ class IsPresenter extends BasePresenter {
         if (!Opts::getOpt("itemids")) {
             self::mexit("You must use --items parameter to select items!\n");
         }
-        if (Opts::getOpt("output_mode")=="brief") {
-            self::mexit(3,"This action is possible only with csv output mode.\n");
+        if (Opts::getOpt("output_mode") == "brief") {
+            self::mexit(3, "This action is possible only with csv output mode.\n");
         }
+        Opts::setOpt("tw_sort","start/+");
         $rows = ItemStat::isZabbixHistory();
         if ($rows) {
-            $clocks=Array();
+            $clocks = Array();
             $this->exportdata = $rows;
-            $i=0;
+            $i = 0;
             foreach ($this->exportdata as $clock => $row) {
                 $i++;
-                $clocks[]=$row["clock"];
+                $clocks[] = $row["clock"];
                 CliDebug::dbg(sprintf("Processing %d row of %d      \r", $i, count($this->exportdata)));
                 foreach ($row as $column => $value) {
                     if (!array_key_exists($column, $this->exportinfo)) {
-                        if ($column=="clock") {
+                        if ($column == "clock") {
                             $this->exportinfo[$column] = "clock";
                         } else {
                             $this->exportinfo[$column] = self::expandItem($column, true);
@@ -199,18 +219,35 @@ class IsPresenter extends BasePresenter {
                     }
                 }
             }
-            List($tinfo,$trows)=TriggerInfo::History(Opts::getOpt("triggerids"),$clocks);
-            foreach ($tinfo as $t=>$ti) {
-                    $this->exportinfo[$t] = $ti["description"];
-                    $this->arffinfo[$t] = "{OK,PROBLEM}";
-            }
-            foreach ($this->exportdata as $i=>$row) {
-                foreach ($tinfo as $t=>$ti) {
-                    $this->exportdata[$i][$t]=$trows[$i][$t];
+            $trows = TriggerInfo::History(Opts::getOpt("triggerids"), $clocks);
+            foreach (Opts::getOpt("triggerids") as $t) {
+                $this->exportinfo[$t] = TriggerInfo::expandTrigger($t);
+                $this->arffinfo[$t] = "{OK,PROBLEM}";
+                foreach ($trows as $i => $trow) {
+                    $value=$trow[$t];
+                    if (Opts::getOpt("event_value_filter")) {
+                        if (Opts::getOpt("event_value_filter") == "50") {
+                            if ($valuesproblem > $valuesok && $value == "OK") {
+                                $valuesok++;
+                            } elseif ($value == "PROBLEM") {
+                                $valuesproblem++;
+                            } else {
+                                CliDebug::info(sprintf("Skipping clock %d due to 50/50 filter\n", $i));
+                                unset($this->exportdata[$i]);
+                                continue;
+                            }
+                        } elseif ($value != Opts::getOpt("event_value_filter")) {
+                            unset($this->exportdata[$i]);
+                            continue;
+                        }
+                    }
+                    $this->exportdata[$i][$t] = $trow[$t];
                 }
             }
-            parent::renderShow($this->exportdata);
         }
+
+        //$this->exportdata=  array_merge_recursive($trows,$this->exportdata);
+        parent::renderShow($this->exportdata);
     }
 
     public function renderStats() {

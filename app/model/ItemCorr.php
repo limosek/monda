@@ -8,6 +8,7 @@ use Nette,
     App\Model\Tw,
     Nette\Security\Passwords,
     Tracy\Debugger,
+    Nette\Caching\Cache,
     Nette\Database\Context,
     \Exception;
 
@@ -88,6 +89,11 @@ class ItemCorr extends Monda {
                             AND extract(dow from tw1.tfrom)=extract(dow from tw2.tfrom)";
                 break;              
         }
+        if (Opts::getOpt("ic_notsamehost")) {
+            $hostsql="AND is1.hostid <> is2.hostid";
+        } else {
+            $hostsql="";
+        }
         $rows=self::mquery(
                 "SELECT
                         is1.itemid AS itemid1,is2.itemid AS itemid2,
@@ -108,6 +114,7 @@ class ItemCorr extends Monda {
                     $itemidssql
                     $hostidssql
                     $windowidsql 
+                    $hostsql
                          true
                     AND tw1.seconds=tw2.seconds
                     AND (is1.windowid<=is2.windowid)
@@ -118,6 +125,9 @@ class ItemCorr extends Monda {
                  ORDER BY $sortsql
                  LIMIT ?",Opts::getOpt("is_minloi"),Opts::getOpt("is_minloi"),Opts::getOpt("max_rows")
                 );
+        if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
+            CliDebug::warn(sprintf("Limiting output of correlations to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
+        }
         return($rows);
     }
     
@@ -194,6 +204,11 @@ class ItemCorr extends Monda {
         } else {
             throw new Exception("No windows matched query for item correlation.");
         }
+        if (Opts::getOpt("ic_notsamehost")) {
+            $notsamehostsql="AND is1.hostid <> is2.hostid";
+        } else {
+            $notsamehostsql="";
+        }
         $rows=self::mquery(
                 "SELECT windowid1,windowid2,itemid1,itemid2,corr,ic.cnt,ic.loi AS icloi
                  FROM itemcorr ic
@@ -209,6 +224,7 @@ class ItemCorr extends Monda {
                      $corrsql
                      AND ic.corr>? AND ic.corr<? 
                      $notsamesql
+                     $notsamehostsql
                  ORDER BY $sortsql
                  LIMIT ?
                 ",Opts::getOpt("ic_minloi"),Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
@@ -385,27 +401,6 @@ class ItemCorr extends Monda {
             return(false);
         }
         $i = 0;
-        if (Opts::getOpt("ic_all") && Opts::getOpt("corr_type") == "samewindow") {
-            foreach ($windowids as $wid1) {
-                foreach ($itemids as $itemid1) {
-                    foreach ($itemids as $itemid2) {
-                        try {
-                            $iic = self::mquery("INSERT INTO itemcorr", Array(
-                                        "windowid1" => $wid1,
-                                        "windowid2" => $wid1,
-                                        "itemid1" => $itemid1,
-                                        "itemid2" => $itemid2,
-                                        "corr" => 0,
-                                        "cnt" => 0
-                            ));
-                        } catch (Nette\Database\UniqueConstraintViolationException $e) {
-                            
-                        }
-                        $rows_added++;
-                    }
-                }
-            }
-        }
         foreach ($windowids as $wid1) {
             $i++;
             $w1 = Tw::twGet($wid1);
@@ -423,12 +418,14 @@ class ItemCorr extends Monda {
                 $w2 = Tw::twGet($wid2);
                 foreach (array_chunk($itemids, Opts::getOpt("ic_max_items_at_once")) as $itemids_part) {
                     self::IcCompute(
+                            $wid1,$wid2,
                             $itemids_part,
                             $w1["fstamp"],$w1["tstamp"],
                             $w2["fstamp"],$w2["tstamp"],
                             Opts::getOpt("time_precision"),     
                             Opts::getOpt("min_values_for_corr"),
-                            Opts::getOpt("max_values_for_corr") 
+                            Opts::getOpt("max_values_for_corr"),
+                            Opts::getOpt("ic_all")
                             );
                 }
             }
@@ -436,16 +433,12 @@ class ItemCorr extends Monda {
         self::icLoi();
         CliDebug::warn("Done\n");
     }
-    /*
-     * $itemids_part,
-                            $w1["fstamp"],$w1["tstamp"],
-                            $w2["fstamp"],$w2["tstamp"],
-                            Opts::getOpt("time_precision"),     
-                            Opts::getOpt("min_values_for_corr"),
-                            Opts::getOpt("max_values_for_corr") 
-     */
-    public function IcCompute($itemids,$w1_start,$w1_end,$w2_start,$w2_end,$tp,$minv,$maxv) {
-        $icrows = self::zcquery("
+    
+    public function IcCompute($wid1, $wid2, $itemids, $w1_start, $w1_end, $w2_start, $w2_end, $tp, $minv, $maxv, $all=false, $noinsert = false) {
+        $ckey = "IcCompute " . join(".", func_get_args());
+        $rows = self::$cache->load($ckey);
+        if ($rows === NULL) {
+            $icrows = self::zcquery("
                     SELECT  h1.itemid AS itemid1,
                             h2.itemid AS itemid2,
                             COUNT(*) AS cnt,
@@ -473,47 +466,80 @@ class ItemCorr extends Monda {
                         AND h2.clock>? AND h2.clock<?
                     GROUP BY h1.itemid, h2.itemid
                     HAVING (COUNT(*)>=? AND COUNT(*)<=?)
-                    ", $w2_start - $w1_start, $tp, $itemids, $itemids,
-                       $w1_start, $w1_end, $w2_start, $w2_end, $minv, $maxv,
-                   $w2_start - $w1_start, $tp, $itemids, $itemids,
-                $w1_start, $w1_end, $w2_start, $w2_end, $minv, $maxv
-        );
-        $mincorr = 0;
-        $maxcorr = 0;
-        $rows_added = 0;
-        self::mbegin();
-        foreach ($icrows as $icrow) {
-            $icrow->windowid1 = $wid1;
-            $icrow->windowid2 = $wid2;
-            if ($icrow->stddev1 * $icrow->stddev2 > 0) {
-                $icrow->corr = $icrow->cov / ($icrow->stddev1 * $icrow->stddev2);
-            } else {
-                $icrow->corr = 0;
-            }
-            if ($icrow->corr === null || $icrow->cnt < Opts::getOpt("min_values_for_corr")) {
-                $icrow->corr = 0;
-            }
-            $mincorr = min($mincorr, abs($icrow->corr));
-            if ($icrow->itemid1 <> $icrow->itemid2) {
-                $maxcorr = max($maxcorr, abs($icrow->corr));
-            }
-            $wrow = Array(
-                "windowid1" => $icrow->windowid1,
-                "windowid2" => $icrow->windowid2,
-                "itemid1" => $icrow->itemid1,
-                "itemid2" => $icrow->itemid2,
-                "corr" => $icrow->corr,
-                "cnt" => $icrow->cnt
+                    ", $w2_start - $w1_start, $tp, $itemids, $itemids, $w1_start, $w1_end, $w2_start, $w2_end, $minv, $maxv, $w2_start - $w1_start, $tp, $itemids, $itemids, $w1_start, $w1_end, $w2_start, $w2_end, $minv, $maxv
             );
-            $rows_added++;
-            self::mquery("DELETE FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $icrow->windowid1, $icrow->windowid2, $icrow->itemid1, $icrow->itemid2);
-            $iic = self::mquery("INSERT INTO itemcorr", $wrow);
+            $mincorr = 0;
+            $maxcorr = 0;
+            $rows_added = 0;
+            $rows = Array();
+            if (!$noinsert) {
+                self::mbegin();
+            }
+            if ($all && Opts::getOpt("corr_type") == "samewindow") {
+                foreach ($itemids as $itemid1) {
+                    foreach ($itemids as $itemid2) {
+                        $wrow = Array(
+                            "windowid1" => $wid1,
+                            "windowid2" => $wid2,
+                            "itemid1" => $itemid1,
+                            "itemid2" => $itemid2,
+                            "corr" => ($itemid1 == $itemid2),
+                            "cnt" => 0
+                        );
+                        $rows[]=$wrow;
+                        if (!$noinsert) {
+                            try {
+                                $iic = self::mquery("INSERT INTO itemcorr", $wrow);
+                            } catch (Nette\Database\UniqueConstraintViolationException $e) {
+                                
+                            }
+                        }
+                        $rows_added++;
+                    }
+                }
+            }
+            foreach ($icrows as $icrow) {
+                $icrow->windowid1 = $wid1;
+                $icrow->windowid2 = $wid2;
+                if ($icrow->stddev1 * $icrow->stddev2 > 0) {
+                    $icrow->corr = $icrow->cov / ($icrow->stddev1 * $icrow->stddev2);
+                } else {
+                    $icrow->corr = 0;
+                }
+                if ($icrow->corr === null || $icrow->cnt < Opts::getOpt("min_values_for_corr")) {
+                    $icrow->corr = 0;
+                }
+                $mincorr = min($mincorr, abs($icrow->corr));
+                if ($icrow->itemid1 <> $icrow->itemid2) {
+                    $maxcorr = max($maxcorr, abs($icrow->corr));
+                }
+                $wrow = Array(
+                    "windowid1" => $icrow->windowid1,
+                    "windowid2" => $icrow->windowid2,
+                    "itemid1" => $icrow->itemid1,
+                    "itemid2" => $icrow->itemid2,
+                    "corr" => $icrow->corr,
+                    "cnt" => $icrow->cnt
+                );
+                $rows[] = $wrow;
+                $rows_added++;
+                if (!$noinsert) {
+                    self::mquery("DELETE FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $icrow->windowid1, $icrow->windowid2, $icrow->itemid1, $icrow->itemid2);
+                    $iic = self::mquery("INSERT INTO itemcorr", $wrow);
+                }
+            }
+            CliDebug::info(sprintf("Rows: $rows_added, interval:<%f,%f>,", $mincorr, $maxcorr));
+            if (!$noinsert) {
+                self::mcommit();
+            }
+            self::$cache->save($ckey, $rows, array(
+                Cache::EXPIRE => Opts::getOpt("ic_cache_expire"),
+            ));
         }
-        CliDebug::info(sprintf("Rows: $rows_added, interval:<%f,%f>,", $mincorr, $maxcorr));
-        self::mcommit();
+        return($rows);
     }
 
-    public function TwCorrelations($tw, $itemids) {
+    public function TwCorrelationsByItemid($tw, $itemids) {
         $ret = Array();
         foreach ($itemids as $itemid1) {
             foreach ($itemids as $itemid2) {
@@ -528,9 +554,10 @@ class ItemCorr extends Monda {
             }
         }
         Opts::setOpt("window_ids", Array($tw));
+        Opts::setOpt("itemids", $itemids);
         $items = ItemCorr::icSearch()->fetchAll();
         foreach ($items as $item) {
-            if ($item->itemid1 < $item->itemid2) {
+            if ($item->itemid1 < $item->itemid2 && array_key_exists($item->itemid1,$itemids) && array_key_exists($item->itemid2,$itemids)) {
                 $ret[$item->itemid1 . "-" . $item->itemid2] = $item->corr;
             }
         }

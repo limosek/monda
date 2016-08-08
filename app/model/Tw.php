@@ -90,10 +90,10 @@ class Tw extends Monda {
             $onlyemptysql = "(updated IS NULL OR COUNT(itemstat.itemid)=0) AND";
             $loisql="";
         }
-        if (preg_match("#/#", Opts::getOpt("window_sort"))) {
-            List($sc, $so) = preg_split("#/#", Opts::getOpt("window_sort"));
+        if (preg_match("#/#", Opts::getOpt("tw_sort"))) {
+            List($sc, $so) = preg_split("#/#", Opts::getOpt("tw_sort"));
         } else {
-            $sc = Opts::getOpt("window_sort");
+            $sc = Opts::getOpt("tw_sort");
             $so = "+";
         }
         switch ($sc) {
@@ -126,6 +126,16 @@ class Tw extends Monda {
         } else {
             $limit = "";
         }
+        if (Opts::getOpt("tw_filter_dow")) {
+            $dowsql="AND extract(dow from tfrom) IN (".join(",",Opts::getOpt("tw_filter_dow")).")";
+        } else {
+            $dowsql="";
+        }
+        if (Opts::getOpt("tw_filter_hod")) {
+            $hodsql="AND extract(hour from tfrom) IN (".join(",",Opts::getOpt("tw_filter_hod")).")";
+        } else {
+            $hodsql="";
+        }
         $rows = Monda::mquery("
             SELECT 
                 id,parentid,
@@ -137,6 +147,8 @@ class Tw extends Monda {
                 (tfrom+seconds*interval '1 second') AS tto,
                 extract(epoch from tfrom) AS fstamp,
                 extract(epoch from tfrom)+seconds AS tstamp,
+                extract(dow from tfrom) AS dow,
+                extract(hour from tfrom) AS hod,
                 created,
                 updated,
                 found,
@@ -157,6 +169,8 @@ class Tw extends Monda {
                 $secondssql
                 $tmesql
                 $widssql
+                $hodsql
+                $dowsql
                 AND timewindow.loi>?
                )
             GROUP BY id
@@ -164,6 +178,9 @@ class Tw extends Monda {
             ORDER BY $sortsql
                 $limit
                 ", Opts::getOpt("zabbix_id"),Opts::getOpt("tw_minloi"));
+        if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
+            CliDebug::warn(sprintf("Limiting output of timewindows to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
+        }
         return($rows);
     }
 
@@ -177,10 +194,10 @@ class Tw extends Monda {
             $secondssql = "AND seconds IN (" . join(",", Opts::getOpt("window_length")) . ") ";
         }
         if (!$toclock) $toclock=$clock;
-        if (preg_match("#/#", Opts::getOpt("window_sort"))) {
-            List($sc, $so) = preg_split("#/#", Opts::getOpt("window_sort"));
+        if (preg_match("#/#", Opts::getOpt("tw_sort"))) {
+            List($sc, $so) = preg_split("#/#", Opts::getOpt("tw_sort"));
         } else {
-            $sc = Opts::getOpt("window_sort");
+            $sc = Opts::getOpt("tw_sort");
             $so = "+";
         }
         switch ($sc) {
