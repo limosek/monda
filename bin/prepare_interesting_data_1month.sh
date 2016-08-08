@@ -53,6 +53,7 @@ _monda is:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/iss.c
 _monda hs:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/hs.csv
 _monda hs:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/hss.csv
 _monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded >$outdir/ic.csv
+_monda ic:show -s "$start" -e "$end"  --ic_notsamehost --output_mode csv $expanded >$outdir/ich.csv
 _monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded --corr_type samehour >$outdir/ic_hod.csv
 _monda ic:show -s "$start" -e "$end"  --output_mode csv $expanded --corr_type samedow >$outdir/ic_dow.csv
 _monda ic:stats -s "$start" -e "$end" --output_mode csv $expanded >$outdir/ics.csv

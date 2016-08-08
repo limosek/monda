@@ -117,6 +117,9 @@ class ItemStat extends Monda {
                 ORDER by i.loi DESC "
                 . "$limit",Opts::getOpt("is_minloi"),Opts::getOpt("tw_minloi")
                 );
+        if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
+            CliDebug::warn(sprintf("Limiting output of itemstats to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
+        }
         return($rows);
     }
     
@@ -141,6 +144,9 @@ class ItemStat extends Monda {
                  ORDER BY AVG(i.loi)*COUNT(i.windowid) DESC
                  LIMIT ?
                 ",$itemids,Opts::getOpt("max_rows"));
+        if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
+            CliDebug::warn(sprintf("Limiting output of itemstats to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
+        }
         return($rows->fetchAll());
     }
     

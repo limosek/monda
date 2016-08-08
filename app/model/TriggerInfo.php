@@ -54,7 +54,6 @@ class TriggerInfo extends Monda {
     static public function ExpandHistory($clocks, $tdata) {
         $ret = Util::interpolate($tdata, $clocks, true);
         foreach ($ret as $clock => $value) {
-
             if ($value == 0) {
                 $ret[$clock] = "OK";
             } else {
@@ -98,51 +97,58 @@ class TriggerInfo extends Monda {
         CliDebug::warn(sprintf("Found %d events for triggerids (<%d,%d>)%s.\n", count($events), $start, $end, join(",", $triggerids)));
         return($events);
     }
+    
+    static public function eventValueForInterval($events, $fstamp, $tstamp, $tid=false) {
+        $lastclock = $fstamp;
+        $lastvalue = false;
+        $value=false;
+        foreach ($events as $event) {
+            if ($tid && $tid != $event->relatedObject->triggerid) continue;
+            if ($event->clock >= $fstamp) {
+                if ($event->clock < $tstamp) {
+                    //CliDebug::dbg(sprintf("clock inside: %d\n",$event->clock-$fstamp));
+                    if ($lastvalue === false) {
+                        CliDebug::err(sprintf("Increase prefetch time for triggers (--events_prefetch)!)\n"));
+                        return(false);
+                    } else {
+                        $value += ($event->clock - max($lastclock, $fstamp)) * $lastvalue;
+                        $lastclock = $event->clock;
+                        $lastvalue = (int) $event->value;
+                    }
+                } else {
+                    $value+=($tstamp-$lastclock)*$lastvalue;
+                }
+            } else {
+                $lastvalue = (int) $event->value;
+            }
+        }
+        if ($value===false) {
+            $value=($tstamp-$fstamp)*$lastvalue;
+        }
+        return(Array(
+            $event,
+            $value/($tstamp-$fstamp))
+              );
+    }
 
     static public function History($triggerids, $clocks) {
         if (!$triggerids) {
             return(false);
         } else {
-            $events=self::Triggers2Events(min($clocks) - Opts::getOpt("events_prefetch"),  max($clocks), Opts::getOpt("triggerids"));
+            $events = self::Triggers2Events(min($clocks) - Opts::getOpt("events_prefetch"), max($clocks), Opts::getOpt("triggerids"));
             $rows = Array();
-            $tdata = Array();
-            $tinfo = Array();
-            foreach ($events as $e) {
-                $tid = $e->relatedObject->triggerid;
-                $clock = round($e->clock / Opts::getOpt("history_granularity"))*Opts::getOpt("history_granularity"); 
-                if (!$tinfo[$tid]["minclock"]) {
-                    $tinfo[$tid]["minclock"] = $clock;
-                    $tinfo[$tid]["maxclock"] = $clock;
-                    $tinfo[$tid]["count"] = 1;
-                    $tinfo[$tid]["description"] = self::expandTrigger($tid);
-                }
-                $tinfo[$tid]["minclock"] = min($clock, $tinfo[$tid]["minclock"]);
-                $tinfo[$tid]["maxclock"] = max($clock, $tinfo[$tid]["maxclock"]);
-                $tinfo[$tid]["count"] ++;
-                if (array_key_exists($clock,$tdata[$tid]))  {
-                    contiune;
-                } else {
-                    $tdata[$tid][$clock] = $e->value;
-                }
-                CliDebug::info(sprintf("Event %d at %d seconds from start(%d) (%d).\n", $e->eventid, $clock-min($clocks),$e->clock, $e->value));
-            }
-            foreach ($tinfo as $ti) {
-                if ($ti["minclock"] > min($clocks)) {
-                    CliDebug::err(sprintf("Increase prefetch time for triggers (--events_prefetch)! Event started at %d.\n", $ti["minclock"]));
-                    return(false);
+            foreach ($clocks as $clock) {
+                foreach ($triggerids as $tid) {
+                    List($event, $value) = TriggerInfo::eventValueForInterval($events, $clock, $clock + Opts::getOpt("history_granularity"), $tid);
+                    if ($value > Opts::GetOpt("wevent_problem_treshold")) {
+                        $value = "PROBLEM";
+                    } else {
+                        $value = "OK";
+                    }
+                    $rows[$clock][$tid] = $value;
                 }
             }
-            foreach ($triggerids as $tid) {
-                CliDebug::info(sprintf("Expanding %d trigger values for %s from %d values.\n", count($clocks), $tid, count($tdata[$tid])));
-                $it[$tid] = self::ExpandHistory($clocks, $tdata[$tid]);
-            }
-            foreach ($clocks as $c) {
-                foreach ($it as $tid => $values) {
-                    $rows[$c]["clock"] = $c;
-                    $rows[$c][$tid] = $values[$c];
-                }
-            }
-            return(Array($tinfo, $rows));
+            return($rows);
         }
     }
 
