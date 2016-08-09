@@ -111,16 +111,16 @@ class TwPresenter extends BasePresenter {
      tw:delete [common opts]
         Remove windows and dependent data from this range
      
-     tw:show
+     tw:show [common opts]
         Show informations about timewindows in db
         
-     tw:stats
+     tw:stats [common opts]
         Show statistics about timewindows in db
  
-    tw:modify
+    tw:modify [common opts]
         Modify or rename window(s)
 
-     tw:loi
+     tw:loi [common opts]
         Recompute Level of Interest for windows
      
      Date formats: @timestamp, YYYYMMDDhhmm, now, '1 day ago', '00:00 1 day ago'

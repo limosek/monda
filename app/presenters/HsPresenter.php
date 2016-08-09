@@ -17,7 +17,7 @@ class HsPresenter extends BasePresenter {
 
     public function Help() {
         CliDebug::warn("
-     Host operations
+     HostStats operations
             
      hs:show [common opts]
      hs:stats [common opts]
