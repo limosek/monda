@@ -177,6 +177,55 @@ ALTER TABLE ONLY hostcorr
 
 
 --
+-- Name: fki_ic_itemid1; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX fki_ic_itemid1 ON itemcorr USING btree (windowid1, itemid1);
+
+
+--
+-- Name: fki_ic_itemid2; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX fki_ic_itemid2 ON itemcorr USING btree (itemid2, windowid2);
+
+
+--
+-- Name: fki_p_host1; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX fki_p_host1 ON hostcorr USING btree (hostid1, windowid1);
+
+
+--
+-- Name: fki_p_hostid2; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX fki_p_hostid2 ON hostcorr USING btree (windowid2, hostid2);
+
+
+--
+-- Name: fki_p_window2; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX fki_p_window2 ON windowcorr USING btree (windowid2);
+
+
+--
+-- Name: fki_p_windowid; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX fki_p_windowid ON hoststat USING btree (windowid);
+
+
+--
+-- Name: hoststat_hostid_windowid_idx; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
+--
+
+CREATE INDEX hoststat_hostid_windowid_idx ON hoststat USING btree (hostid, windowid);
+
+
+--
 -- Name: i_desc; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
 --
 
@@ -223,13 +272,6 @@ CREATE UNIQUE INDEX i_times ON timewindow USING btree (serverid, tfrom, seconds)
 --
 
 CREATE INDEX i_window ON hostcorr USING btree (windowid1, windowid2, hostid1, hostid2);
-
-
---
--- Name: i_windowhost; Type: INDEX; Schema: public; Owner: monda; Tablespace: 
---
-
-CREATE UNIQUE INDEX i_windowhost ON hoststat USING btree (windowid, hostid);
 
 
 --
@@ -305,14 +347,6 @@ ALTER TABLE ONLY itemcorr
 
 
 --
--- Name: fi_windowid1; Type: FK CONSTRAINT; Schema: public; Owner: monda
---
-
-ALTER TABLE ONLY hostcorr
-    ADD CONSTRAINT fi_windowid1 FOREIGN KEY (windowid1) REFERENCES timewindow(id);
-
-
---
 -- Name: fi_windowid2; Type: FK CONSTRAINT; Schema: public; Owner: monda
 --
 
@@ -321,11 +355,67 @@ ALTER TABLE ONLY itemcorr
 
 
 --
--- Name: fi_windowid2; Type: FK CONSTRAINT; Schema: public; Owner: monda
+-- Name: ic_itemid1; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY itemcorr
+    ADD CONSTRAINT ic_itemid1 FOREIGN KEY (windowid1, itemid1) REFERENCES itemstat(windowid, itemid);
+
+
+--
+-- Name: ic_itemid2; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY itemcorr
+    ADD CONSTRAINT ic_itemid2 FOREIGN KEY (itemid2, windowid2) REFERENCES itemstat(itemid, windowid);
+
+
+--
+-- Name: p_host1; Type: FK CONSTRAINT; Schema: public; Owner: monda
 --
 
 ALTER TABLE ONLY hostcorr
-    ADD CONSTRAINT fi_windowid2 FOREIGN KEY (windowid2) REFERENCES timewindow(id);
+    ADD CONSTRAINT p_host1 FOREIGN KEY (hostid1, windowid1) REFERENCES hoststat(hostid, windowid);
+
+
+--
+-- Name: p_hostid2; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY hostcorr
+    ADD CONSTRAINT p_hostid2 FOREIGN KEY (windowid2, hostid2) REFERENCES hoststat(windowid, hostid);
+
+
+--
+-- Name: p_is_windowid; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY itemstat
+    ADD CONSTRAINT p_is_windowid FOREIGN KEY (windowid) REFERENCES timewindow(id);
+
+
+--
+-- Name: p_window2; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY windowcorr
+    ADD CONSTRAINT p_window2 FOREIGN KEY (windowid2) REFERENCES timewindow(id);
+
+
+--
+-- Name: p_windowid; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY hoststat
+    ADD CONSTRAINT p_windowid FOREIGN KEY (windowid) REFERENCES timewindow(id);
+
+
+--
+-- Name: p_windowid1; Type: FK CONSTRAINT; Schema: public; Owner: monda
+--
+
+ALTER TABLE ONLY windowcorr
+    ADD CONSTRAINT p_windowid1 FOREIGN KEY (windowid1) REFERENCES timewindow(id);
 
 
 --
@@ -341,4 +431,3 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 --
 -- PostgreSQL database dump complete
 --
-
