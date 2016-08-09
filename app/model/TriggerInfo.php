@@ -6,6 +6,7 @@ use Nette,
     Nette\Utils\Strings,
     Nette\Security\Passwords,
     Tracy\Debugger,
+    App\Model\Hoststat,
     Exception,
     Nette\Utils\DateTime as DateTime,
     Nette\Database\Context;
@@ -42,7 +43,7 @@ class TriggerInfo extends Monda {
                 }
             }
             if ($withhost) {
-                return(HsPresenter::expandHost($ii[0]->hostid) . ":" . $itxt);
+                return(\App\Presenters\HsPresenter::expandHost($ii->hostid) . ":" . $itxt);
             } else {
                 return($itxt);
             }

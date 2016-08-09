@@ -31,7 +31,7 @@ class EventCorr extends Monda {
             "select_acknowledges" => "refer"
         );
         $events=self::apiCmd("eventGet",$eq);
-        CliDebug::warn(sprintf("Found %d events, updating LOI.\n",count($events)));
+        CliDebug::warn(sprintf("Found %d events.\n",count($events)));
         return($events);
     }
     

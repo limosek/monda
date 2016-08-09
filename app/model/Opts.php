@@ -275,7 +275,7 @@ class Opts extends Nette\Object {
 
     public static function helpOpts($force=false) {
         
-        CliDebug::warn("[Common options:\n");
+        CliDebug::warn("[Common options]:\n");
 
         if (!Opts::isOpt("xhelp") && !Opts::isOpt("help") && !$force) {
             if (!Opts::isOpt("help")) {

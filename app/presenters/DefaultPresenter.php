@@ -25,7 +25,6 @@ class DefaultPresenter extends BasePresenter
      ec             - Event Correlation operations
      cron           - Combining all operations from cron
      gm             - Create graphviz maps
-     fann           - Fast Neural Network analysis
      
      Hint: Date formats: @timestamp, YYYY_MM_DD_hhmm, YYYYMMDDhhmm, now, '-1 day'
      Hint: Divide more ids by comma ( like 1,3,45)

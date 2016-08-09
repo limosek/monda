@@ -6,6 +6,7 @@ use App\Model\ItemStat,
     App\Model\Tw,
     App\Model\EventCorr,
     App\Model\Monda,
+    App\Model\TriggerInfo,
     Tracy\Debugger,
     App\Model\Opts,
     App\Model\CliDebug,
@@ -51,6 +52,36 @@ class EcPresenter extends BasePresenter {
         IsPresenter::postCfg();
     }
 
+    public function renderShow() {
+        $events=EventCorr::ecSearch(Opts::getOpt("start"));
+        foreach ($events as $e) {
+            if (isset($e->relatedObject->triggerid)) {
+                    $tq=Array(
+                        "triggerids" => $e->relatedObject->triggerid,
+                        "hostids" => Opts::getOpt("hostids"),
+                        "selectFunctions" => "extend",
+                        "output" => "extend"
+                    );
+                    $trigger=Monda::apiCmd("triggerGet",$tq);
+                }
+                if (Opts::getOpt("output_verbosity")=="expanded") {
+                    $tdesc=TriggerInfo::expandTrigger($trigger[0]->triggerid,true);
+                } else {
+                    $tdesc="";
+                }
+            $this->exportdata[]=Array (
+                "eventid" => $e->eventid,
+                "triggerid" => $e->relatedObject->triggerid,
+                "priority" => $t->priority,
+                "clock" => $e->clock,
+                "value" => $e->value,
+                "trigger" => $tdesc
+            );
+        }
+        parent::renderShow($this->exportdata);
+        self::mexit();
+    }
+    
     public function renderLoi() {
         EventCorr::EcLoi();
         self::mexit();

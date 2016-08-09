@@ -354,11 +354,7 @@ class Tw extends Monda {
             return($zrows);
         }
     }
-
-    static function twZstats() {
-        return(self::twStats(true));
-    }
-
+    
     static function TwTree($twids) {
         if (count($twids) == 0) {
             return(false);

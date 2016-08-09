@@ -111,21 +111,15 @@ class TwPresenter extends BasePresenter {
      tw:delete [common opts]
         Remove windows and dependent data from this range
      
-    tw:empty [common opts]
-        Empty windows data but leave windows created
-        
      tw:show
         Show informations about timewindows in db
         
      tw:stats
         Show statistics about timewindows in db
-    
-    tw:zstats
-        Show statistics about zabbix data at timewindows
-    
+ 
     tw:modify
         Modify or rename window(s)
-        
+
      tw:loi
         Recompute Level of Interest for windows
      
@@ -160,12 +154,6 @@ class TwPresenter extends BasePresenter {
 
     public function renderStats() {
         $this->exportdata = Array(Tw::twStats());
-        parent::renderShow($this->exportdata);
-        self::mexit();
-    }
-
-    public function renderZStats() {
-        $this->exportdata = Tw::twZstats();
         parent::renderShow($this->exportdata);
         self::mexit();
     }
