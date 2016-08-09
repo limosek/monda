@@ -31,6 +31,9 @@ class HostStat extends Monda {
                     $hostids[] = $host->hostid;
                 }
             }
+            if (count($hostids)==0) {
+                CliDebug::err("Hostgroup(s) ".join(",".Opts::getOpt("hostgroups"))." has no hosts!\n");
+            }
         }
         if (Opts::getOpt("hosts")) {
             $hostids = Array();
@@ -42,6 +45,12 @@ class HostStat extends Monda {
             foreach ($h as $host) {
                 $hostids[] = $host->hostid;
             }
+            if (count($hostids)!=count(Opts::getOpt("hosts"))) {
+                CliDebug::err("Host(s) ".join(",".Opts::getOpt("hosts"))." do not exists!\n");
+            }
+        }
+        if (count($hostids)==0) {
+            CliDebug::err("You have to specify hostgroups, hosts or hostids to process!\n");
         }
         Opts::setOpt("hostids", $hostids);
         return;
@@ -160,7 +169,6 @@ class HostStat extends Monda {
         if (count($wids) == 0 || count($hostids) < 1 || count($itemids) < 1) {
             return(false);
         }
-        self::mbegin();
         if (Opts::getOpt("hs_update_unknown")) {
             $ius = self::mquery("UPDATE itemstat
                 SET hostid=NULL
@@ -183,7 +191,7 @@ class HostStat extends Monda {
             SET hostid=?
             WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", -1, $itemids, $wids);
         }
-        self::mcommit();
+        
         CliDebug::warn("\n");
     }
 

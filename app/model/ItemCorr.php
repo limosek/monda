@@ -126,7 +126,7 @@ class ItemCorr extends Monda {
                  LIMIT ?",Opts::getOpt("is_minloi"),Opts::getOpt("is_minloi"),Opts::getOpt("max_rows")
                 );
         if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
-            CliDebug::warn(sprintf("Limiting output of correlations to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
+            CliDebug::warn(sprintf("Limiting output of possible correlations to %d of %d total combinations! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows"),count($itemids)*count($itemids)));
         }
         return($rows);
     }
@@ -414,9 +414,9 @@ class ItemCorr extends Monda {
                     continue;
                 }
                 $j++;
-                CliDebug::info(sprintf("Windows %d-%d:", $wid1, $wid2));
                 $w2 = Tw::twGet($wid2);
                 foreach (array_chunk($itemids, Opts::getOpt("ic_max_items_at_once")) as $itemids_part) {
+                    CliDebug::info(sprintf("Windows %d-%d (items %s):", $wid1, $wid2,join(",",$itemids_part)));
                     self::IcCompute(
                             $wid1,$wid2,
                             $itemids_part,

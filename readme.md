@@ -58,6 +58,20 @@ Next to this, create host group **monda** (name is case sensitive!).
 All hosts in this group will be processed by Monda. Or you can use another group and use **-Hg** 
 parameter.
 
+### System preparation
+
+Monda needs some essential packages to work. Here is example of instalation on debian based system. 
+Use similar install process in your distro. 
+```
+sudo apt-get update
+sudo apt-get install php5-mysql php5-pgsql php5-mcrypt  php5-cli realpath
+```
+
+If you want to install posgresql database for monda localy, use
+```
+sudo apt-get install postgresql-9.3
+```
+
 ### Cloning
 
 There is no release yet. You must use git to clone monda repository. Git must be installed before.
