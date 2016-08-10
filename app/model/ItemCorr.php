@@ -434,6 +434,23 @@ class ItemCorr extends Monda {
         CliDebug::warn("Done\n");
     }
     
+    public function IcAddIfEmpty($wid1, $wid2, $itemid1, $itemid2, $corr, $cnt) {
+        $pq = self::mquery("SELECT * FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?",
+                $wid1, $wid2, $itemid1, $itemid2);
+        if ($pq->getRowCount() == 0) {
+            ItemStat::IsAddIfEmpty($wid1, $itemid1);
+            ItemStat::IsAddIfEmpty($wid2, $itemid2);
+            self::mquery("INSERT INTO itemcorr", Array(
+                "windowid1" => $wid1,
+                "windowid2" => $wid2,
+                "itemid1" => $itemid1,
+                "itemid2" => $itemid2,
+                "corr" => $corr,
+                "cnt" => $cnt
+            ));
+        }
+    }
+
     public function IcCompute($wid1, $wid2, $itemids, $w1_start, $w1_end, $w2_start, $w2_end, $tp, $minv, $maxv, $all=false, $noinsert = false) {
         $ckey = "IcCompute " . join(".", func_get_args());
         $rows = self::$cache->load($ckey);
@@ -483,13 +500,13 @@ class ItemCorr extends Monda {
                             "windowid2" => $wid2,
                             "itemid1" => $itemid1,
                             "itemid2" => $itemid2,
-                            "corr" => ($itemid1 == $itemid2),
+                            "corr" => (int) ($itemid1 == $itemid2),
                             "cnt" => 0
                         );
                         $rows[]=$wrow;
                         if (!$noinsert) {
                             try {
-                                $iic = self::mquery("INSERT INTO itemcorr", $wrow);
+                                self::IcAddIfEmpty($wid1,$wid2,$itemid1,$itemid2,(int) ($itemid1 == $itemid2),0);
                             } catch (Nette\Database\UniqueConstraintViolationException $e) {
                                 
                             }
@@ -524,8 +541,8 @@ class ItemCorr extends Monda {
                 $rows[] = $wrow;
                 $rows_added++;
                 if (!$noinsert) {
-                    self::mquery("DELETE FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $icrow->windowid1, $icrow->windowid2, $icrow->itemid1, $icrow->itemid2);
-                    $iic = self::mquery("INSERT INTO itemcorr", $wrow);
+                    self::IcAddIfEmpty($icrow->windowid1,$icrow->windowid2,$icrow->itemid1,$icrow->itemid2,
+                            $icrow->corr,$icrow->cnt);
                 }
             }
             CliDebug::info(sprintf("Rows: $rows_added, interval:<%f,%f>,", $mincorr, $maxcorr));
@@ -545,7 +562,11 @@ class ItemCorr extends Monda {
             foreach ($itemids as $itemid2) {
                 $ret["windowid"] = $tw;
                 if ($itemid1 == $itemid2) {
-                    $ret[$itemid1 . "-" . $itemid2] = 1;
+                    if (Opts::getOpt("ic_notsame")) {
+                        continue;
+                    } else {
+                        $ret[$itemid1 . "-" . $itemid2] = 1;
+                    }
                 } elseif ($itemid1 < $itemid2) {
                     $ret[$itemid1 . "-" . $itemid2] = 0;
                 } else {
@@ -555,9 +576,10 @@ class ItemCorr extends Monda {
         }
         Opts::setOpt("window_ids", Array($tw));
         Opts::setOpt("itemids", $itemids);
+        $ritemids=array_flip($itemids);
         $items = ItemCorr::icSearch()->fetchAll();
         foreach ($items as $item) {
-            if ($item->itemid1 < $item->itemid2 && array_key_exists($item->itemid1,$itemids) && array_key_exists($item->itemid2,$itemids)) {
+            if ($item->itemid1 < $item->itemid2 && array_key_exists($item->itemid1,$ritemids) && array_key_exists($item->itemid2,$ritemids)) {
                 $ret[$item->itemid1 . "-" . $item->itemid2] = $item->corr;
             }
         }

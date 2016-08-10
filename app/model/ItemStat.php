@@ -315,6 +315,13 @@ class ItemStat extends Monda {
         return($ret);
     }
     
+    static public function IsAddIfEmpty($windowid,$itemid) {
+        $i=Monda::mquery("SELECT itemid FROM itemstat WHERE windowid=? AND itemid=?",$windowid,$itemid);
+        if ($i->getRowCount()==0) {
+            Monda::mquery("INSERT INTO itemstat (windowid,itemid) VALUES (?,?)",$windowid,$itemid);
+        }
+    }
+    
     static public function IsZabbixHistory() {
         $itemids = Opts::getOpt("itemids");
         $windowids = Tw::twToIds();
