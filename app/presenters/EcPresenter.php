@@ -16,11 +16,15 @@ class EcPresenter extends BasePresenter {
 
     public function Help() {
         CliDebug::warn("
-     EventCorr operations
+
+EventCorr operations
             
-     ec:show [common opts]
+     ec:show [-w wid ] [common opts]
+        Show events in given time range
+        
      ec:loi [common opts]
- 
+        Update LOI for timewindows and items which affected events 
+        
      [common opts]
     \n");
         Opts::helpOpts();

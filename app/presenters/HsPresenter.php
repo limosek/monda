@@ -17,15 +17,23 @@ class HsPresenter extends BasePresenter {
 
     public function Help() {
         CliDebug::warn("
-     HostStats operations
+
+HostStats operations
             
      hs:show [common opts]
+        Show hoststat
+
      hs:stats [common opts]
+        Show hoststat statistics
+
      hs:update [common opts]
-        Update hostids for itemids in monda db
+        Update hostids for itemids in monda db (link hosts and items in Monda db)
+        
      hs:delete [common opts]
+        Delete hoststats
+        
      hs:compute [common opts]
-        Compute stats based on host and itemids
+        Compute stats based on host and itemids.
      
     [common opts]
     \n");

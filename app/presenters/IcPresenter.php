@@ -16,15 +16,32 @@ class IcPresenter extends BasePresenter {
 
     public function Help() {
         CliDebug::warn("
-     ItemCorr operations
+
+ItemCorr operations
             
-     ic:show [common opts]
+     ic:show [-w wid] [--items item1[,item2]] [common opts]
+        Show computed item correlations
+
      ic:stats [commom opts]
+        Show item correlation statistics
+
      ic:matrix [common opts]
-     ic:history [common opts]
+        Show correlation matrix
+        
+     ic:history [-w wid] [--triggerids id1[,id2]] --output_mode {csv|arff} [common opts]
+        Show correlation history
+
+     ic:thistory  [-w wid] --triggerids id1[,id2] [common opts]
+        Show correlations based on triggerids and their items
+
      ic:compute [common opts]
+        Compute correlations
+        
      ic:delete [common opts]
+        Delete computed correlations
+
      ic:loi [common opts]
+        Update correlations LOI
  
      [common opts]
     \n");
@@ -151,7 +168,7 @@ class IcPresenter extends BasePresenter {
     
     public function renderTHistory() {
         if (Opts::getOpt("output_mode") == "brief") {
-            self::mexit(3, "This action is possible only with csv output mode.\n");
+            self::mexit(3, "This action is possible only with csv or arff output mode.\n");
         }
         if (count(Opts::getOpt("window_length"))>1) {
             self::mexit(3, "You must select same window length (-l).\n");

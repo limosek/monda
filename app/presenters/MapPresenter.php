@@ -112,44 +112,35 @@ class MapPresenter extends BasePresenter {
     
     function renderHs() {
         if (Opts::isDefault("max_rows")) {
-            Opts::setOpt("max_rows",20);
+            Opts::setOpt("max_rows", 20);
         }
-        if (count(Opts::getOpt("hostids"))==0) {
+        if (count(Opts::getOpt("hostids")) == 0) {
             throw New Exception("No hosts to create report. Use --hostids.");
         }
-        if (count(Opts::getOpt("hostids"))>1) {
+        if (count(Opts::getOpt("hostids")) > 1) {
             throw New Exception("Host report needs only one host.");
         }
-        $hostids=Opts::getOpt("hostids");
+        $hostids = Opts::getOpt("hostids");
         $items = ItemStat::IsSearch()->fetchAll();
         if (count($items) == 0) {
             throw New Exception("No items to create report.");
         }
-        $istats = ItemStat::IsStats();
+        $isstats = ItemStat::IsStats();
         $wstats = Tw::twStats();
-        $windows = Tw::twSearch()->fetchAll();
-        foreach ($windows as $w) {
-            Opts::setOpt("window_ids",Array($w->id));
-            $is=ItemStat::IsSearch()->fetchAll();
-            foreach ($is as $c=>$i) {
-                if (Opts::getOpt("output_verbosity") == "expanded") {
-                    $i->key=IsPresenter::expandItem($i->itemid,true);
-                    $i->url1=Util::zabbixGraphUrl1(Array($i->itemid), $w->fstamp, $w->seconds);
-                    $i->url2=Util::zabbixGraphUrl2(Array($i->itemid), $w->fstamp, $w->seconds);
-                } else {
-                    $i->key=$i->itemid;
-                    $i->url1="";
-                    $i->url2="";
-                }
-                $i->class = Array();
-                $i = Util::addclass($i, "loi" . Util::numtostep($i->loi, $istats->minloi, $istats->maxloi, 10));
+        foreach ($isstats as $c => $i) {
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                $i->key = IsPresenter::expandItem($i->itemid, true);
+                $i->url1 = Util::zabbixGraphUrl1(Array($i->itemid), $w->fstamp, $w->seconds);
+                $i->url2 = Util::zabbixGraphUrl2(Array($i->itemid), $w->fstamp, $w->seconds);
+            } else {
+                $i->key = $i->itemid;
+                $i->url1 = "";
+                $i->url2 = "";
             }
-            $w->is=$is;
-            $w->class = Array();
-            $w = Util::addclass($w, "loi" . Util::numtostep($w->loi, $wstats->minloi, $wstats->maxloi, 10));
         }
-        $this->template->windows = $windows;
-        $this->template->title=sprintf("Monda Host satus for %s",  HsPresenter::expandHost($hostids[0]));
+        $this->template->is = $isstats;
+        $this->template->wstats=$wstats;
+        $this->template->title = sprintf("Monda Host satus for %s", HsPresenter::expandHost($hostids[0]));
     }
 
     function TwTreeMap($tree, $twids, $stats, $id = false) {

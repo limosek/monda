@@ -17,11 +17,12 @@ class GmPresenter extends MapPresenter {
 
     public function Help() {
         CliDebug::warn("
-     Graphviz map operations
+
+Graphviz map operations
      
-     gm:icw [common opts]
+     gm:icw -w wid [common opts]
      gm:tws [common opts]
-     gm:hs [common opts]
+     gm:hs --hosts host [common opts]
      
     [common opts]
      \n");
@@ -176,7 +177,6 @@ class GmPresenter extends MapPresenter {
     public function renderHs() {
         $this->setLayout(false);
         parent::renderHs();
-        print_r($this->template->windows);exit;
         $this->template->setFile(APP_DIR . "/templates/gm/hs.latte");
         ob_start();
         $this->template->render();

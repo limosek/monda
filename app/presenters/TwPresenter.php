@@ -103,7 +103,8 @@ class TwPresenter extends BasePresenter {
     
     public function Help() {
         CliDebug::warn("
-     Time Window operations
+
+Time Window operations
      
      tw:create [common opts]
         Create window(s) for specified period and length
@@ -117,7 +118,7 @@ class TwPresenter extends BasePresenter {
      tw:stats [common opts]
         Show statistics about timewindows in db
  
-    tw:modify [common opts]
+     tw:modify [common opts]
         Modify or rename window(s)
 
      tw:loi [common opts]

@@ -16,14 +16,26 @@ class IsPresenter extends BasePresenter {
 
     public function Help() {
         CliDebug::warn("
-     ItemStats operations
+            
+ItemStats operations
             
      is:show [common opts]
+        Show itemstats stored in Monda database
+        
      is:stats [common opts]
-     is:history [common opts]
+        Show itemstats statistics
+        
+     is:history [-w wid] [--triggerids id1[,id2]] --output_mode {csv|arff} [common opts]
+        Show Zabbix history in specified interval
+
      is:compute [common opts]
+        Compute itemstats
+
      is:delete [common opts]
+        Delete itemstats 
+
      is:loi [common opts]
+        Update itemstat LOI
 
      [common opts]
     \n");
