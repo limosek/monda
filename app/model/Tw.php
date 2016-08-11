@@ -161,7 +161,8 @@ class Tw extends Monda {
                 timewindow.avgcv AS cv,
                 timewindow.avgcnt AS cnt,
                 serverid,     
-                COUNT(itemstat.itemid) AS itemcount
+                COUNT(itemstat.itemid) AS itemcount,
+                (SELECT COUNT(*) from itemcorr WHERE windowid1=id OR windowid2=id) AS iccount
             FROM timewindow
             LEFT JOIN itemstat ON (windowid=id)
             WHERE (

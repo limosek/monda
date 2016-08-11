@@ -165,7 +165,7 @@ class HostStat extends Monda {
         $hostids = Opts::getOpt("hostids");
         $itemids = self::hosts2itemids($hostids);
         $wids = Tw::twToIds();
-        CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items...", count($wids), count($hostids), count($itemids)));
+        CliDebug::warn(sprintf("Need to update HostStat for %d windows, %d hosts and %d items\n", count($wids), count($hostids), count($itemids)));
         if (count($wids) == 0 || count($hostids) < 1 || count($itemids) < 1) {
             return(false);
         }
@@ -176,9 +176,9 @@ class HostStat extends Monda {
         }
         $ius = self::mquery("SELECT COUNT(*) AS cnt FROM itemstat WHERE itemid IN (?) AND windowid IN (?) AND (hostid IS NULL OR hostid=-1)", $itemids, $wids)->fetch();
         if ($ius->cnt > 0) {
-            foreach ($hostids as $hostid) {
+            foreach ($hostids as $i=>$hostid) {
                 $hitemids = self::hosts2itemids(array($hostid));
-                CliDebug::info(sprintf("Host %d of %d (%d items),", $hostid, count($hostids), count($hitemids)));
+                CliDebug::info(sprintf("Host %d (%d of %d, %d items)\n", $hostid, $i, count($hostids), count($hitemids)));
                 if (count($hitemids) < 1)
                     continue;
                 $ius = self::mquery("
@@ -191,8 +191,6 @@ class HostStat extends Monda {
             SET hostid=?
             WHERE itemid IN (?) AND windowid IN (?) AND hostid IS NULL", -1, $itemids, $wids);
         }
-        
-        CliDebug::warn("\n");
     }
 
     static function hsDelete() {

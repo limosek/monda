@@ -44,6 +44,27 @@ class CronPresenter extends IsPresenter {
         Opts::addOpt(
                 false, "sub_cron_targets", "Compute everything even for smaller cron targets (eg. for all weeks in month)", false, false
         );
+        Opts::addOpt(
+                false, "cron_skip_create", "Skip creating windows", false, false
+        );
+        Opts::addOpt(
+                false, "cron_skip_hoststat", "Skip hoststat computation", false, false
+        );
+        Opts::addOpt(
+                false, "cron_skip_itemstat", "Skip itemstat computation", false, false
+        );
+        Opts::addOpt(
+                false, "cron_skip_tw_loi", "Skip timewindow LOI computation", false, false
+        );
+        Opts::addOpt(
+                false, "cron_skip_itemstat_loi", "Skip itemstat LOI computation", false, false
+        );
+        Opts::addOpt(
+                false, "cron_skip_itemcorr", "Skip correlation computation", false, false
+        );
+        Opts::addOpt(
+                false, "cron_skip_eventcorr", "Skip event correlation computation", false, false
+        );
 
         Opts::setDefaults();
         Opts::readCfg( Array("Is", "Hs", "Tw", "Ic", "Ec", "Cron"));
@@ -161,7 +182,6 @@ class CronPresenter extends IsPresenter {
             Opts::setOpt("start",$start);
             Opts::setOpt("end",$end);
             Opts::setOpt("window_empty",false);
-            Opts::setOpt("window_length",Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK, Monda::_1MONTH, Monda::_1MONTH28, Monda::_1MONTH30, Monda::_1MONTH31));
             CliDebug::warn(sprintf("== $name postprocess-cron (%s to %s):\n", date("Y-m-d H:i", $start), date("Y-m-d H:i", $end)));
             self::postcompute();
         }
@@ -177,17 +197,29 @@ class CronPresenter extends IsPresenter {
             return(false);
         }
         try {
-            Tw::twMultiCreate();
+            if (!Opts::getOpt("cron_skip_create")) {
+                Tw::twMultiCreate();
+            }
             Opts::setOpt("window_empty", true);
             Opts::setOpt("tw_minloi", -1);
             Opts::setOpt("tw_sort", "start/+");
-            ItemStat::IsMultiCompute();
-            Tw::twLoi();
-            ItemStat::IsLoi();
-            HostStat::hsUpdate();
-            HostStat::hsMultiCompute();
-            HostStat::hsLoi();
-            EventCorr::ecLoi();
+            if (!Opts::getOpt("cron_skip_itemstat")) {
+                ItemStat::IsMultiCompute();
+            }
+            if (!Opts::getOpt("cron_skip_tw_loi")) {
+                Tw::twLoi();
+            }
+            if (!Opts::getOpt("cron_skip_itemstat_loi")) {
+                ItemStat::IsLoi();
+            }
+            if (!Opts::getOpt("cron_skip_hoststat")) {
+                HostStat::hsUpdate();
+                HostStat::hsMultiCompute();
+                HostStat::hsLoi();
+            }
+            if (!Opts::getOpt("cron_skip_eventcorr")) {
+                EventCorr::ecLoi();
+            }
         } catch (Exception $e) {
             CliDebug::warn("No itemstat to compute.\n");
         }
@@ -200,30 +232,18 @@ class CronPresenter extends IsPresenter {
 
         Opts::setOpt("start", $s);
         Opts::setOpt("end", $e);
-        if (!$l) {
-            $l = Monda::_1WEEK;
-        }
-        try {
-            $lengths = Array(Monda::_1HOUR, Monda::_1DAY, Monda::_1WEEK);
-            foreach ($lengths as $length) {
-                if ($length > $l)
-                    continue;
+        Opts::setOpt("window_empty", false);
+        if (!Opts::getOpt("cron_skip_itemcorr")) {
+            try {
                 Opts::setOpt("corr_type", "samewindow");
-                Opts::setOpt("window_length", Array($l));
                 ItemCorr::IcMultiCompute();
-                if ($length == Monda::_1HOUR) {
-                    Opts::setOpt("corr_type", "samehour");
-                    Opts::setOpt("window_length", Array(Monda::_1HOUR));
-                    ItemCorr::IcMultiCompute();
-                }
-                if ($length >= Monda::_1DAY) {
-                    Opts::setOpt("corr_type", "samedow");
-                    Opts::setOpt("window_length", Array(Monda::_1DAY));
-                    ItemCorr::IcMultiCompute();
-                }
+                Opts::setOpt("corr_type", "samehour");
+                ItemCorr::IcMultiCompute();
+                Opts::setOpt("corr_type", "samedow");
+                ItemCorr::IcMultiCompute();
+            } catch (Exception $e) {
+                CliDebug::warn("No interresting items found for window length $l.\n");
             }
-        } catch (Exception $e) {
-            CliDebug::warn("No interresting items found.\n");
         }
     }
 
