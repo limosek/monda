@@ -24,6 +24,9 @@ ItemCorr operations
 
      ic:stats [commom opts]
         Show item correlation statistics
+        
+     ic:twstats [commom opts]
+        Show item correlation statistics (window based)
 
      ic:matrix [common opts]
         Show correlation matrix
@@ -320,20 +323,11 @@ ItemCorr operations
         self::mexit();
     }
 
-    function renderWcorr() {
+    function renderTwStats() {
         $rows = ItemCorr::icTwStats();
         if ($rows) {
             $this->exportdata = $rows->fetchAll();
-            if (Opts::getOpt("output_verbosity") == "expanded") {
-                $i = 0;
-                foreach ($this->exportdata as $i => $row) {
-                    $i++;
-                    CliDebug::dbg(sprintf("Processing %d row of %d                 \r", $i, count($this->exportdata)));
-                    $row["key1"] = IsPresenter::expandItem($row->itemid1, true);
-                    $row["key2"] = IsPresenter::expandItem($row->itemid2, true);
-                    $this->exportdata[$i] = $row;
-                }
-            }
+            Opts::setOpt("brief_columns",Array("icnt1","icnt2","windowid1","windowid2"));
             parent::renderShow($this->exportdata);
         }
         self::mexit();

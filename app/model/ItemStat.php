@@ -125,6 +125,7 @@ class ItemStat extends Monda {
     
     static function isStats() {
         Opts::setOpt("max_rows",Monda::_MAX_ROWS);
+        $windowids=Tw::twToIds();
         $itemids=self::isToIds();
         $rows=self::mquery("SELECT 
                 i.itemid AS itemid,
@@ -139,11 +140,12 @@ class ItemStat extends Monda {
                         COUNT(i.windowid) AS wcnt
                     FROM itemstat i
                  WHERE i.itemid IN (?)
+                 AND i.windowid IN (?)
                  AND i.loi IS NOT NULL
                  GROUP BY i.itemid
                  ORDER BY AVG(i.loi)*COUNT(i.windowid) DESC
                  LIMIT ?
-                ",$itemids,Opts::getOpt("max_rows"));
+                ",$itemids,$windowids,Opts::getOpt("max_rows"));
         if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
             CliDebug::warn(sprintf("Limiting output of itemstats to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
         }

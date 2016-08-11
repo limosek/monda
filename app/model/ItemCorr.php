@@ -23,25 +23,23 @@ class ItemCorr extends Monda {
     * @return Nette\Database\Result
     * @throws Exception
     */
-    static function icSearchItemsToIc() {
-        $itemids=ItemStat::isToIds();
-        if (count($itemids)>0) {
-            $itemidssql=sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND",join(",",$itemids),join(",",$itemids));
+   static function icSearchItemsToIc() {
+        $itemids = ItemStat::isToIds();
+        if (count($itemids) > 0) {
+            $itemidssql = sprintf("is1.itemid IN (%s) AND is2.itemid IN (%s) AND", join(",", $itemids), join(",", $itemids));
         } else {
-            $itemidssql="";
+            $itemidssql = "";
         }
         if (is_array(Opts::getOpt("hostids"))) {
-            $hostidssql=sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND",join(",",Opts::getOpt("hostids")),join(",",Opts::getOpt("hostids")));
+            $hostidssql = sprintf("is1.hostid IN (%s) AND is2.hostid IN (%s) AND", join(",", Opts::getOpt("hostids")), join(",", Opts::getOpt("hostids")));
         } else {
-            $hostidssql="";
+            $hostidssql = "";
         }
-        $wids=Tw::twToIds();
-        if (count($wids)>0) {
-            $windowidsql=sprintf("is1.windowid IN (%s) AND is2.windowid IN (%s) AND",join(",",$wids),join(",",$wids));
-        } else {
+        $wids = Tw::twToIds();
+        if (count($wids) == 0) {
             throw New Exception("No windows matched query.");
         }
-        
+
         if (preg_match("#/#", Opts::getOpt("ic_sort"))) {
             List($sc, $so) = preg_split("#/#", Opts::getOpt("ic_sort"));
         } else {
@@ -49,16 +47,16 @@ class ItemCorr extends Monda {
             $so = "+";
         }
         if (Opts::getOpt("ic_all")) {
-            $full="true";
+            $full = "true";
         } else {
-            $full="false";
+            $full = "false";
         }
         switch ($sc) {
             case "start":
                 $sortsql = "tw1.tfrom,is1.itemid,tw2.tfrom,is2.itemid";
                 break;
             case "loi":
-                $sortsql = "(tw1.loi+tw2.loi+is1.loi+is2.loi)";
+                $sortsql = "(tw1.tfrom,tw2.tfrom,tw1.loi+tw2.loi+is1.loi+is2.loi)";
                 break;
             case "id":
                 $sortsql = "is1.itemid,is2.itemid";
@@ -67,35 +65,37 @@ class ItemCorr extends Monda {
         if ($so == "-") {
             $sortsql.=" DESC";
         }
-        
+
         switch (Opts::getOpt("corr_type")) {
             case "samewindow":
-                $join1sql="is1.windowid=is2.windowid AND is1.itemid<>is2.itemid";
-                $sameiwsql="AND is1.itemid<>is2.itemid
+                $join1sql = "is1.windowid=is2.windowid AND is1.itemid<>is2.itemid";
+                $sameiwsql = "AND is1.itemid<>is2.itemid
                             AND is1.windowid=is2.windowid";
                 break;
             case "samehour":
-                $join1sql="is1.itemid=is2.itemid AND is1.windowid<>is2.windowid";
-                $sameiwsql="AND is1.itemid=is2.itemid
-                            AND tw1.seconds=".Monda::_1HOUR."
+                $join1sql = "is1.itemid=is2.itemid AND is1.windowid<>is2.windowid";
+                $sameiwsql = "AND is1.itemid=is2.itemid
+                            AND tw1.seconds=" . Monda::_1HOUR . "
                             AND is1.windowid<>is2.windowid
                             AND extract(hour from tw1.tfrom)=extract(hour from tw2.tfrom)";
                 break;
             case "samedow":
-                $join1sql="is1.itemid=is2.itemid AND is1.windowid<>is2.windowid";
-                $sameiwsql="AND is1.itemid=is2.itemid
-                            AND tw1.seconds=".Monda::_1DAY."
+                $join1sql = "is1.itemid=is2.itemid AND is1.windowid<>is2.windowid";
+                $sameiwsql = "AND is1.itemid=is2.itemid
+                            AND tw1.seconds=" . Monda::_1DAY . "
                             AND is1.windowid<>is2.windowid
                             AND extract(dow from tw1.tfrom)=extract(dow from tw2.tfrom)";
-                break;              
+                break;
         }
         if (Opts::getOpt("ic_notsamehost")) {
-            $hostsql="AND is1.hostid <> is2.hostid";
+            $hostsql = "AND is1.hostid <> is2.hostid";
         } else {
-            $hostsql="";
+            $hostsql = "";
         }
-        $rows=self::mquery(
-                "SELECT
+        $allrows = Array();
+        foreach ($wids as $wid) {
+            $rows = self::mquery(
+                            "SELECT
                         is1.itemid AS itemid1,is2.itemid AS itemid2,
                         is1.windowid AS windowid1, is2.windowid AS windowid2,
                         is1.loi AS item1loi, is2.loi AS item2loi,
@@ -113,9 +113,8 @@ class ItemCorr extends Monda {
                  WHERE 
                     $itemidssql
                     $hostidssql
-                    $windowidsql 
-                    $hostsql
-                         true
+                    $hostsql true
+                    AND tw1.id=?
                     AND tw1.seconds=tw2.seconds
                     AND (is1.windowid<=is2.windowid)
                     AND (is1.itemid<=is2.itemid)
@@ -123,14 +122,18 @@ class ItemCorr extends Monda {
                     AND ((is1.loi>? AND is2.loi>?) OR $full)
                     AND ic.corr IS NULL
                  ORDER BY $sortsql
-                 LIMIT ?",Opts::getOpt("is_minloi"),Opts::getOpt("is_minloi"),Opts::getOpt("max_rows")
-                );
-        if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
-            CliDebug::warn(sprintf("Limiting output of possible correlations to %d of %d total combinations! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows"),count($itemids)*count($itemids)));
+                 LIMIT ?", $wid, Opts::getOpt("is_minloi"), Opts::getOpt("is_minloi"), Opts::getOpt("max_rows")
+            );
+            if ($rows->getRowCount() == Opts::getOpt("max_rows")) {
+                //CliDebug::warn(sprintf("Limiting output of possible correlations to %d of %d total combinations! Use max_rows parameter to increase!\n", Opts::getOpt("max_rows"), count($itemids) * count($itemids)));
+            }
+            foreach ($rows as $row) {
+                $allrows[] = $row;
+            }
         }
-        return($rows);
+        return($allrows);
     }
-    
+
     /**
     * Search computed item correlations
     * @return Nette\Database\Result
@@ -240,13 +243,14 @@ class ItemCorr extends Monda {
     */
     static function icToIds($withwindows=false,$computed=false) {
         if (!$computed) {
-            $ids=self::icSearchItemsToIc(); 
+            $rows=self::icSearchItemsToIc(); 
         } else {
             $ids=self::icSearch();
+            if ($ids) {
+                $rows=$ids->fetchAll();
+            }
         }
-        if ($ids) {
-            $rows=$ids->fetchAll();
-        }
+        
         if (count($rows)==0) {
             return(false);
         }
@@ -359,8 +363,8 @@ class ItemCorr extends Monda {
         }
         $rows=self::mquery(
                 "SELECT
-                        COUNT(DISTINCT itemid1) AS icnt1,COUNT(DISTINCT itemid2) AS icnt2,
                         windowid1,windowid2,
+                        COUNT(DISTINCT itemid1) AS icnt1,COUNT(DISTINCT itemid2) AS icnt2,
                         AVG(ic.corr)*COUNT(DISTINCT itemid1)*COUNT(DISTINCT itemid2) AS icorr,
                         AVG(corr) AS acorr,
                         AVG(ic.cnt) AS acnt,
@@ -370,8 +374,11 @@ class ItemCorr extends Monda {
                  JOIN itemstat is2 ON (ic.itemid2=is2.itemid AND ic.windowid2=is2.windowid)
                  WHERE 
                     (
+                     (itemid1<>itemid2) AND (windowid1=windowid2)
+                     OR
                      (itemid1=itemid2) AND (windowid1<>windowid2)
-                    ) AND
+                    )
+                    AND
                     ((ic.corr>? AND ic.corr<?) OR ic.corr IS NULL)
                     AND
                     $itemidssql
@@ -396,7 +403,7 @@ class ItemCorr extends Monda {
         $wids = self::extractIds($cids, array("windowid1", "windowid2", "itemid1", "itemid2"));
         $itemids = Array_unique(Array_merge($wids["itemid1"], $wids["itemid2"]));
         $windowids = Array_unique(Array_merge($wids["windowid1"], $wids["windowid2"]));
-        CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%d items and %d windows, mode %s, seconds=%s)...", count($cids), count($itemids), count($windowids), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
+        CliDebug::warn(sprintf("Need to look on correlations for %d combinations (%d items and %d windows, mode %s, seconds=%s)\n", count($cids), count($itemids), count($windowids), Opts::getOpt("corr_type"), join(",", Opts::getOpt("window_length"))));
         if (count($cids) == 0) {
             return(false);
         }
@@ -415,8 +422,11 @@ class ItemCorr extends Monda {
                 }
                 $j++;
                 $w2 = Tw::twGet($wid2);
+                $itemscount=0;
                 foreach (array_chunk($itemids, Opts::getOpt("ic_max_items_at_once")) as $itemids_part) {
-                    CliDebug::info(sprintf("Windows %d-%d (items %s):", $wid1, $wid2,join(",",$itemids_part)));
+                    $itemscount+=count($itemids_part);
+                    CliDebug::info(sprintf("Windows %d-%d (%.1f%%), total %.2f%%.\n", $wid1, $wid2,100*$itemscount/count($itemids),100*$i/count($windowids)));
+                    CliDebug::dbg(sprintf("Items: %s\n", join(",",$itemids_part)));
                     self::IcCompute(
                             $wid1,$wid2,
                             $itemids_part,
@@ -452,7 +462,7 @@ class ItemCorr extends Monda {
     }
 
     public function IcCompute($wid1, $wid2, $itemids, $w1_start, $w1_end, $w2_start, $w2_end, $tp, $minv, $maxv, $all=false, $noinsert = false) {
-        $ckey = "IcCompute " . join(".", func_get_args());
+        $ckey = "IcCompute " . serialize(func_get_args());
         $rows = self::$cache->load($ckey);
         if ($rows === NULL) {
             $icrows = self::zcquery("
@@ -545,7 +555,7 @@ class ItemCorr extends Monda {
                             $icrow->corr,$icrow->cnt);
                 }
             }
-            CliDebug::info(sprintf("Rows: $rows_added, interval:<%f,%f>,", $mincorr, $maxcorr));
+            CliDebug::info(sprintf("Rows: $rows_added, corr range:<%f,%f>\n", $mincorr, $maxcorr));
             if (!$noinsert) {
                 self::mcommit();
             }
