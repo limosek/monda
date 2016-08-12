@@ -100,7 +100,6 @@ CREATE TABLE timewindow (
     found bigint,
     processed bigint,
     ignored bigint,
-    stddev0 bigint,
     lowavg bigint,
     lowcnt bigint,
     loi integer DEFAULT 0,

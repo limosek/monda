@@ -1,7 +1,6 @@
 #!/bin/sh
 
 export XDEBUG_CONFIG="idekey=netbeans-xdebug" 
+monda=$(dirname $0)/monda.php
 
-php5 -dxdebug.remote_autostart=On -dxdebug.remote_enable=on $(dirname $0)/monda.php "$@"
-
- 
+env php -dxdebug.remote_autostart=On -dxdebug.remote_enable=on $monda "$@"

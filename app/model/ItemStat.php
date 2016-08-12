@@ -6,6 +6,7 @@ use Nette,
     Nette\Security\Passwords,
     Tracy\Debugger,
     Exception,
+    App\Model\Opts,
     Nette\Utils\DateTime as DateTime,
     Nette\Database\Context;
 
@@ -229,6 +230,7 @@ class ItemStat extends Monda {
         $sumcnt=0;
         while ($row=$rows->fetch()) {
             CliDebug::info(".");
+            $sumcnt+=$row->cnt;
             Monda::sadd("found");
             if ($row->stddev_<=Opts::getOpt("min_stddev")) {
                 Monda::sadd("ignored");
@@ -254,7 +256,6 @@ class ItemStat extends Monda {
             }
             Monda::sadd("processed");
             $sumcv+=$cv;
-            $sumcnt+=$row->cnt;
             Monda::mquery("INSERT INTO itemstat "
                     . "       (windowid,    itemid, min_,   max_,   avg_,   stddev_,    cnt,    cv) "
                     . "VALUES (?       ,    ?,      ?,      ?,      ?,      ?,          ?,      ?)",
@@ -281,7 +282,7 @@ class ItemStat extends Monda {
                     Monda::sget("lowstddev"),
                     Monda::sget("lowcv"),
                     $sumcv/Monda::sget("processed"),
-                    $sumcnt/Monda::sget("found"),
+                    $sumcnt/Monda::sget("processed"),
                     $wid);
                 }
                 Monda::sreset();

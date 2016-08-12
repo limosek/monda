@@ -3,7 +3,9 @@
 namespace App\Presenters;
 
 use \Exception,Nette,
-	App\Model,App\Model\Opts,App\Model\Monda,
+	App\Model,
+        App\Model\Opts,
+        App\Model\Monda,
         Tracy\Debugger,
         App\Model\CliDebug,
         Nette\Utils\DateTime as DateTime;
@@ -19,6 +21,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     public $arffinfo;
 
     public function mexit($code = 0, $msg = "") {
+        if (Opts::getOpt("sql_profile") || Opts::getOpt("api_profile")) Monda::profileDump();
         if (!$msg) {
             if (array_key_exists("exception", $this->params)) {
                 $msg = $this->params["exception"]->getMessage() . "\n";
@@ -117,6 +120,12 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         );
         Opts::addOpt(
                 "Mp", "monda_db_pw", "Use this monda Database password", "M0nda", "M0nda"
+        );
+        Opts::addOpt(
+                false, "sql_profile", "Output SQL profiling info into out/profile directory", false, false
+        );
+        Opts::addOpt(
+                false, "api_profile", "Output API profiling info into out/profile directory", false, false
         );
         Opts::addOpt(
                 "ZU", "zabbix_url", "Base of zabbix urls", "http://localhost/zabbix", "http://localhost/zabbix"

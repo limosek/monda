@@ -34,15 +34,18 @@ class Monda extends Nette\Object {
     static $api;   // ZabbixApi class
     static $zq;    // Zabbix query link id
     static $mq;    // Monda query link id
-    static $lastsql;
+    static $profile;
     static $stats;
+    static $lastsql;
 
     static function init_api() {
         if (Opts::getOpt("zabbix_api") && !Opts::getOpt("help")) {
             if (Opts::getOpt("zabbix_api_url") && Opts::getOpt("zabbix_api_user") && Opts::getOpt("zabbix_api_pw")) {
                 CliDebug::dbg("Initialising Zabbix API\n", Debugger::DEBUG);
                 try {
+                    if (Opts::getOpt("api_profile")) self::profileStart("init_api");
                     self::$api = new ZabbixApi(Opts::getOpt("zabbix_api_url"), Opts::getOpt("zabbix_api_user"), Opts::getOpt("zabbix_api_pw"));
+                    if (Opts::getOpt("api_profile")) self::profileEnd("init_api");
                 } catch (Exception $e) {
                     throw $e;
                 }
@@ -61,6 +64,7 @@ class Monda extends Nette\Object {
     }
 
     static function init_sql() {
+        if (Opts::getOpt("sql_profile")) self::profileStart("init_sql");
         CliDebug::dbg("Using Zabbix db (".Opts::getOpt("zabbix_dsn").")\n");
         $c=New Connection(
                 Opts::getOpt("zabbix_dsn"),
@@ -97,6 +101,7 @@ class Monda extends Nette\Object {
         } else {
             throw Exception("Cannot connect to monda or zabbix db");
         }
+        if (Opts::getOpt("sql_profile")) self::profileEnd("init_sql");
     }
     
     static function apiCmd($cmd,$req) {
@@ -111,7 +116,9 @@ class Monda extends Nette\Object {
             }
             CliDebug::dbg("Zabbix Api query ($cmd)\n");
             try {
+                if (Opts::getOpt("api_profile")) self::profileStart("api_cmd $cmd");
                 $ret = self::$api->$cmd($req);
+                if (Opts::getOpt("api_profile")) self::profileEnd("api_cmd $cmd");
             } catch (Exception $e) {
                 throw $e;
             }
@@ -137,7 +144,9 @@ class Monda extends Nette\Object {
         $psql=new SqlPreprocessor(self::$zq->connection);
         List($sql)=$psql->process($args);
         CliDebug::dbg("zquery(\n$sql\n)=\n");
+        if (Opts::getOpt("sql_profile")) self::profileStart("zquery $sql");
         $ret=self::$zq->queryArgs(array_shift($args),$args);
+        if (Opts::getOpt("sql_profile")) self::profileEnd("zquery $sql");
         CliDebug::dbg(sprintf("%d\n",count($ret)));
         self::$lastsql=$sql;
         return($ret);
@@ -171,7 +180,9 @@ class Monda extends Nette\Object {
         $psql=new SqlPreprocessor(self::$mq->connection);
         List($sql)=$psql->process($args);
         CliDebug::dbg("mquery(\n$sql\n)\n");
+        if (Opts::getOpt("sql_profile")) self::profileStart("mquery $sql");
         $ret=self::$mq->queryArgs(array_shift($args),$args);
+        if (Opts::getOpt("sql_profile")) self::profileEnd("mquery $sql");
         self::$lastsql=$sql;
         return($ret);
     }
@@ -275,12 +286,30 @@ class Monda extends Nette\Object {
         echo "\n";
     }
     
-    static function profile($msg="") {
-        if (!self::$lastns) {
-            self::$lastns=microtime(true);
-        } else {
-            echo sprintf("$msg%.2f\n",microtime(true)-self::$lastns);
-            self::$lastns=microtime(true);
+    static function profileStart($id) {
+        $key=md5($id);
+        self::$profile[$key] =Array(
+            "last" => microtime(true),
+            "id" => $id,
+            "count" => 1,
+            "S" =>0
+        );
+    }
+
+    static function profileEnd($id) {
+        $key=md5($id);
+        self::$profile[$key]["S"]+= microtime(true)-self::$profile[$key]["last"];
+        self::$profile[$key]["count"]++;
+    }
+    
+    static function profileDump() {
+        $out=print_r(self::$profile,true);
+        foreach (self::$profile as $key=>$data) {
+            $ms=(int) $data["S"]*1000;
+            $count=$data["count"];
+            $f=fopen(APP_DIR."/../out/profile/${ms}_${count}_monda.txt","w");
+            fputs($f,$data["id"]);
+            fclose($f);
         }
     }
     
