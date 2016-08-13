@@ -20,7 +20,7 @@ fi
 
 octave -q <<EOF
 
-h=dlmread("${graph}_ic.txt");
+h=dlmread("${outdir}/${graph}_ic.txt");
 s=size(h,1);
 x=[1:s];
 y=[1:s];

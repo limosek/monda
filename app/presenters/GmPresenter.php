@@ -44,6 +44,8 @@ Graphviz map operations
         );
         Opts::addOpt(false, "gm_graph", "Selector for graphviz map type to create", "dot", "dot", Array("dot", "circo", "fdp")
         );
+        Opts::addOpt(false, "gm_max_corrs_per_tw", "Maximum correlation per tw", 10, 10
+        );
         Opts::addOpt(
                 false, "anonymize_urls", "Anonymize urls", false, "no"
         );
@@ -82,9 +84,9 @@ Graphviz map operations
         if (sizeof($ics) > 0) {
             foreach ($ics as $ic) {
                 Opts::setOpt("window_ids", Array($ic->windowid1, $ic->windowid2));
-                Opts::setOpt("max_rows", 10);
+                Opts::setOpt("max_rows", Opts::getOpt("gm_max_corrs_per_tw"));
                 $itemids = ItemCorr::icToIds(false, true);
-                $wcorr[$ic->windowid1][$ic->windowid2] = $ic->acorr * 10;
+                $wcorr[$ic->windowid1][$ic->windowid2] = $ic->acorr ;
                 $w1 = Tw::twGet($ic->windowid1);
                 $w2 = Tw::twGet($ic->windowid2);
                 $wcorrwids[$ic->windowid1]=1;

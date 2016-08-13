@@ -55,6 +55,9 @@ class TwPresenter extends BasePresenter {
         Opts::addOpt(
                 false, "tw_filter_hod", "Filter hour of day (0-23)", false, "all"
         );
+        Opts::addOpt(
+                false, "tw_icstats", "Report even itemcorr statistics per window", false, false
+        );
         Opts::setDefaults();
         Opts::readCfg(Array("global", "Tw"));
         Opts::readOpts($this->params);

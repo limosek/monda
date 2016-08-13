@@ -136,6 +136,11 @@ class Tw extends Monda {
         } else {
             $hodsql="";
         }
+        if (Opts::getOpt("tw_icstats")) {
+            $icorrsql=",(SELECT COUNT(*) from itemcorr WHERE windowid1=id OR windowid2=id) AS iccount";
+        } else {
+            $icorrsql="";
+        }
         $rows = Monda::mquery("
             SELECT 
                 id,parentid,
@@ -161,8 +166,8 @@ class Tw extends Monda {
                 timewindow.avgcv AS cv,
                 timewindow.avgcnt AS cnt,
                 serverid,     
-                COUNT(itemstat.itemid) AS itemcount,
-                (SELECT COUNT(*) from itemcorr WHERE windowid1=id OR windowid2=id) AS iccount
+                COUNT(itemstat.itemid) AS itemcount
+                $icorrsql
             FROM timewindow
             LEFT JOIN itemstat ON (windowid=id)
             WHERE (
@@ -321,16 +326,21 @@ class Tw extends Monda {
                 extract(epoch from MAX(tfrom)) AS maxfstamp,
                 extract(epoch from MAX(tfrom + (seconds||' seconds')::INTERVAL)) AS maxtstamp,
                 MIN(seconds) AS minlength,
+                AVG(seconds) AS avglength,
                 MAX(seconds) AS maxlength,
                 MIN(found) AS minfound,
+                AVG(found) AS avgfound,
                 MAX(found) AS maxfound,
                 MIN(lowstddev) AS minstddev,
                 MAX(lowstddev) AS maxstddev,
                 MIN(processed) AS minprocessed,
+                AVG(processed) AS avgprocessed,
                 MAX(processed) AS maxprocessed,
                 MIN(ignored) AS minignored,
+                AVG(ignored) AS avgignored,
                 MAX(ignored) AS maxignored,
                 MIN(loi) AS minloi,
+                AVG(loi) AS avgloi,
                 MAX(loi) AS maxloi,
                 MIN(loi::float/(seconds/3600)) AS minloih,
                 MAX(loi::float/(seconds/3600)) AS maxloih,

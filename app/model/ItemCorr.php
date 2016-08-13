@@ -114,7 +114,7 @@ class ItemCorr extends Monda {
                     $itemidssql
                     $hostidssql
                     $hostsql true
-                    AND tw1.id=?
+                    AND tw1.id=? AND tw2.id IN (?)
                     AND tw1.seconds=tw2.seconds
                     AND (is1.windowid<=is2.windowid)
                     AND (is1.itemid<=is2.itemid)
@@ -122,7 +122,7 @@ class ItemCorr extends Monda {
                     AND ((is1.loi>? AND is2.loi>?) OR $full)
                     AND ic.corr IS NULL
                  ORDER BY $sortsql
-                 LIMIT ?", $wid, Opts::getOpt("is_minloi"), Opts::getOpt("is_minloi"), Opts::getOpt("max_rows")
+                 LIMIT ?", $wid, $wids, Opts::getOpt("is_minloi"), Opts::getOpt("is_minloi"), Opts::getOpt("max_rows")
             );
             if ($rows->getRowCount() == Opts::getOpt("max_rows")) {
                 //CliDebug::warn(sprintf("Limiting output of possible correlations to %d of %d total combinations! Use max_rows parameter to increase!\n", Opts::getOpt("max_rows"), count($itemids) * count($itemids)));
@@ -159,12 +159,10 @@ class ItemCorr extends Monda {
                 $corrsql="AND ic.windowid1=ic.windowid2";
                 break;
             case "samehour":
-                $opts->length=Array(Monda::_1HOUR);
-                $corrsql="AND ic.windowid1<>ic.windowid2";
+                $corrsql="AND ic.windowid1<>ic.windowid2 AND tw.seconds=".Monda::_1HOUR;
                 break;
             case "samedow":
-                $opts->length=Array(Monda::_1DAY);
-                $corrsql="AND ic.windowid1<>ic.windowid2";
+                $corrsql="AND ic.windowid1<>ic.windowid2 AND tw.seconds=".Monda::_1DAY;
                 break;              
         }
         if (preg_match("#/#", Opts::getOpt("ic_sort"))) {
@@ -361,6 +359,17 @@ class ItemCorr extends Monda {
         } else {
             return(false);
         }
+        switch (Opts::getOpt("corr_type")) {
+            case "samewindow":
+                $corrsql="windowid1=windowid2 AND itemid1<>itemid2";
+                break;
+            case "samehour":
+                $corrsql="windowid1<>windowid2 AND itemid1=itemid2 AND tw.seconds=".Monda::_1HOUR;
+                break;
+            case "samedow":
+                $corrsql="ic.windowid1<>ic.windowid2 AND itemid1=itemid2 AND tw.seconds=".Monda::_1DAY;
+                break;              
+        }
         $rows=self::mquery(
                 "SELECT
                         windowid1,windowid2,
@@ -372,11 +381,10 @@ class ItemCorr extends Monda {
                  FROM itemcorr ic
                  JOIN itemstat is1 ON (ic.itemid1=is1.itemid AND ic.windowid1=is1.windowid)
                  JOIN itemstat is2 ON (ic.itemid2=is2.itemid AND ic.windowid2=is2.windowid)
+                 JOIN timewindow tw ON (ic.windowid1=tw.id)
                  WHERE 
                     (
-                     (itemid1<>itemid2) AND (windowid1=windowid2)
-                     OR
-                     (itemid1=itemid2) AND (windowid1<>windowid2)
+                     $corrsql
                     )
                     AND
                     ((ic.corr>? AND ic.corr<?) OR ic.corr IS NULL)
