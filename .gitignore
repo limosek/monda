@@ -1,6 +1,7 @@
 log/*
 temp/*
 out/*
+somtoolbox/*
 
 .DS_Store
 !.gitignore

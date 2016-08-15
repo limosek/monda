@@ -1,9 +1,10 @@
 #!/usr/bin/php
 <?php
+ 
+proc_nice(19);
+declare(ticks=1);
 
 use Tracy\Debugger;
-
-proc_nice(19);
 
 if (getenv("MONDA_TMP")) {
     $tmpdir=getenv("MONDA_TMP");
@@ -39,4 +40,11 @@ if (!getenv("MONDARC")) {
 }
 
 $container = require __DIR__ . '/../app/bootstrap.php';
+
+function sigint_handler() {
+    debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS,5);
+    Monda::profileDump();
+    exit;
+}
+
 $container->getByType('Nette\Application\Application')->run();

@@ -256,6 +256,7 @@ class ItemStat extends Monda {
             }
             Monda::sadd("processed");
             $sumcv+=$cv;
+            CliDebug::info("i");
             Monda::mquery("INSERT INTO itemstat "
                     . "       (windowid,    itemid, min_,   max_,   avg_,   stddev_,    cnt,    cv) "
                     . "VALUES (?       ,    ?,      ?,      ?,      ?,      ?,          ?,      ?)",

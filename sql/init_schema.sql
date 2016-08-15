@@ -42,9 +42,9 @@ CREATE TABLE itemcorr (
     windowid2 integer NOT NULL,
     itemid1 bigint NOT NULL,
     itemid2 bigint NOT NULL,
-    corr double precision NOT NULL,
-    cnt bigint,
-    loi integer DEFAULT 0
+    corr double precision NOT NULL DEFAULT 0,
+    cnt bigint NOT NULL DEFAULT 0,
+    loi integer NOT NULL DEFAULT 0
 );
 
 
@@ -368,6 +368,9 @@ ALTER TABLE ONLY itemcorr
 ALTER TABLE ONLY itemcorr
     ADD CONSTRAINT ic_itemid2 FOREIGN KEY (itemid2, windowid2) REFERENCES itemstat(itemid, windowid);
 
+
+ALTER TABLE itemcorr
+  ADD CONSTRAINT ic_itemduplicate CHECK (windowid1 = windowid2 AND itemid1 <= itemid2 OR windowid1 < windowid2);
 
 --
 -- Name: p_host1; Type: FK CONSTRAINT; Schema: public; Owner: monda

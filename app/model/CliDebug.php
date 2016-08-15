@@ -46,6 +46,9 @@ class CliDebug {
             fwrite(STDERR,"Unknown log level ".self::getLevel()."!\n");
         } else {
             self::$level=$level;
+            if (self::$level==0) {
+                pcntl_signal(SIGINT, 'sigint_handler');
+            }
         }
     }
     

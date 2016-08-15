@@ -7,4 +7,3 @@ mkdir -p $pdir
 
 env php -d 'xdebug.profiler_enable=1' -d "xdebug.profiler_output_dir=$pdir" $monda "$@" --sql_profile --api_profile
 
-ls out/profile/*monda.txt | sort -n -r

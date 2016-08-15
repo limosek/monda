@@ -143,12 +143,21 @@ class Monda extends Nette\Object {
         }
         $psql=new SqlPreprocessor(self::$zq->connection);
         List($sql)=$psql->process($args);
-        CliDebug::dbg("zquery(\n$sql\n)=\n");
-        if (Opts::getOpt("sql_profile")) self::profileStart("zquery $sql");
+        CliDebug::info("zquery(".trim(strtok(trim($sql), " ")));
+        CliDebug::dbg("$sql");
+        if (Opts::getOpt("sql_profile")) {
+            self::profileStart("zquery $sql");
+            self::profileStart("zquery");
+        }
         $ret=self::$zq->queryArgs(array_shift($args),$args);
-        if (Opts::getOpt("sql_profile")) self::profileEnd("zquery $sql");
-        CliDebug::dbg(sprintf("%d\n",count($ret)));
+        if (Opts::getOpt("sql_profile")) {
+            self::profileEnd("zquery $sql");
+            self::profileEnd("zquery");
+        }
         self::$lastsql=$sql;
+        CliDebug::info(")");
+        CliDebug::dbg(sprintf("Result: %d rows (called %d times, took %.2f seconds, total %.2f seconds.\n",
+                $ret->getRowCount(),self::profileGetCnt("zquery"),self::profileGetLast("zquery"),self::profileGetSeconds("zquery")));
         return($ret);
     }
     
@@ -179,11 +188,21 @@ class Monda extends Nette\Object {
         }
         $psql=new SqlPreprocessor(self::$mq->connection);
         List($sql)=$psql->process($args);
-        CliDebug::dbg("mquery(\n$sql\n)\n");
-        if (Opts::getOpt("sql_profile")) self::profileStart("mquery $sql");
+        CliDebug::info("mquery(".trim(strtok(trim($sql), " ")));
+        CliDebug::dbg("$sql");
+        if (Opts::getOpt("sql_profile")) {
+            self::profileStart("mquery $sql");
+            self::profileStart("mquery");
+        }
         $ret=self::$mq->queryArgs(array_shift($args),$args);
-        if (Opts::getOpt("sql_profile")) self::profileEnd("mquery $sql");
+        if (Opts::getOpt("sql_profile")) {
+            self::profileEnd("mquery $sql");
+            self::profileEnd("mquery");
+        }
         self::$lastsql=$sql;
+        CliDebug::info(")");
+        CliDebug::dbg(sprintf("Results: %d rows (called %d times, took %.2f seconds, total %.2f seconds.\n",
+                $ret->getRowCount(),self::profileGetCnt("mquery"),self::profileGetLast("mquery"),self::profileGetSeconds("mquery"))); 
         return($ret);
     }
     
@@ -233,16 +252,14 @@ class Monda extends Nette\Object {
         return($ret);
     }
     
-    static function IdsSearch($ids,$array) {
-        foreach ($array as $a) {
-            $ret=true;
-            foreach ($ids as $key=>$value) {
-                if (!(array_key_exists($key,$a) && $a[$key]==$value)) {
-                    $ret=false;
-                }
+    static function IdsSearch($ids, $array) {
+        self::profileStart("IdsSearch");
+        foreach ($ids as $key => $value) {
+            if (array_search($value, array_column($array, $key))) {
+                $ret = true;
             }
-            if ($ret) return(true);
         }
+        self::profileEnd("IdsSearch");
         return(false);
     }
 
@@ -287,19 +304,25 @@ class Monda extends Nette\Object {
     }
     
     static function profileStart($id) {
-        $key=md5($id);
-        self::$profile[$key] =Array(
-            "last" => microtime(true),
-            "id" => $id,
-            "count" => 1,
-            "S" =>0
-        );
+        $key = md5($id);
+        if (!array_key_exists($key, self::$profile)) {
+            self::$profile[$key] = Array(
+                "last" => microtime(true),
+                "id" => $id,
+                "count" => 1,
+                "S" => 0
+            );
+        } else {
+            self::$profile[$key]["last"] = microtime(true);
+        }
     }
 
     static function profileEnd($id) {
         $key=md5($id);
         self::$profile[$key]["S"]+= microtime(true)-self::$profile[$key]["last"];
         self::$profile[$key]["count"]++;
+        self::$profile[$key]["last"]=microtime(true)-self::$profile[$key]["last"];
+        CliDebug::dbg(sprintf("profileEnd(%.10s): count=%d,time=%.2f\n",$id,self::$profile[$key]["count"],self::$profile[$key]["S"]));
     }
     
     static function profileDump() {
@@ -311,6 +334,21 @@ class Monda extends Nette\Object {
             fputs($f,$data["id"]);
             fclose($f);
         }
+    }
+    
+    static function profileGetCnt($id) {
+        $key=md5($id);
+        return(self::$profile[$key]["count"]);
+    }
+    
+    static function profileGetSeconds($id) {
+        $key=md5($id);
+        return(self::$profile[$key]["S"]);
+    }
+    
+    static function profileGetLast($id) {
+        $key=md5($id);
+        return(self::$profile[$key]["last"]);
     }
     
     static function systemStats($secs=false) {

@@ -44,7 +44,10 @@ ItemCorr operations
         Delete computed correlations
 
      ic:loi [common opts]
-        Update correlations LOI
+        Update correlations LOI (only new correlations)
+     
+     ic:floi [common opts]
+        Update full correlations LOI (recompute all, slow)
  
      [common opts]
     \n");
@@ -59,7 +62,7 @@ ItemCorr operations
         IsPresenter::startup();
         
         Opts::addOpt(
-                false, "corr_type", "Selector for windows to correlate with basic windows", "samewindow", "samewindow", Array("samewindow", "samehour", "samedow")
+                false, "corr_type", "Selector for windows to correlate with basic windows", "samewindow", "samewindow", Array("samewindow", "samehour", "samedow", "crosswindow", "all")
         );
         Opts::addOpt(
                 false, "ic_minloi", "Select only item correlation which have loi bigger than this/=.", 0, 0
@@ -337,8 +340,16 @@ ItemCorr operations
         ItemCorr::IcLoi();
         self::mexit();
     }
+    
+    public function renderFLoi() {
+        ItemCorr::IcLoi(true);
+        self::mexit();
+    }
 
     public function renderCompute() {
+        if (Opts::getOpt("corr_type")=="all" || Opts::getOpt("corr_type")=="crosswindow") {
+            self::mexit(1,"Corr_type all or crossrwindow cannot be used for computation, only for searhing correlations.");
+        }
         if (Opts::isDefault("window_length")) {
             Opts::setOpt("window_length",Array(Monda::_1HOUR,Monda::_1DAY));
         }

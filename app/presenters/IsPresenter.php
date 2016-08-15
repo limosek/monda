@@ -131,7 +131,7 @@ ItemStats operations
             }
         }
         if (Opts::getOpt("output_mode")=="arff") {
-            Opts::setOpt("item_restricted_chars","{}[],.| ");
+            Opts::setOpt("item_restricted_chars","\"'{}[],.|+-: ");
         }
         if (Opts::getOpt("events_prefetch")) {
             if (Util::timetoseconds(Opts::getOpt("events_prefetch")) - time()>0) {
@@ -160,25 +160,22 @@ ItemStats operations
 
     static function expandItem($itemid, $withhost = false, $desc = false) {
         $ii = ItemStat::itemInfo($itemid);
-        $ii=self::expandItemParams($ii);
+        $ii = self::expandItemParams($ii);
         if (count($ii) > 0) {
             if ($desc) {
                 $itxt = $ii[0]->name;
             } else {
                 $itxt = $ii[0]->key_;
             }
-            if (Opts::getOpt("anonymize_items")) {
-                $itxt=Util::anonymize($itxt,Opts::getOpt("anonymize_key"));
-            } else {
-                if (Opts::getOpt("item_restricted_chars")) {
-                    $itxt=strtr($itxt,Opts::getOpt("item_restricted_chars"),"_____________");
-                }
-            }
             if ($withhost) {
-                return(HsPresenter::expandHost($ii[0]->hostid) . ":" . $itxt);
-            } else {
-                return($itxt);
+                $itxt = HsPresenter::expandHost($ii[0]->hostid). ":" . $itxt;
             }
+            if (Opts::getOpt("anonymize_items")) {
+                $itxt = Util::anonymize($itxt, Opts::getOpt("anonymize_key"));
+            } elseif (Opts::getOpt("item_restricted_chars")) {
+                $itxt = strtr($itxt, Opts::getOpt("item_restricted_chars"), "_____________");
+            }
+            return($itxt);
         } else {
             return("unknown");
         }

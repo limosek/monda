@@ -3,9 +3,13 @@
 set -e
 
 if [ -z "$1" ]; then
-    echo "$0 graphname [monda_options]"
+    echo "$0 {ic|is} graphname [monda_options]"
     exit 2
 fi
+
+type=$1
+shift
+
 graph=$1
 shift
 
@@ -18,7 +22,7 @@ if which mpirun >/dev/null; then
 fi
 
 if ! [ -f "${graph}.txt" ]; then
-  echo $monda is:history \
+  echo $monda $type:history \
     -Om csv --csv_separator ',' --csv_field_enclosure '' "$@"
   $monda is:history \
     -Om csv --csv_separator ',' --csv_field_enclosure '' "$@" >${graph}.txt

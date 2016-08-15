@@ -163,7 +163,13 @@ class ItemCorr extends Monda {
                 break;
             case "samedow":
                 $corrsql="AND ic.windowid1<>ic.windowid2 AND tw.seconds=".Monda::_1DAY;
-                break;              
+                break;      
+            case "all":
+                $corrsql="AND true";
+                break;      
+            case "crosswindow":
+                $corrsql="AND ic.windowid1<>ic.windowid2";
+                break;      
         }
         if (preg_match("#/#", Opts::getOpt("ic_sort"))) {
             List($sc, $so) = preg_split("#/#", Opts::getOpt("ic_sort"));
@@ -240,6 +246,8 @@ class ItemCorr extends Monda {
     * @throws Exception
     */
     static function icToIds($withwindows=false,$computed=false) {
+        Monda::profileStart("icToIds");
+        CliDebug::dbg("icToIds start\n");
         if (!$computed) {
             $rows=self::icSearchItemsToIc(); 
         } else {
@@ -271,17 +279,15 @@ class ItemCorr extends Monda {
                     "windowid1" => $row->windowid1,
                     "windowid2" => $row->windowid2,
                     "icitemid1" => $icitemid1,
-                    "icitemid2" => $icitemid2,
-                    "tfrom1" => date_format($row->tfrom1,"U"),
-                    "tto1" => date_format($row->tfrom1,"U")+$row->seconds1,
-                    "tfrom2" => date_format($row->tfrom2,"U"),
-                    "tto2" => date_format($row->tfrom2,"U")+$row->seconds2,
+                    "icitemid2" => $icitemid2
                       );
                 } else {
                     $icids[$row->itemid1]=$row->itemid1;
                     $icids[$row->itemid2]=$row->itemid2;
                 }
         }
+        Monda::profileEnd("icToIds");
+        CliDebug::dbg("icToIds result: ".count($icids)."\n");
         return($icids);
     }
     
@@ -421,12 +427,10 @@ class ItemCorr extends Monda {
             $w1 = Tw::twGet($wid1);
             $j = 0;
             foreach ($windowids as $wid2) {
-                if (!self::IdsSearch(
-                                Array(
-                            "windowid1" => $wid1,
-                            "windowid2" => $wid2,
-                                ), $cids)) {
-                    continue;
+                CliDebug::info("w");
+                if ($wid1>$wid2) continue;
+                if (Opts::getOpt("corr_type")=="samewindow") {
+                    if ($wid1<>$wid2) continue;
                 }
                 $j++;
                 $w2 = Tw::twGet($wid2);
@@ -451,10 +455,30 @@ class ItemCorr extends Monda {
         self::icLoi();
         CliDebug::warn("Done\n");
     }
-    
+    /*
+     * Add itemcorr row if not exists in db
+     * If needed, add itemstat too with empty values to fullfill sql relations
+     * Sort itemid and windowid so each correlation will be inserted only one time
+     * windowid1
+     */
     public function IcAddIfEmpty($wid1, $wid2, $itemid1, $itemid2, $corr, $cnt) {
-        $pq = self::mquery("SELECT * FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?",
-                $wid1, $wid2, $itemid1, $itemid2);
+        if ($wid1 > $wid2) {
+            $w1 = $wid2;
+            $w2 = $wid1;
+            $i1 = $itemid2;
+            $i2 = $itemid1;
+        } elseif ($wid1==$wid2) {
+            $w1 = $wid1;
+            $w2 = $wid2;
+            if ($itemid1 > $itemid2) {
+                $i1 = $itemid2;
+                $i2 = $itemid1;
+            } else {
+                $i1 = $itemid1;
+                $i2 = $itemid2;
+            }
+        }
+        $pq = self::mquery("SELECT * FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $w1, $w2, $i1, $i2);
         if ($pq->getRowCount() == 0) {
             ItemStat::IsAddIfEmpty($wid1, $itemid1);
             ItemStat::IsAddIfEmpty($wid2, $itemid2);
@@ -470,6 +494,7 @@ class ItemCorr extends Monda {
     }
 
     public function IcCompute($wid1, $wid2, $itemids, $w1_start, $w1_end, $w2_start, $w2_end, $tp, $minv, $maxv, $all=false, $noinsert = false) {
+        Monda::profileStart("IcCompute");
         $ckey = "IcCompute " . serialize(func_get_args());
         $rows = self::$cache->load($ckey);
         if ($rows === NULL) {
@@ -513,6 +538,7 @@ class ItemCorr extends Monda {
             if ($all && Opts::getOpt("corr_type") == "samewindow") {
                 foreach ($itemids as $itemid1) {
                     foreach ($itemids as $itemid2) {
+                        if ($itemid1>$itemid2) continue;
                         $wrow = Array(
                             "windowid1" => $wid1,
                             "windowid2" => $wid2,
@@ -522,6 +548,7 @@ class ItemCorr extends Monda {
                             "cnt" => 0
                         );
                         $rows[]=$wrow;
+                        CliDebug::info("_");
                         if (!$noinsert) {
                             try {
                                 self::IcAddIfEmpty($wid1,$wid2,$itemid1,$itemid2,(int) ($itemid1 == $itemid2),0);
@@ -534,8 +561,7 @@ class ItemCorr extends Monda {
                 }
             }
             foreach ($icrows as $icrow) {
-                $icrow->windowid1 = $wid1;
-                $icrow->windowid2 = $wid2;
+                CliDebug::info(".");
                 if ($icrow->stddev1 * $icrow->stddev2 > 0) {
                     $icrow->corr = $icrow->cov / ($icrow->stddev1 * $icrow->stddev2);
                 } else {
@@ -545,21 +571,21 @@ class ItemCorr extends Monda {
                     $icrow->corr = 0;
                 }
                 $mincorr = min($mincorr, abs($icrow->corr));
-                if ($icrow->itemid1 <> $icrow->itemid2) {
+                if ($itemid1 <> $itemid2) {
                     $maxcorr = max($maxcorr, abs($icrow->corr));
                 }
                 $wrow = Array(
                     "windowid1" => $icrow->windowid1,
                     "windowid2" => $icrow->windowid2,
-                    "itemid1" => $icrow->itemid1,
-                    "itemid2" => $icrow->itemid2,
+                    "itemid1" => $itemid1,
+                    "itemid2" => $itemid2,
                     "corr" => $icrow->corr,
                     "cnt" => $icrow->cnt
                 );
                 $rows[] = $wrow;
                 $rows_added++;
                 if (!$noinsert) {
-                    self::IcAddIfEmpty($icrow->windowid1,$icrow->windowid2,$icrow->itemid1,$icrow->itemid2,
+                    self::IcAddIfEmpty($icrow->windowid1,$icrow->windowid2,$itemid1,$itemid2,
                             $icrow->corr,$icrow->cnt);
                 }
             }
@@ -571,6 +597,7 @@ class ItemCorr extends Monda {
                 Cache::EXPIRE => Opts::getOpt("ic_cache_expire"),
             ));
         }
+        Monda::profileEnd("IcCompute");
         return($rows);
     }
 
@@ -578,6 +605,7 @@ class ItemCorr extends Monda {
         $ret = Array();
         foreach ($itemids as $itemid1) {
             foreach ($itemids as $itemid2) {
+                if ($itemid1>=$itemid2) continue;
                 $ret["windowid"] = $tw;
                 if ($itemid1 == $itemid2) {
                     if (Opts::getOpt("ic_notsame")) {
@@ -622,19 +650,25 @@ class ItemCorr extends Monda {
     /**
      * Update item correlations LOI. 
      */
-    static function icLoi() {
+    static function icLoi($full=false) {
         Opts::setOpt("max_rows", 10000);
         $twids = Tw::twToIds();
         if (count($twids) == 0) {
             throw new Exception("No item correlations for loi.");
         }
-        Monda::mbegin();
+        if ($full) {
+            $fullsql="";
+        } else {
+            $fullsql="AND loi=0";
+        }
+        foreach ($twids as $tw) {
         $lsql = Monda::mquery("
-            UPDATE itemcorr
-            SET loi=ABS(corr)*100
-            WHERE windowid1 IN (?) AND windowid2 IN (?)
-            ", $twids, $twids);
-        Monda::mcommit();
+            UPDATE itemcorr ic
+            SET loi=ABS(corr)
+            * (SELECT COUNT(*) FROM itemcorr ic1 WHERE ic1.windowid1=? AND (ic.itemid1=ic1.itemid1))
+            WHERE windowid1=? $fullsql
+            ", $tw, $tw);
+        }
     }
 
 }
