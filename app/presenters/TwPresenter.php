@@ -58,6 +58,9 @@ class TwPresenter extends BasePresenter {
         Opts::addOpt(
                 false, "tw_icstats", "Report even itemcorr statistics per window", false, false
         );
+        Opts::addOpt(
+                false, "tw_max_rows", "Maximum number of tws to get (LIMIT for SELECT)", 300, 300
+        );
         Opts::setDefaults();
         Opts::readCfg(Array("global", "Tw"));
         Opts::readOpts($this->params);

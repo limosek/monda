@@ -68,6 +68,10 @@ HostStats operations
         Opts::addOpt(
                 false, "hs_update_unknown", "(Re)-update even unknown hosts (slow).", false, "no"
         );
+        Opts::addOpt(
+                false, "hs_max_rows", "Maximum number of hoststats to get (LIMIT for SELECT)", 300, 300
+        );
+        
         Opts::setDefaults();
         Opts::readCfg(Array("Hs"));
         Opts::readOpts($this->params);
@@ -80,6 +84,12 @@ HostStats operations
             if (Opts::isDefault("brief_columns")) {
                 Opts::setOpt("brief_columns",Array("hostid","host","windowid","loi"));
             }
+        }
+        if (Opts::isDefault("tw_max_rows")) {
+            Opts::setOpt("tw_max_rows",false);
+        }
+        if (Opts::isDefault("is_max_rows")) {
+            Opts::setOpt("is_max_rows",false);
         }
     }
 

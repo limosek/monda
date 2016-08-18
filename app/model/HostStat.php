@@ -107,12 +107,15 @@ class HostStat extends Monda {
              AND hoststat.loi>?
              ORDER BY hoststat.loi DESC
              LIMIT ?
-            ", $wids, Opts::getOpt("hostids"), Opts::getOpt("hs_minloi"), Opts::getOpt("max_rows"));
+            ", $wids, Opts::getOpt("hostids"), Opts::getOpt("hs_minloi"), Opts::getOpt("hs_max_rows"));
+        if ($ids->getRowCount()==Opts::getOpt("hs_max_rows")) {
+            CliDebug::warn(sprintf("Limiting output of hoststats to %d! Use hs_max_rows parameter to increase!\n",Opts::getOpt("hs_max_rows")));
+        }
         return($ids);
     }
 
     static function hsStats() {
-        Opts::setOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::setOpt("tw_max_rows",false);
         $wids = Tw::twToIds();
         if (count($wids) == 0) {
             throw New Exception("No windows to process.");
@@ -136,7 +139,7 @@ class HostStat extends Monda {
              GROUP BY hoststat.hostid
              ORDER BY AVG(hoststat.loi) DESC
              LIMIT ?
-            ", $wids, Opts::getOpt("hs_minloi"), Opts::getOpt("max_rows"));
+            ", $wids, Opts::getOpt("hs_minloi"), Opts::getOpt("hs_max_rows"));
         return($ids);
     }
 
@@ -161,7 +164,7 @@ class HostStat extends Monda {
     }
 
     static function hsUpdate() {
-        Opts::setOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::setOpt("tw_max_rows",false);
         $hostids = Opts::getOpt("hostids");
         $itemids = self::hosts2itemids($hostids);
         $wids = Tw::twToIds();
@@ -194,13 +197,13 @@ class HostStat extends Monda {
     }
 
     static function hsDelete() {
-        Opts::setDOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::setDOpt("tw_max_rows",false);
         $tws = Tw::twToIds();
         $dq = self::mquery("DELETE FROM hoststat WHERE windowid IN (?) AND hostid IN (?)", $tws,Opts::getOpt("hostids"));
     }
 
     static function hsMultiCompute() {
-        Opts::setDOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::setDOpt("tw_max_rows",false);
         $wids = Tw::twToIds();
         CliDebug::warn(sprintf("Need to compute HostStat for %d windows...", count($wids)));
         if (count($wids) == 0) {

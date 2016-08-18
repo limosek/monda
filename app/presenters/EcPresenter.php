@@ -47,6 +47,7 @@ EventCorr operations
         );
 
         Opts::setDefaults();
+        Opts::readCfg(Array("Is"));
         Opts::readCfg(Array("Ec"));
         Opts::readOpts($this->params);
         self::postCfg();
@@ -57,23 +58,35 @@ EventCorr operations
     }
 
     public function renderShow() {
-        $events=EventCorr::ecSearch(Opts::getOpt("start"));
+        $events = EventCorr::ecSearch(Opts::getOpt("start"));
         foreach ($events as $e) {
             if (isset($e->relatedObject->triggerid)) {
-                    $tq=Array(
-                        "triggerids" => $e->relatedObject->triggerid,
-                        "hostids" => Opts::getOpt("hostids"),
-                        "selectFunctions" => "extend",
-                        "output" => "extend"
-                    );
-                    $trigger=Monda::apiCmd("triggerGet",$tq);
-                }
-                if (Opts::getOpt("output_verbosity")=="expanded") {
-                    $tdesc=TriggerInfo::expandTrigger($trigger[0]->triggerid,true);
-                } else {
-                    $tdesc="";
-                }
-            $this->exportdata[]=Array (
+                $tq = Array(
+                    "triggerids" => $e->relatedObject->triggerid,
+                    "hostids" => Opts::getOpt("hostids"),
+                    "selectFunctions" => "extend",
+                    "output" => "extend"
+                );
+                $trigger = Monda::apiCmd("triggerGet", $tq);
+                $t=$trigger[0];
+            } else {
+                $t=New \stdClass();
+                $t->priority=0;
+            }
+            if (Opts::isOpt("event_value_filter") && Opts::getOpt("event_value_filter") != $e->value) {
+                CliDebug::info("Skiping event $e->eventid due to value filter ($e->value)\n");
+                continue;
+            }
+            if (Opts::getOpt("ec_min_priority") > $t->priority) {
+                CliDebug::info("Skiping event $e->eventid due to low priority ($t->priority)\n");
+                continue;
+            }
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                $tdesc = TriggerInfo::expandTrigger($t->triggerid, $e->hosts, true);
+            } else {
+                $tdesc = "";
+            }
+            $this->exportdata[] = Array(
                 "eventid" => $e->eventid,
                 "triggerid" => $e->relatedObject->triggerid,
                 "priority" => $t->priority,
@@ -86,6 +99,46 @@ EventCorr operations
         self::mexit();
     }
     
+    public function renderStats() {
+        $events = EventCorr::ecSearch(Opts::getOpt("start"));
+        $counts=Array();
+        foreach ($events as $e) {
+            if (isset($e->relatedObject->triggerid)) {
+                $tq = Array(
+                    "triggerids" => $e->relatedObject->triggerid,
+                    "hostids" => Opts::getOpt("hostids"),
+                    "selectFunctions" => "extend",
+                    "output" => "extend"
+                );
+                $trigger = Monda::apiCmd("triggerGet", $tq);
+                $t=$trigger[0];
+            } else {
+                $t=New \stdClass();
+                $t->priority=0;
+            }
+            if (Opts::isOpt("event_value_filter") && Opts::getOpt("event_value_filter") != $e->value) {
+                CliDebug::info("Skiping event $e->eventid due to value filter ($e->value)\n");
+                continue;
+            }
+            if (Opts::getOpt("ec_min_priority") > $t->priority) {
+                CliDebug::info("Skiping event $e->eventid due to low priority ($t->priority)\n");
+                continue;
+            }
+            if (Opts::getOpt("output_verbosity") == "expanded") {
+                $tdesc = TriggerInfo::expandTrigger($t->triggerid, $e->hosts, true);
+            } else {
+                $tdesc = "";
+            }
+            $counts["triggers"][$e->relatedObject->triggerid]++;
+            $counts["events"][$e->eventid]++;
+            $counts["values"][$e->value]++;
+            $counts["priorities"][$t->priority]++;   
+            $counts["clocks"][$e->clock]++;      
+        }
+        print_r($counts);
+        self::mexit();
+    }
+
     public function renderLoi() {
         EventCorr::EcLoi();
         self::mexit();

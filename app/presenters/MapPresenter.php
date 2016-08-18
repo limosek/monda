@@ -70,8 +70,8 @@ class MapPresenter extends BasePresenter {
     }
 
     function renderTw() {
-        if (Opts::isDefault("max_rows")) {
-            Opts::setOpt("max_rows",20);
+        if (Opts::isDefault("is_max_rows")) {
+            Opts::setOpt("is_max_rows",20);
         }
         if (count(Opts::getOpt("window_ids"))==0) {
             throw New Exception("No windows to create report. Use -w.");
@@ -111,8 +111,8 @@ class MapPresenter extends BasePresenter {
     }
     
     function renderHs() {
-        if (Opts::isDefault("max_rows")) {
-            Opts::setOpt("max_rows", 20);
+        if (Opts::isDefault("is_max_rows")) {
+            Opts::setOpt("is_max_rows", 20);
         }
         if (count(Opts::getOpt("hostids")) == 0) {
             throw New Exception("No hosts to create report. Use --hostids.");

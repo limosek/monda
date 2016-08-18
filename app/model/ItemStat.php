@@ -96,8 +96,8 @@ class ItemStat extends Monda {
         } else {
             return(false);
         }
-        if (Opts::getOpt("max_rows")) {
-            $limit="LIMIT ".Opts::getOpt("max_rows");
+        if (Opts::getOpt("is_max_rows")) {
+            $limit="LIMIT ".Opts::getOpt("is_max_rows");
         } else {
             $limit="";
         }
@@ -118,14 +118,14 @@ class ItemStat extends Monda {
                 ORDER by i.loi DESC "
                 . "$limit",Opts::getOpt("is_minloi"),Opts::getOpt("tw_minloi")
                 );
-        if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
-            CliDebug::warn(sprintf("Limiting output of itemstats to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
+        if ($rows->getRowCount()==Opts::getOpt("is_max_rows")) {
+            CliDebug::warn(sprintf("Limiting output of itemstats to %d! Use is_max_rows parameter to increase!\n",Opts::getOpt("is_max_rows")));
         }
         return($rows);
     }
     
     static function isStats() {
-        Opts::setOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::setOpt("tw_max_rows",false);
         $windowids=Tw::twToIds();
         $itemids=self::isToIds();
         $rows=self::mquery("SELECT 
@@ -146,9 +146,9 @@ class ItemStat extends Monda {
                  GROUP BY i.itemid
                  ORDER BY AVG(i.loi)*COUNT(i.windowid) DESC
                  LIMIT ?
-                ",$itemids,$windowids,Opts::getOpt("max_rows"));
-        if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
-            CliDebug::warn(sprintf("Limiting output of itemstats to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
+                ",$itemids,$windowids,Opts::getOpt("is_max_rows"));
+        if ($rows->getRowCount()==Opts::getOpt("is_max_rows")) {
+            CliDebug::warn(sprintf("Limiting output of itemstats to %d! Use is_max_rows parameter to increase!\n",Opts::getOpt("is_max_rows")));
         }
         return($rows->fetchAll());
     }

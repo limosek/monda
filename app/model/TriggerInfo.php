@@ -7,6 +7,7 @@ use Nette,
     Nette\Security\Passwords,
     Tracy\Debugger,
     App\Model\Hoststat,
+    App\Presenters\HsPresenter,
     Exception,
     Nette\Utils\DateTime as DateTime,
     Nette\Database\Context;
@@ -26,30 +27,35 @@ class TriggerInfo extends Monda {
         return($triggers[0]);
     }
 
-    static function expandTriggerParams($trigger) {
+    static function expandTriggerParams($trigger,$host) {
+        $ii = self::Info($triggerid);
+        $itxt = HsPresenter::expandHost($host->hostid);
+        $trigger->description=str_replace("{HOST.NAME}",$itxt,$trigger->description);
+        $trigger->description=str_replace("{HOSTNAME}",$itxt,$trigger->description);
         return($trigger);
     }
 
-    static function expandTrigger($triggerid, $withhost = false) {
+    static function expandTrigger($triggerid, $hosts, $withhost = false) {
         $ii = self::Info($triggerid);
-        $ii = self::expandTriggerParams($ii);
-        if (count($ii) > 0) {
-            $itxt = $ii->description;
-            if (Opts::getOpt("anonymize_items")) {
-                $itxt = Util::encrypt($itxt, Opts::getOpt("anonymize_key"));
-            } else {
-                if (Opts::getOpt("item_restricted_chars")) {
-                    $itxt = strtr($itxt, Opts::getOpt("item_restricted_chars"), "_____________");
+        if ($hosts) {
+            $ii = self::expandTriggerParams($ii,$hosts[0]);
+            if (count($ii) > 0) {
+                $itxt = $ii->description;
+                if ($withhost) {
+                    $itxt = HsPresenter::expandHost($hosts[0]->hostid) . ":" . $itxt;
                 }
-            }
-            if ($withhost) {
-                return(\App\Presenters\HsPresenter::expandHost($ii->hostid) . ":" . $itxt);
             } else {
-                return($itxt);
+                $itxt = "unknown";
             }
         } else {
-            return("unknown");
+            $itxt = "unknown";
         }
+        if (Opts::getOpt("anonymize_items")) {
+            $itxt = Util::encrypt($itxt, Opts::getOpt("anonymize_key"));
+        } elseif (Opts::getOpt("item_restricted_chars")) {
+            $itxt = strtr($itxt, Opts::getOpt("item_restricted_chars"), "_______________");
+        }
+        return($itxt);
     }
 
     static public function ExpandHistory($clocks, $tdata) {

@@ -28,8 +28,12 @@ class EventCorr extends Monda {
             "selectHosts" => "refer",
             "selectRelatedObject" => "refer",
             "select_alerts" => "refer",
-            "select_acknowledges" => "refer"
+            "select_acknowledges" => "refer",
+            "object" => 0
         );
+        if (Opts::getOpt("triggerids")) {
+            $eq["objectids"]=Opts::getOpt("triggerids");
+        }
         $events=self::apiCmd("eventGet",$eq);
         CliDebug::warn(sprintf("Found %d events.\n",count($events)));
         return($events);

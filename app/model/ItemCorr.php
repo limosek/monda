@@ -122,10 +122,10 @@ class ItemCorr extends Monda {
                     AND ((is1.loi>? AND is2.loi>?) OR $full)
                     AND ic.corr IS NULL
                  ORDER BY $sortsql
-                 LIMIT ?", $wid, $wids, Opts::getOpt("is_minloi"), Opts::getOpt("is_minloi"), Opts::getOpt("max_rows")
+                 LIMIT ?", $wid, $wids, Opts::getOpt("is_minloi"), Opts::getOpt("is_minloi"), Opts::getOpt("ic_max_rows")
             );
-            if ($rows->getRowCount() == Opts::getOpt("max_rows")) {
-                //CliDebug::warn(sprintf("Limiting output of possible correlations to %d of %d total combinations! Use max_rows parameter to increase!\n", Opts::getOpt("max_rows"), count($itemids) * count($itemids)));
+            if ($rows->getRowCount() == Opts::getOpt("ic_max_rows")) {
+                //CliDebug::warn(sprintf("Limiting output of possible correlations to %d of %d total combinations! Use ic_max_rows parameter to increase!\n", Opts::getOpt("ic_max_rows"), count($itemids) * count($itemids)));
             }
             foreach ($rows as $row) {
                 $allrows[] = $row;
@@ -234,7 +234,7 @@ class ItemCorr extends Monda {
                      $notsamehostsql
                  ORDER BY $sortsql
                  LIMIT ?
-                ",Opts::getOpt("ic_minloi"),Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
+                ",Opts::getOpt("ic_minloi"),Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("ic_max_rows"));
         return($rows);
     }
     
@@ -339,7 +339,7 @@ class ItemCorr extends Monda {
                  GROUP BY itemid1,itemid2
                  ORDER BY AVG(ic.corr) DESC
                  LIMIT ?
-                ",Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
+                ",Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("ic_max_rows"));
         return($rows);
     }
     
@@ -402,7 +402,7 @@ class ItemCorr extends Monda {
                  GROUP BY windowid1,windowid2
                  ORDER BY AVG(ic.corr) DESC
                  LIMIT ?
-                ",Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("max_rows"));
+                ",Opts::getOpt("min_corr"),Opts::getOpt("max_corr"),Opts::getOpt("ic_max_rows"));
         return($rows);
     }
     
@@ -477,19 +477,26 @@ class ItemCorr extends Monda {
                 $i1 = $itemid1;
                 $i2 = $itemid2;
             }
+        } else {
+            $i1 = $itemid1;
+            $i2 = $itemid2;
         }
         $pq = self::mquery("SELECT * FROM itemcorr WHERE windowid1=? AND windowid2=? AND itemid1=? AND itemid2=?", $w1, $w2, $i1, $i2);
         if ($pq->getRowCount() == 0) {
-            ItemStat::IsAddIfEmpty($wid1, $itemid1);
-            ItemStat::IsAddIfEmpty($wid2, $itemid2);
+            ItemStat::IsAddIfEmpty($w1, $i1);
+            ItemStat::IsAddIfEmpty($w2, $i2);
             self::mquery("INSERT INTO itemcorr", Array(
-                "windowid1" => $wid1,
-                "windowid2" => $wid2,
-                "itemid1" => $itemid1,
-                "itemid2" => $itemid2,
+                "windowid1" => $w1,
+                "windowid2" => $w2,
+                "itemid1" => $i1,
+                "itemid2" => $i2,
                 "corr" => $corr,
                 "cnt" => $cnt
             ));
+            return(true);
+        } else {
+            CliDebug::dbg("Correlation $w1-$w2-$i1-$i2 already in DB.\n");
+            return(false);
         }
     }
 
@@ -531,6 +538,7 @@ class ItemCorr extends Monda {
             $mincorr = 0;
             $maxcorr = 0;
             $rows_added = 0;
+            $rows_found = 0;
             $rows = Array();
             if (!$noinsert) {
                 self::mbegin();
@@ -551,12 +559,13 @@ class ItemCorr extends Monda {
                         CliDebug::info("_");
                         if (!$noinsert) {
                             try {
-                                self::IcAddIfEmpty($wid1,$wid2,$itemid1,$itemid2,(int) ($itemid1 == $itemid2),0);
-                            } catch (Nette\Database\UniqueConstraintViolationException $e) {
-                                
-                            }
+                                if (self::IcAddIfEmpty($wid1,$wid2,$itemid1,$itemid2,(int) ($itemid1 == $itemid2),0)) {
+                                     $rows_added++;
+                                } else {
+                                    $rows_found++;
+                                }
+                            } catch (Nette\Database\UniqueConstraintViolationException $e) { }
                         }
-                        $rows_added++;
                     }
                 }
             }
@@ -575,21 +584,24 @@ class ItemCorr extends Monda {
                     $maxcorr = max($maxcorr, abs($icrow->corr));
                 }
                 $wrow = Array(
-                    "windowid1" => $icrow->windowid1,
-                    "windowid2" => $icrow->windowid2,
+                    "windowid1" => $wid1,
+                    "windowid2" => $wid2,
                     "itemid1" => $itemid1,
                     "itemid2" => $itemid2,
                     "corr" => $icrow->corr,
                     "cnt" => $icrow->cnt
                 );
                 $rows[] = $wrow;
-                $rows_added++;
                 if (!$noinsert) {
-                    self::IcAddIfEmpty($icrow->windowid1,$icrow->windowid2,$itemid1,$itemid2,
-                            $icrow->corr,$icrow->cnt);
+                    if (self::IcAddIfEmpty($wid1,$wid2,$icrow->itemid1,$icrow->itemid2,
+                            $icrow->corr,$icrow->cnt)) {
+                         $rows_added++;
+                    } else {
+                        $rows_found++;
+                    }
                 }
             }
-            CliDebug::info(sprintf("Rows: $rows_added, corr range:<%f,%f>\n", $mincorr, $maxcorr));
+            CliDebug::info(sprintf("Rows: $rows_added added, $rows_found already in DB, corr range:<%f,%f>\n", $mincorr, $maxcorr));
             if (!$noinsert) {
                 self::mcommit();
             }
@@ -631,12 +643,39 @@ class ItemCorr extends Monda {
         }
         return($ret);
     }
+    
+    public function FindSimilarItems($itemids) {
+        $mq = Monda::mquery("SELECT itemid1,itemid2,corr
+                FROM itemcorr
+                WHERE (itemid1 IN (?) OR itemid2 IN (?))
+                   AND corr>=? 
+                   AND
+                   (
+                     (itemid1<>itemid2) AND (windowid1=windowid2)
+                     OR
+                     (itemid1=itemid2) AND (windowid1<>windowid2)
+                    )
+                ORDER BY  (windowid1=windowid2) DESC, loi DESC 
+                LIMIT ?", $itemids, $itemids, Opts::getOpt("similar_corr"), Opts::getOpt("similar_count")*3);
+        if ($mq) {
+            $data=$mq->fetchAll();
+            $found=count($itemids);
+            foreach ($data as $row) {
+                $itemids[]=$row->itemid1;
+                $itemids[]=$row->itemid2;
+                $itemids=array_unique($itemids);
+                if (count($itemids)-$found>Opts::getOpt("similar_count")) break;
+            }
+        }
+        CliDebug::warn(sprintf("Found %d similar items.\n",count($itemids)-$found));
+        return($itemids);
+    }
 
     /**
      * Delete item correlations
      */
     static function icDelete() {
-        Opts::setOpt("max_rows", 10000);
+        Opts::setOpt("tw_max_rows", false);
         $windows = Tw::twToIds();
         CliDebug::warn(sprintf("Will delete item correlations from %d windows.\n", count($windows)));
         if (count($windows) == 0) {
@@ -651,7 +690,7 @@ class ItemCorr extends Monda {
      * Update item correlations LOI. 
      */
     static function icLoi($full=false) {
-        Opts::setOpt("max_rows", 10000);
+        Opts::setOpt("tw_max_rows", false);
         $twids = Tw::twToIds();
         if (count($twids) == 0) {
             throw new Exception("No item correlations for loi.");

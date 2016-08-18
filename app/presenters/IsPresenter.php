@@ -9,6 +9,7 @@ use App\Model\ItemStat,
     App\Model\Monda,
     App\Model\Util,
     App\Model\Triggerinfo,
+    App\Model\ItemCorr,
     App\Model\Tw,
     Nette\Utils\DateTime as DateTime;
 
@@ -100,6 +101,15 @@ ItemStats operations
         Opts::addOpt(
                 false, "event_value_filter", "Filter trigger history to only this values {OK|PROBLEM|50}. 50 means distribute to 50%.", false, false,Array("OK","PROBLEM","50")
         );
+        Opts::addOpt(
+                false, "similar_corr", "Minimum correlation of items to be similar", 0.7, 0.7
+        );
+        Opts::addOpt(
+                false, "similar_count", "How many similar items to get. Default to not search similar items.", 0, 0
+        );
+        Opts::addOpt(
+                false, "is_max_rows", "Maximum number of itemstats to get (LIMIT for SELECT)", 300, 300
+        );
         
         Opts::setDefaults();
         Opts::readCfg(Array("Is"));
@@ -113,6 +123,9 @@ ItemStats operations
             if (Opts::isDefault("brief_columns")) {
                 Opts::setOpt("brief_columns",Array("itemid","stddev_","cv","loi"));
             }
+        }
+        if (Opts::isDefault("tw_max_rows")) {
+            Opts::setOpt("tw_max_rows",false);
         }
     }
 
@@ -140,8 +153,9 @@ ItemStats operations
                 Opts::setOpt("events_prefetch", Util::timetoseconds(Opts::getOpt("events_prefetch")));
             }
         }
-        if (!is_array(Opts::getOpt("itemids"))) {
-            ItemStat::itemsToIds();
+        ItemStat::itemsToIds();
+        if (Opts::getOpt("similar_count")>0) {
+            Opts::setOpt("itemids",ItemCorr::FindSimilarItems(Opts::getOpt("itemids")));
         }
         if (!Opts::getOpt("anonymize_key") && Opts::getOpt("anonymize_items")) {
             self::mexit(2,"You must use --anonymize_key to anonymize items.");
@@ -230,7 +244,7 @@ ItemStats operations
             }
             $trows = TriggerInfo::History(Opts::getOpt("triggerids"), $clocks);
             foreach (Opts::getOpt("triggerids") as $t) {
-                $this->exportinfo[$t] = TriggerInfo::expandTrigger($t);
+                $this->exportinfo[$t] = TriggerInfo::expandTrigger($t,false);
                 $this->arffinfo[$t] = "{OK,PROBLEM}";
                 foreach ($trows as $i => $trow) {
                     $value=$trow[$t];

@@ -103,6 +103,9 @@ ItemCorr operations
         Opts::addOpt(
                 false, "ic_cache_expire", "How long to cache ic results in seconds.", 300, 300
         );
+        Opts::addOpt(
+                false, "ic_max_rows", "Maximum number of correlations to get (LIMIT for SELECT)", 300, 300
+        );
         
         Opts::setDefaults();
         Opts::readCfg(Array("Ic"));
@@ -116,6 +119,12 @@ ItemCorr operations
             if (Opts::isDefault("brief_columns")) {
                 Opts::setOpt("brief_columns",Array("windowid1","itemid1","windowid2","itemid2","corr","icloi"));
             }
+        }
+        if (Opts::isDefault("tw_max_rows")) {
+            Opts::setOpt("tw_max_rows",false);
+        }
+        if (Opts::isDefault("is_max_rows")) {
+            Opts::setOpt("is_max_rows",false);
         }
     }
 
@@ -153,7 +162,7 @@ ItemCorr operations
         }
         self::mexit();
     }
-
+   
     public function renderHistory() {
         if (Opts::getOpt("output_mode") == "brief") {
             self::mexit(3, "This action is possible only with csv output mode.\n");
@@ -176,8 +185,8 @@ ItemCorr operations
         }
         foreach (array_keys($this->exportdata[$tw]) as $itempair) {
             List($item1, $item2) = preg_split("/-/", $itempair);
-            if ($item2) {
-                $this->exportinfo[$item1 . "-" . $item2] = IsPresenter::expandItem($item1) . "__" . IsPresenter::expandItem($item2);
+            if ($item2 && ($item1!=$item2)) {
+                $this->exportinfo[$item1 . "-" . $item2] = IsPresenter::expandItem($item1,true) . "__" . IsPresenter::expandItem($item2,true);
                 $this->arffinfo[$item1 . "-" . $item2] = "NUMERIC";
             }
         }
@@ -196,15 +205,16 @@ ItemCorr operations
         }
         Opts::setOpt("ic_sort", "start/+");
         
+        $items = Opts::getOpt("itemids");
         $hosts = Array();
         foreach ($items as $item) {
-            $ii = ItemStat::itemInfo($item);
+            $ii = ItemStat::itemInfo($item,true);
             $hosts[$ii[0]->hostid] = $ii[0]->hostid;
         }
         CliDebug::info(sprintf("Trigger items: %s, hosts: %s\n", join(",", $items), join(",", $hosts)));
         Opts::setOpt("tw_sort","start/+");
         $tws = Tw::twSearch()->fetchAll();
-        $events = TriggerInfo::Triggers2Events(Opts::getOpt("start") - Opts::getOpt("events_prefetch"), Opts::getOpt("end"), Opts::getOpt("triggerids"));
+        $events = TriggerInfo::Triggers2Events(round((Opts::getOpt("start") - Opts::getOpt("events_prefetch"))/Monda::_1HOUR)*Monda::_1HOUR, Opts::getOpt("end"), Opts::getOpt("triggerids"));
         $valuesok=0;
         $valuesproblem=0;
         foreach ($tws as $tw) {
@@ -231,30 +241,21 @@ ItemCorr operations
                 }
             }
             $this->exportdata[$wid]["windowid"] = $wid;
-            $corrs = ItemCorr::IcCompute($wid, $wid, $items, $tw->fstamp, $tw->tstamp, $tw->fstamp, $tw->tstamp, Opts::getOpt("time_precision"), Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), true, true);
-            foreach ($corrs as $corr) {
-                foreach ($items as $itemid1) {
-                    foreach ($items as $itemid2) {
-                        if ($itemid1 < $itemid2) {
-                            if ($corr["itemid1"] == $itemid1 && $corr["itemid2"] == $itemid2) {
-                                $this->exportdata[$wid]["$itemid1" . "-" . "$itemid2"] = $corr["corr"];
-                            } else {
-                                $this->exportdata[$wid]["$itemid1" . "-" . "$itemid2"] = 0;
-                            }
-                        }
-                    }
-                }
-            }
+            ItemCorr::IcCompute($wid, $wid, $items, $tw->fstamp, $tw->tstamp, $tw->fstamp, $tw->tstamp, Opts::getOpt("time_precision"), Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), true, false);
+            $corrs=ItemCorr::TwCorrelationsByItemid($wid,$items);
+            $this->exportdata[$wid]=array_merge(
+                    $this->exportdata[$wid],
+                    $corrs);
             $tid = $event->relatedObject->triggerid;
             $this->exportdata[$wid][$tid]=$value;
-            $this->exportinfo[$tid] = TriggerInfo::expandTrigger($tid);
+            $this->exportinfo[$tid] = TriggerInfo::expandTrigger($tid,$event->hosts,true);
             $this->arffinfo[$tid] = "{OK,PROBLEM}";
             $this->exportinfo["windowid"] = "windowid";
             $this->arffinfo["windowid"] = "NUMERIC";
             foreach (array_keys($this->exportdata[$wid]) as $itempair) {
                 List($item1, $item2) = preg_split("/-/", $itempair);
                 if ($item2) {
-                    $this->exportinfo[$item1 . "-" . $item2] = IsPresenter::expandItem($item1) . "__" . IsPresenter::expandItem($item2);
+                    $this->exportinfo[$item1 . "-" . $item2] = IsPresenter::expandItem($item1,true) . "__" . IsPresenter::expandItem($item2,true);
                     $this->arffinfo[$item1 . "-" . $item2] = "NUMERIC";
                 }
             }

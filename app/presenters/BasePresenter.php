@@ -149,9 +149,6 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
                 "Ace", "api_cache_expire", "Maximum time to cache api requests. Use 0 to not cache.", "24 hours", "24 hours"
         );
         Opts::addOpt(
-                "Im", "max_rows", "Maximum number of rows to get (LIMIT for SELECT)", 300, 300
-        );
-        Opts::addOpt(
                 "Sce", "sql_cache_expire", "Maximum time to cache sql requests. Use 0 to not cache.", "1 hour", "1 hour"
         );
         Opts::addOpt(

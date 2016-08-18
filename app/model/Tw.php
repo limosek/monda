@@ -121,8 +121,8 @@ class Tw extends Monda {
         if ($so == "-") {
             $sortsql.=" DESC";
         }
-        if (Opts::getOpt("max_rows")) {
-            $limit = "LIMIT " . Opts::getOpt("max_rows");
+        if (Opts::getOpt("tw_max_rows")) {
+            $limit = "LIMIT " . Opts::getOpt("tw_max_rows");
         } else {
             $limit = "";
         }
@@ -184,8 +184,8 @@ class Tw extends Monda {
             ORDER BY $sortsql
                 $limit
                 ", Opts::getOpt("zabbix_id"),Opts::getOpt("tw_minloi"));
-        if ($rows->getRowCount()==Opts::getOpt("max_rows")) {
-            CliDebug::warn(sprintf("Limiting output of timewindows to %d! Use max_rows parameter to increase!\n",Opts::getOpt("max_rows")));
+        if ($rows->getRowCount()==Opts::getOpt("tw_max_rows")) {
+            CliDebug::warn(sprintf("Limiting output of timewindows to %d! Use tw_max_rows parameter to increase!\n",Opts::getOpt("tw_max_rows")));
         }
         return($rows);
     }
@@ -314,7 +314,7 @@ class Tw extends Monda {
     }
 
     static function twStats($zabbix=false) {
-        Opts::setOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::setOpt("tw_max_rows",false);
         $wids = self::twToIds();
         if (!$wids) return(false);
         $row = Monda::mquery("
@@ -415,7 +415,7 @@ class Tw extends Monda {
     static function twLoi() {
         Opts::setOpt("window_empty",false,"monda");
         Opts::setOpt("tw_minloi",-1,"monda");
-        Opts::pushOpt("max_rows",Monda::_MAX_ROWS,"monda");
+        Opts::pushOpt("tw_max_rows",false,"monda");
         $wids = self::twToIds();
         CliDebug::warn(sprintf("Recomputing loi for %d windows...", count($wids)));
         if (count($wids) == 0) {
@@ -438,12 +438,12 @@ class Tw extends Monda {
                 ",Opts::getOpt("zabbix_id"));
         Monda::mcommit();
         CliDebug::warn("Done\n");
-        Opts::popOpt("max_rows");
+        Opts::popOpt("tw_max_rows");
     }
 
     static function twDelete() {
         Monda::mbegin();
-        Opts::pushOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::pushOpt("tw_max_rows",false);
         $wids = self::twToIds(true);
         if (is_array(Opts::getOpt("window_length"))) {
             $lengths = join(",", Opts::getOpt("window_length"));
@@ -460,7 +460,7 @@ class Tw extends Monda {
             $d6 = Monda::mquery("DELETE FROM timewindow WHERE id IN (?)", $wids);
         }
         CliDebug::warn("Done\n");
-        Opts::popOpt("max_rows");
+        Opts::popOpt("tw_max_rows");
         return(Monda::mcommit());
     }
 
@@ -480,7 +480,7 @@ class Tw extends Monda {
 
     function twModify() {
         Monda::mbegin();
-        Opts::pushOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::pushOpt("tw_max_rows",false);
         $wids = self::twToIds();
         foreach ($wids as $wid) {
             $w = Tw::twGet($wid);
@@ -502,13 +502,13 @@ class Tw extends Monda {
                 );
             }
         }
-        Opts::popOpt("max_rows");
+        Opts::popOpt("tw_max_rows");
         return(Monda::mcommit());
     }
 
     function twEmpty() {
         Monda::mbegin();
-        Opts::pushOpt("max_rows",Monda::_MAX_ROWS);
+        Opts::pushOpt("tw_max_rows",false);
         $wids = self::twToIds();
         CliDebug::warn(sprintf("Emptying timewindows for zabbix_id %d from %s to %s, length %s (%d windows)...", Opts::getOpt("zabbix_id"), date("Y-m-d H:i", Opts::getOpt("start")), date("Y-m-d H:i", Opts::getOpt("end")), join(",", Opts::getOpt("window_length")), count($wids)));
         if (count($wids) > 0) {
@@ -520,7 +520,7 @@ class Tw extends Monda {
             $d6 = Monda::mquery("UPDATE timewindow SET updated=?, processed=0,found=0,loi=0 WHERE id IN (?)", New DateTime(), $wids);
         }
         CliDebug::warn("Done\n");
-        Opts::popOpt("max_rows");
+        Opts::popOpt("tw_max_rows");
         return(Monda::mcommit());
     }
 

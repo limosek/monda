@@ -84,7 +84,7 @@ Graphviz map operations
         if (sizeof($ics) > 0) {
             foreach ($ics as $ic) {
                 Opts::setOpt("window_ids", Array($ic->windowid1, $ic->windowid2));
-                Opts::setOpt("max_rows", Opts::getOpt("gm_max_corrs_per_tw"));
+                Opts::setOpt("ic_max_rows", Opts::getOpt("gm_max_corrs_per_tw"));
                 $itemids = ItemCorr::icToIds(false, true);
                 $wcorr[$ic->windowid1][$ic->windowid2] = $ic->acorr ;
                 $w1 = Tw::twGet($ic->windowid1);
