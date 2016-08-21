@@ -34,9 +34,6 @@ ItemCorr operations
      ic:history [-w wid] [--triggerids id1[,id2]] --output_mode {csv|arff} [common opts]
         Show correlation history
 
-     ic:thistory  [-w wid] --triggerids id1[,id2] [common opts]
-        Show correlations based on triggerids and their items
-
      ic:compute [common opts]
         Compute correlations
         
@@ -111,15 +108,6 @@ ItemCorr operations
         Opts::readCfg(Array("Ic"));
         Opts::readOpts($this->params);
         self::postCfg();
-        if ($this->action=="stats") {
-            if (Opts::isDefault("brief_columns")) {
-                Opts::setOpt("brief_columns",Array("itemid1","itemid2","wcnt1","wcnt2","acorr"));
-            }
-        } else {
-            if (Opts::isDefault("brief_columns")) {
-                Opts::setOpt("brief_columns",Array("windowid1","itemid1","windowid2","itemid2","corr","icloi"));
-            }
-        }
         if (Opts::isDefault("tw_max_rows")) {
             Opts::setOpt("tw_max_rows",false);
         }
@@ -141,6 +129,9 @@ ItemCorr operations
     }
 
     public function renderShow() {
+        if (Opts::isDefault("brief_columns")) {
+            Opts::setOpt("brief_columns", Array("windowid1", "itemid1", "windowid2", "itemid2", "corr", "icloi"));
+        }
         $rows = ItemCorr::icSearch()->fetchAll();
         if ($rows) {
             $this->exportdata = $rows;
@@ -164,39 +155,6 @@ ItemCorr operations
     }
    
     public function renderHistory() {
-        if (Opts::getOpt("output_mode") == "brief") {
-            self::mexit(3, "This action is possible only with csv output mode.\n");
-        }
-        Opts::setOpt("ic_sort", "start/+");
-        Opts::setOpt("ic_notsame", true);
-        if (!Opts::getOpt("itemids")) {
-            self::mexit("You must select items!\n");
-        }
-        if (count(Opts::getOpt("window_length")) > 1) {
-            self::mexit(3, "You must select same window length (-l).\n");
-        }
-        $itemids = Opts::getOpt("itemids");
-        $tws = Tw::twToIds();
-        foreach ($tws as $tw) {
-            $w = Tw::twGet($tw);
-            ItemCorr::IcCompute($w->id, $w->id, $itemids, $w->fstamp, $w->tstamp, $w->fstamp, $w->tstamp, Opts::getOpt("time_precision"), Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), false);
-            $this->exportdata[$tw] = ItemCorr::TwCorrelationsByItemid($tw, $itemids);
-            $this->exportdata[$tw]["windowid"] = $tw;
-        }
-        foreach (array_keys($this->exportdata[$tw]) as $itempair) {
-            List($item1, $item2) = preg_split("/-/", $itempair);
-            if ($item2 && ($item1!=$item2)) {
-                $this->exportinfo[$item1 . "-" . $item2] = IsPresenter::expandItem($item1,true) . "__" . IsPresenter::expandItem($item2,true);
-                $this->arffinfo[$item1 . "-" . $item2] = "NUMERIC";
-            }
-        }
-        $this->exportinfo["windowid"] = "windowid";
-        $this->arffinfo["windowid"] = "numeric";
-        parent::renderShow($this->exportdata);
-        self::mexit();
-    }
-
-    public function renderTHistory() {
         if (Opts::getOpt("output_mode") == "brief") {
             self::mexit(3, "This action is possible only with csv or arff output mode.\n");
         }
@@ -309,6 +267,9 @@ ItemCorr operations
     }
 
     function renderStats() {
+        if (Opts::isDefault("brief_columns")) {
+            Opts::setOpt("brief_columns", Array("itemid1", "itemid2", "wcnt1", "wcnt2", "acorr"));
+        }
         $rows = ItemCorr::icStats();
         if ($rows) {
             $this->exportdata = $rows->fetchAll();

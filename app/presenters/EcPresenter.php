@@ -8,6 +8,7 @@ use App\Model\ItemStat,
     App\Model\Monda,
     App\Model\TriggerInfo,
     Tracy\Debugger,
+    App\Model\Util,
     App\Model\Opts,
     App\Model\CliDebug,
     Nette\Utils\DateTime as DateTime;
@@ -91,6 +92,7 @@ EventCorr operations
                 "triggerid" => $e->relatedObject->triggerid,
                 "priority" => $t->priority,
                 "clock" => $e->clock,
+                "datetime" => Util::dateTime($e->clock),
                 "value" => $e->value,
                 "trigger" => $tdesc
             );

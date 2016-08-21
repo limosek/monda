@@ -14,31 +14,38 @@ use Nette,
  */
 class EventCorr extends Monda {
 
-    function ecSearch($start) {
-        if ($start+Monda::_1DAY>Opts::getOpt("end")) {
-            $end=Opts::getOpt("end");
-        } else {
-            $end=$start+Monda::_1DAY;
+    function ecSearch($start, $end = false) {
+        if (!$end) {
+            $end = Opts::getOpt("end");
         }
-        CliDebug::warn(sprintf("Searching for events between <%s,%s> ", Util::dateTime($start),Util::dateTime($end)));
-        $eq=Array(
-            "time_from" => $start,
-            "time_till" => $end,
-            "output" => "extend",
-            "selectHosts" => "refer",
-            "selectRelatedObject" => "refer",
-            "select_alerts" => "refer",
-            "select_acknowledges" => "refer",
-            "object" => 0
-        );
-        if (Opts::getOpt("triggerids")) {
-            $eq["objectids"]=Opts::getOpt("triggerids");
+        $events = array();
+        while ($start < Opts::getOpt("end")) {
+            $end = min($start + Monda::_1DAY,time());
+            CliDebug::warn(sprintf("Searching for events between <%s,%s> ", Util::dateTime($start), Util::dateTime($end)));
+            $eq = Array(
+                "time_from" => $start,
+                "time_till" => $end,
+                "output" => "extend",
+                "selectHosts" => "refer",
+                "hostids" => Opts::getOpt("hostids"),
+                "selectRelatedObject" => "refer",
+                "select_alerts" => "refer",
+                "select_acknowledges" => "refer",
+                "object" => 0
+            );
+            if (Opts::getOpt("triggerids")) {
+                $eq["objectids"] = Opts::getOpt("triggerids");
+            }
+            $ev = self::apiCmd("eventGet", $eq);
+            CliDebug::warn(sprintf("Found %d events.\n", count($e)));
+            foreach ($ev as $e) {
+                $events[] = $e;
+            }
+            $start += Monda::_1DAY;
         }
-        $events=self::apiCmd("eventGet",$eq);
-        CliDebug::warn(sprintf("Found %d events.\n",count($events)));
         return($events);
     }
-    
+
     function ecLoi() {
         $start = Opts::getOpt("start");
         $wstats1 = Tw::twStats();

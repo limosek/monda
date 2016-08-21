@@ -224,6 +224,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
         }
         CliDebug::log("\n");
         foreach ((array) $this->exportdata as $id=>$row) {
+           $row=(object) $row;
            foreach (Opts::getOpt("brief_columns") as $id) {
                if (is_float($row->$id)) {
                     echo sprintf("%6f ",$row->$id);
@@ -238,6 +239,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
     
     function renderEnv() {
        foreach ((array) $this->exportdata as $id=>$row) {
+           $row=(array) $row;
            foreach ($row as $r=>$v) {
                 echo "$r='$v' ";
             }

@@ -31,6 +31,9 @@ ItemStats operations
 
      is:compute [common opts]
         Compute itemstats
+        
+     is:similar [common opts]
+        Show similar items (based on correlation coefficient)
 
      is:delete [common opts]
         Delete itemstats 
@@ -105,7 +108,10 @@ ItemStats operations
                 false, "similar_corr", "Minimum correlation of items to be similar", 0.7, 0.7
         );
         Opts::addOpt(
-                false, "similar_count", "How many similar items to get. Default to not search similar items.", 0, 0
+                false, "similar_items", "How many similar items to get. Default to not search similar items.", 0, 0
+        );
+        Opts::addOpt(
+                false, "similar_radius", "How many times to find similar items (similar=1, similar of similar=2, ...).", 1, 1
         );
         Opts::addOpt(
                 false, "is_max_rows", "Maximum number of itemstats to get (LIMIT for SELECT)", 300, 300
@@ -115,15 +121,6 @@ ItemStats operations
         Opts::readCfg(Array("Is"));
         Opts::readOpts($this->params);
         self::postCfg();
-        if ($this->action=="stats") {
-            if (Opts::isDefault("brief_columns")) {
-                Opts::setOpt("brief_columns",Array("itemid","avg_","loi","wcnt"));
-            }
-        } else {
-            if (Opts::isDefault("brief_columns")) {
-                Opts::setOpt("brief_columns",Array("itemid","stddev_","cv","loi"));
-            }
-        }
         if (Opts::isDefault("tw_max_rows")) {
             Opts::setOpt("tw_max_rows",false);
         }
@@ -154,8 +151,12 @@ ItemStats operations
             }
         }
         ItemStat::itemsToIds();
-        if (Opts::getOpt("similar_count")>0) {
-            Opts::setOpt("itemids",ItemCorr::FindSimilarItems(Opts::getOpt("itemids")));
+        if (count(ItemCorr::$similar) == 0) {
+            for ($i = 1; $i <= Opts::getOpt("similar_radius"); $i++) {
+                if (Opts::getOpt("similar_items") > 0) {
+                    Opts::pushOpt("itemids", array_unique(ItemCorr::FindSimilarItems(Opts::getOpt("itemids"))));
+                }
+            }
         }
         if (!Opts::getOpt("anonymize_key") && Opts::getOpt("anonymize_items")) {
             self::mexit(2,"You must use --anonymize_key to anonymize items.");
@@ -196,6 +197,9 @@ ItemStats operations
     }
 
     public function renderShow() {
+        if (Opts::isDefault("brief_columns")) {
+            Opts::setOpt("brief_columns", Array("itemid", "stddev_", "cv", "loi"));
+        }
         $rows = ItemStat::isSearch();
         if ($rows && $rows->getRowCount()>0) {
             $this->exportdata = $rows->fetchAll();
@@ -274,6 +278,9 @@ ItemStats operations
     }
 
     public function renderStats() {
+        if (Opts::isDefault("brief_columns")) {
+            Opts::setOpt("brief_columns", Array("itemid", "avg_", "loi", "wcnt"));
+        }
         $rows = ItemStat::isStats();
         if ($rows) {
             $this->exportdata = $rows;
@@ -286,6 +293,26 @@ ItemStats operations
             }
             parent::renderShow($this->exportdata);
         }
+        self::mexit();
+    }
+    
+    public function renderSimilar() {
+        if (Opts::isDefault("brief_columns")) {
+            Opts::setOpt("brief_columns", Array("itemid", "similar", "corr"));
+        }
+        $itemids=Opts::getOpt("itemids");
+        foreach ($itemids as $itemid1) {
+            if (array_key_exists($itemid1,ItemCorr::$similar)) {
+                foreach (ItemCorr::$similar[$itemid1] as $similar=>$corr) {
+                    $this->exportdata[]=Array(
+                        "itemid" => $itemid1,
+                        "similar" => $similar,
+                        "corr" => $corr
+                    );
+                }
+            }
+        }
+        parent::renderShow($this->exportdata);
         self::mexit();
     }
 

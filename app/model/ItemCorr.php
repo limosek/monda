@@ -17,6 +17,8 @@ use Nette,
  * It computes ans searches correlations between items
  */
 class ItemCorr extends Monda {
+    
+    static public $similar=Array();
 
     /**
     * Search items which were preprocessed to compute item correlations
@@ -617,7 +619,11 @@ class ItemCorr extends Monda {
         $ret = Array();
         foreach ($itemids as $itemid1) {
             foreach ($itemids as $itemid2) {
-                if ($itemid1>=$itemid2) continue;
+                if ($itemid1>=$itemid2) {
+                    $itemidswp=$itemid1;
+                    $itemid1=$itemid2;
+                    $itemid2=$itemidswp;
+                }
                 $ret["windowid"] = $tw;
                 if ($itemid1 == $itemid2) {
                     if (Opts::getOpt("ic_notsame")) {
@@ -634,6 +640,7 @@ class ItemCorr extends Monda {
         }
         Opts::setOpt("window_ids", Array($tw));
         Opts::setOpt("itemids", $itemids);
+        Opts::setOpt("hostids", false);
         $ritemids=array_flip($itemids);
         $items = ItemCorr::icSearch()->fetchAll();
         foreach ($items as $item) {
@@ -645,6 +652,7 @@ class ItemCorr extends Monda {
     }
     
     public function FindSimilarItems($itemids) {
+        $wids=Tw::twToIds();
         $mq = Monda::mquery("SELECT itemid1,itemid2,corr
                 FROM itemcorr
                 WHERE (itemid1 IN (?) OR itemid2 IN (?))
@@ -652,11 +660,10 @@ class ItemCorr extends Monda {
                    AND
                    (
                      (itemid1<>itemid2) AND (windowid1=windowid2)
-                     OR
-                     (itemid1=itemid2) AND (windowid1<>windowid2)
                     )
-                ORDER BY  (windowid1=windowid2) DESC, loi DESC 
-                LIMIT ?", $itemids, $itemids, Opts::getOpt("similar_corr"), Opts::getOpt("similar_count")*3);
+                    AND windowid1 IN (?) OR windowid2 IN (?)
+                ORDER BY  (windowid1=windowid2) DESC, loi DESC, corr DESC
+                LIMIT ?", $itemids, $itemids, Opts::getOpt("similar_corr"), $wids, $wids, Opts::getOpt("similar_items")*3);
         if ($mq) {
             $data=$mq->fetchAll();
             $found=count($itemids);
@@ -664,7 +671,9 @@ class ItemCorr extends Monda {
                 $itemids[]=$row->itemid1;
                 $itemids[]=$row->itemid2;
                 $itemids=array_unique($itemids);
-                if (count($itemids)-$found>Opts::getOpt("similar_count")) break;
+                self::$similar[$row->itemid1][$row->itemid2]=$row->corr;
+                self::$similar[$row->itemid2][$row->itemid1]=$row->corr;
+                if (count($itemids)-$found>=Opts::getOpt("similar_items")) break;
             }
         }
         CliDebug::warn(sprintf("Found %d similar items.\n",count($itemids)-$found));
