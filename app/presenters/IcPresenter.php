@@ -177,7 +177,7 @@ ItemCorr operations
         $valuesproblem=0;
         foreach ($tws as $tw) {
             $wid = $tw->id;
-            List($event,$value)=TriggerInfo::eventValueForInterval($events, $tw->fstamp, $tw->tstamp, false);
+            List($event,$value)=TriggerInfo::eventValueForInterval($events, $tw->fstamp+Opts::getOpt("event_clock_shift"), $tw->tstamp+Opts::getOpt("event_clock_shift"), false);
             CliDebug::info(sprintf("Timewindow %d, %s, %f\n",$wid,$tw->tfrom,$value));
             if ($value>Opts::GetOpt("wevent_problem_treshold")) {
                 $value="PROBLEM";

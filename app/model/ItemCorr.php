@@ -617,12 +617,11 @@ class ItemCorr extends Monda {
 
     public function TwCorrelationsByItemid($tw, $itemids) {
         $ret = Array();
+        $itemids=  array_unique($itemids);
         foreach ($itemids as $itemid1) {
             foreach ($itemids as $itemid2) {
                 if ($itemid1>=$itemid2) {
-                    $itemidswp=$itemid1;
-                    $itemid1=$itemid2;
-                    $itemid2=$itemidswp;
+                    continue;
                 }
                 $ret["windowid"] = $tw;
                 if ($itemid1 == $itemid2) {

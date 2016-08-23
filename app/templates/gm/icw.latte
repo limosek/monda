@@ -5,13 +5,13 @@
 {block content}
 
 digraph ItemCorrelationsWindow {
-   graph [gradientangle=0, fontsize=100 ] ;
-   node [gradientangle=0 ] ;
+   graph [gradientangle=0, fontsize=100, penwidth=10, ranksep=2, nodesep=2 ] ;
+   node [gradientangle=0, fontsize=80, penwidth=10 ] ;
    edge [dir=both, arrowhead=normal, arrrowtail=normal];
    splines=true;
    
    subgraph cluster_monda {
-    edge [dir=both, arrowhead=normal, arrrowtail=normal];
+    edge [dir=both, arrowhead=normal, arrrowtail=normal, fontsize=80];
     label="{$window->description}\n#{$window->id}";
 
     {foreach $hosts as $h=>$itemids}
@@ -26,7 +26,7 @@ digraph ItemCorrelationsWindow {
     
     {foreach $ics as $ic}
         {if $ic->itemid1!=$ic->itemid2}
-        i{$ic->itemid1}->i{$ic->itemid2} [edgeURL="{$ic->url}", penwidth={$ic->size}, label="{$ic->label}" ];
+        i{$ic->itemid1}->i{$ic->itemid2} [edgeURL="{$ic->url}", penwidth={$ic->size*10}, label="{$ic->label}" ];
         {/if}
     {/foreach}
    }

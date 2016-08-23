@@ -37,7 +37,7 @@ class EventCorr extends Monda {
                 $eq["objectids"] = Opts::getOpt("triggerids");
             }
             $ev = self::apiCmd("eventGet", $eq);
-            CliDebug::warn(sprintf("Found %d events.\n", count($e)));
+            CliDebug::warn(sprintf("Found %d events.\n", count($ev)));
             foreach ($ev as $e) {
                 $events[] = $e;
             }

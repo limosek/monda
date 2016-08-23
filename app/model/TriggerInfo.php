@@ -138,7 +138,7 @@ class TriggerInfo extends Monda {
               );
     }
 
-    static public function History($triggerids, $clocks) {
+    static public function History($triggerids, $clocks, $shift=0) {
         if (!$triggerids) {
             return(false);
         } else {
@@ -146,7 +146,7 @@ class TriggerInfo extends Monda {
             $rows = Array();
             foreach ($clocks as $clock) {
                 foreach ($triggerids as $tid) {
-                    List($event, $value) = TriggerInfo::eventValueForInterval($events, $clock, $clock + Opts::getOpt("history_granularity"), $tid);
+                    List($event, $value) = TriggerInfo::eventValueForInterval($events, $clock + $shift, $clock + $shift + Opts::getOpt("history_granularity"), $tid);
                     if ($value > Opts::GetOpt("wevent_problem_treshold")) {
                         $value = "PROBLEM";
                     } else {

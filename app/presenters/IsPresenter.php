@@ -105,6 +105,9 @@ ItemStats operations
                 false, "event_value_filter", "Filter trigger history to only this values {OK|PROBLEM|50}. 50 means distribute to 50%.", false, false,Array("OK","PROBLEM","50")
         );
         Opts::addOpt(
+                false, "event_clock_shift", "Shift events time by this number of seconds. So history and event will be shifted.", 0, 0
+        );
+        Opts::addOpt(
                 false, "similar_corr", "Minimum correlation of items to be similar", 0.7, 0.7
         );
         Opts::addOpt(
@@ -246,9 +249,9 @@ ItemStats operations
                     }
                 }
             }
-            $trows = TriggerInfo::History(Opts::getOpt("triggerids"), $clocks);
+            $trows = TriggerInfo::History(Opts::getOpt("triggerids"), $clocks, Opts::getOpt("event_clock_shift"));
             foreach (Opts::getOpt("triggerids") as $t) {
-                $this->exportinfo[$t] = TriggerInfo::expandTrigger($t,false);
+                $this->exportinfo[$t] = TriggerInfo::expandTrigger($t,true);
                 $this->arffinfo[$t] = "{OK,PROBLEM}";
                 foreach ($trows as $i => $trow) {
                     $value=$trow[$t];
