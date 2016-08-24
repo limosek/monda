@@ -23,6 +23,7 @@ class CliDebug {
     private static $level;
     private static $obuff;
     private static $ebuff;
+    static $progress;
     
     static function comparelevel($l1,$l2) {
         if (!is_numeric($l1)) {
@@ -72,6 +73,12 @@ class CliDebug {
             fwrite(STDOUT,$message);
             self::$ebuff.=$message;
         }
+     }
+     
+     static function progress($message) {
+         if (self::$progress) {
+            self::log($message,Debugger::ERROR);
+         }
      }
      
      static function dbg($message) {

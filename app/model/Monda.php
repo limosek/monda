@@ -123,7 +123,8 @@ class Monda extends Nette\Object {
                 throw $e;
             }
             if (count($ret)==0) {
-                CliDebug::info("Zabbix API $cmd returned empty result. Check permissions:\n".print_r($req,true)."\n");
+                CliDebug::info("Zabbix API $cmd returned empty result. Check permissions.\n");
+                CliDebug::dbg(print_r($req,true)."\n");
             }
             self::$apicache->save($ckey, $ret, array(
                 Cache::EXPIRE => Opts::getOpt("api_cache_expire"),
@@ -143,7 +144,7 @@ class Monda extends Nette\Object {
         }
         $psql=new SqlPreprocessor(self::$zq->connection);
         List($sql)=$psql->process($args);
-        CliDebug::info("zquery(".trim(strtok(trim($sql), " ")));
+        CliDebug::progress("zquery(".trim(strtok(trim($sql), " ")));
         CliDebug::dbg("$sql");
         if (Opts::getOpt("sql_profile")) {
             self::profileStart("zquery $sql");
@@ -155,7 +156,7 @@ class Monda extends Nette\Object {
             self::profileEnd("zquery");
         }
         self::$lastsql=$sql;
-        CliDebug::info(")");
+        CliDebug::progress(")");
         CliDebug::dbg(sprintf("Result: %d rows (called %d times, took %.2f seconds, total %.2f seconds.\n",
                 $ret->getRowCount(),self::profileGetCnt("zquery"),self::profileGetLast("zquery"),self::profileGetSeconds("zquery")));
         return($ret);
@@ -188,7 +189,7 @@ class Monda extends Nette\Object {
         }
         $psql=new SqlPreprocessor(self::$mq->connection);
         List($sql)=$psql->process($args);
-        CliDebug::info("mquery(".trim(strtok(trim($sql), " ")));
+        CliDebug::progress("mquery(".trim(strtok(trim($sql), " ")));
         CliDebug::dbg("$sql");
         if (Opts::getOpt("sql_profile")) {
             self::profileStart("mquery $sql");
@@ -200,7 +201,7 @@ class Monda extends Nette\Object {
             self::profileEnd("mquery");
         }
         self::$lastsql=$sql;
-        CliDebug::info(")");
+        CliDebug::progress(")");
         CliDebug::dbg(sprintf("Results: %d rows (called %d times, took %.2f seconds, total %.2f seconds.\n",
                 $ret->getRowCount(),self::profileGetCnt("mquery"),self::profileGetLast("mquery"),self::profileGetSeconds("mquery"))); 
         return($ret);

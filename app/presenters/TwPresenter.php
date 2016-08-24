@@ -23,6 +23,9 @@ class TwPresenter extends BasePresenter {
                 "e", "end", "End time of analysis.", Util::roundtime(time() - 3600), "-1 hour"
         );
         Opts::addOpt(
+                false, "interval", "Interval for analysis (instead of --end).", false, false
+        );
+        Opts::addOpt(
                 "d", "window_description", "Window description.", "", ""
         );
         Opts::addOpt(
@@ -79,8 +82,14 @@ class TwPresenter extends BasePresenter {
     static public function postCfg() {
         parent::postCfg();
         Opts::setOpt("start", Util::timetoseconds(Opts::getOpt("start")));
-        Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("end")));
-        
+        if (Opts::isOpt("interval") && !Opts::isDefault("end")) {
+            self::mexit(2,"You have to use either end or interval!\n");
+        }
+        if (Opts::isOpt("interval")) {
+            Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("interval"))+Opts::getOpt("start"));
+        } else {
+            Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("end")));
+        }
         if (Opts::isOpt("window_length")) {
             $lengths=Opts::optToArray("window_length");
             foreach ($lengths as $id => $l) {

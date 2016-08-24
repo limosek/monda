@@ -150,7 +150,7 @@ ItemStats operations
             }
         }
         if (Opts::getOpt("output_mode")=="arff") {
-            Opts::setOpt("item_restricted_chars","\"'{}[],.|+-: ");
+            Opts::setOpt("item_restricted_chars","/%\"'{}[],.|+-: ");
         }
         if (Opts::getOpt("events_prefetch")) {
             if (Util::timetoseconds(Opts::getOpt("events_prefetch")) - time()>0) {
@@ -234,10 +234,16 @@ ItemStats operations
         if (Opts::getOpt("output_mode") == "brief") {
             self::mexit(3, "This action is possible only with csv output mode.\n");
         }
-        if (Opts::isDefault("start") && sizeof(Opts::isDefault("triggerids"))>0) {
-            $ev=  TriggerInfo::Triggers2Events(time()-Opts::getOpt("events_prefetch"),time(),Opts::getOpt("triggerids"));
-            Opts::SetOpt("start",$ev[0]->clock);
-            CliDebug::info(sprintf("Changing start time to %s (from triggerids)\n",Util::dateTime($ev[0]->clock)));
+        if (Opts::isDefault("start") && sizeof(Opts::isDefault("triggerids")) > 0) {
+            $ev = TriggerInfo::Triggers2Events(time() - Opts::getOpt("events_prefetch"), time(), Opts::getOpt("triggerids"));
+            if (count($ev)>0) {
+                Opts::SetOpt("start", $ev[0]->clock-Monda::_1HOUR);
+                CliDebug::info(sprintf("Changing start time to %s (from triggerids)\n", Util::dateTime($ev[0]->clock)));
+                if (Opts::isOpt("interval")) {
+                    Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("interval"))-time()+Opts::getOpt("start"));
+                    CliDebug::info(sprintf("Changing end time to %s (from triggerids)\n",Util::dateTime(Opts::getOpt("end"))));
+                }
+            }
         }
         Opts::setOpt("tw_sort","start/+");
         $rows = ItemStat::isZabbixHistory();

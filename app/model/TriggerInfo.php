@@ -121,11 +121,21 @@ class TriggerInfo extends Monda {
         $lastclock = $fstamp;
         $lastvalue = false;
         $value=false;
+        $minclock=time();
+        $maxclock=0;
+        foreach ($events as $event) {
+            $minclock=min($minclock,$event->clock);
+            $maxclock=max($maxclock,$event->clock);
+        }
+        if ($minclock>$tstamp || $maxclock<$fstamp) {
+            CliDebug::warn(sprintf("eventValue interval bad (events: %s-%s, clocks:%s-%s!\n",
+                    Util::dateTime($minclock),Util::dateTime($maxclock),
+                    Util::dateTime($fstamp),Util::dateTime($tstamp)));
+        }
         foreach ($events as $event) {
             if ($tid && $tid != $event->relatedObject->triggerid) continue;
             if ($event->clock >= $fstamp) {
                 if ($event->clock < $tstamp) {
-                    //CliDebug::dbg(sprintf("clock inside: %d\n",$event->clock-$fstamp));
                     if ($lastvalue === false) {
                         CliDebug::err(sprintf("Increase prefetch time for triggers (--events_prefetch)!)\n"));
                         return(false);
@@ -154,7 +164,7 @@ class TriggerInfo extends Monda {
         if (!$triggerids) {
             return(false);
         } else {
-            $events = self::Triggers2Events(min($clocks) - Opts::getOpt("events_prefetch"), max($clocks), Opts::getOpt("triggerids"));
+            $events = self::Triggers2Events(min($clocks) - Opts::getOpt("events_prefetch"), max($clocks)+ Opts::getOpt("events_prefetch"), Opts::getOpt("triggerids"));
             $rows = Array();
             foreach ($clocks as $clock) {
                 foreach ($triggerids as $tid) {

@@ -33,6 +33,9 @@ class Opts extends Nette\Object {
         Opts::addOpt(
                 "D", "debug", "Debug level (debug,info,warning,error,critical)", "warning", "warning"
         );
+        Opts::addOpt(
+                "P", "progress", "Print progress info", false, false
+        );
         Opts::preReadOpts();
     }
     
@@ -114,6 +117,7 @@ class Opts extends Nette\Object {
         }
         error_reporting(!E_DEPRECATED);
         CliDebug::startup(Opts::getOpt("debug"));
+        CliDebug::$progress=Opts::getOpt("progress");
     }
 
     /**

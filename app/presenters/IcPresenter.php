@@ -168,8 +168,12 @@ ItemCorr operations
         if (Opts::isDefault("start") && sizeof(Opts::isDefault("triggerids")) > 0) {
             $ev = TriggerInfo::Triggers2Events(time() - Opts::getOpt("events_prefetch"), time(), Opts::getOpt("triggerids"));
             if (count($ev)>0) {
-                Opts::SetOpt("start", $ev[0]->clock);
+                Opts::SetOpt("start", $ev[0]->clock-Monda::_1HOUR);
                 CliDebug::info(sprintf("Changing start time to %s (from triggerids)\n", Util::dateTime($ev[0]->clock)));
+                if (Opts::isOpt("interval")) {
+                    Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("interval"))-time()+Opts::getOpt("start"));
+                    CliDebug::info(sprintf("Changing end time to %s (from triggerids)\n",Util::dateTime(Opts::getOpt("end"))));
+                }
             }
         }
         Opts::setOpt("ic_sort", "start/+");
