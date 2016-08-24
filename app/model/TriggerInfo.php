@@ -172,6 +172,9 @@ class TriggerInfo extends Monda {
                     if ($value > Opts::GetOpt("wevent_problem_treshold")) {
                         $value = "PROBLEM";
                     } else {
+                        if ($value>0) {
+                            CliDebug::warn("Skipping event value for trigger $tid (value $value)\n");
+                        }
                         $value = "OK";
                     }
                     $rows[$clock][$tid] = $value;
