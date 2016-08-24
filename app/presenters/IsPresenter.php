@@ -81,7 +81,10 @@ ItemStats operations
                 false, "history_interpolate", "Interpolate history data (slow).", true, "yes"
         );
         Opts::addOpt(
-                false, "triggerids", "Select this triggerids to history", (int) 0, 0
+                false, "triggerids", "Select this triggerids to history.", (int) 0, 0
+        );
+        Opts::addOpt(
+                false, "triggerids_from_host", "Select triggerids from hosts", (int) 0, 0
         );
         Opts::addOpt(
                 false, "events_prefetch", "Prefetch this number of seconds before history dump", Monda::_1WEEK, "1 week"
@@ -135,6 +138,9 @@ ItemStats operations
         Opts::optToArray("items", "~");
         Opts::optToArray("triggerids", ",");
         if (!Opts::isOpt("itemids")) {
+            if (Opts::isOpt("triggerids_from_host")) {
+                Opts::setOpt("triggerids",TriggerInfo::Hosts2Triggers(Opts::getOpt("hostids")));
+            }
             if (Opts::getOpt("triggerids")) {
                 $itemids = TriggerInfo::Triggers2Items(Opts::getOpt("triggerids"));
                 if (count($itemids) == 0) {
@@ -227,6 +233,11 @@ ItemStats operations
         }
         if (Opts::getOpt("output_mode") == "brief") {
             self::mexit(3, "This action is possible only with csv output mode.\n");
+        }
+        if (Opts::isDefault("start") && sizeof(Opts::isDefault("triggerids"))>0) {
+            $ev=  TriggerInfo::Triggers2Events(time()-Opts::getOpt("events_prefetch"),time(),Opts::getOpt("triggerids"));
+            Opts::SetOpt("start",$ev[0]->clock);
+            CliDebug::info(sprintf("Changing start time to %s (from triggerids)\n",Util::dateTime($ev[0]->clock)));
         }
         Opts::setOpt("tw_sort","start/+");
         $rows = ItemStat::isZabbixHistory();

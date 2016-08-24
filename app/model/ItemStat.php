@@ -357,7 +357,10 @@ class ItemStat extends Monda {
             $x = range($from, $to, $g);
             $ip = Array();
             foreach ($values as $itemid => $column) {
-                CliDebug::info(sprintf("Interpolating %d values for %s from %d values.\n", count($x), $itemid, count($column)));
+                CliDebug::info(sprintf("Interpolating %d values for %s from %d values (from %s to %s).\n", 
+                        count($x), $itemid, count($column),
+                        Util::dateTime(min($x)),
+                        Util::dateTime(max($x))));
                 $ip[$itemid] = Util::interpolate($column, $x);
             }
             foreach ($x as $x1) {

@@ -631,7 +631,7 @@ class ItemCorr extends Monda {
                         $ret[$itemid1 . "-" . $itemid2] = 1;
                     }
                 } elseif ($itemid1 < $itemid2) {
-                    $ret[$itemid1 . "-" . $itemid2] = 0;
+                    $ret[$itemid1 . "-" . $itemid2] = "NaN";
                 } else {
                     continue;
                 }

@@ -43,7 +43,7 @@ $container = require __DIR__ . '/../app/bootstrap.php';
 
 function sigint_handler() {
     debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS,5);
-    Monda::profileDump();
+    \App\Model\Monda::profileDump();
     exit;
 }
 

@@ -141,6 +141,7 @@ class Tw extends Monda {
         } else {
             $icorrsql="";
         }
+        CliDebug::info(sprintf("Searching in timewindows from %s to %s\n",Util::timetoseconds(Opts::getOpt("start"),Util::timetoseconds(Opts::getOpt("end")))));
         $rows = Monda::mquery("
             SELECT 
                 id,parentid,

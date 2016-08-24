@@ -9,6 +9,7 @@ use App\Model\ItemStat,
     App\Model\TriggerInfo, 
     Tracy\Debugger,
     App\Model\Opts,
+    App\Model\Util,
     App\Model\CliDebug,
     Nette\Utils\DateTime as DateTime;
 
@@ -98,6 +99,9 @@ ItemCorr operations
                 false, "ic_history_interval", "When getting history of event, get this seconds of history arround.", 3600, "1hour"
         );
         Opts::addOpt(
+                false, "ic_compute_for_history", "If set, ic history will be computed for missing interval and items.", false, false
+        );
+        Opts::addOpt(
                 false, "ic_cache_expire", "How long to cache ic results in seconds.", 300, 300
         );
         Opts::addOpt(
@@ -158,62 +162,82 @@ ItemCorr operations
         if (Opts::getOpt("output_mode") == "brief") {
             self::mexit(3, "This action is possible only with csv or arff output mode.\n");
         }
-        if (count(Opts::getOpt("window_length"))>1) {
+        if (count(Opts::getOpt("window_length")) > 1) {
             self::mexit(3, "You must select same window length (-l).\n");
         }
+        if (Opts::isDefault("start") && sizeof(Opts::isDefault("triggerids")) > 0) {
+            $ev = TriggerInfo::Triggers2Events(time() - Opts::getOpt("events_prefetch"), time(), Opts::getOpt("triggerids"));
+            if (count($ev)>0) {
+                Opts::SetOpt("start", $ev[0]->clock);
+                CliDebug::info(sprintf("Changing start time to %s (from triggerids)\n", Util::dateTime($ev[0]->clock)));
+            }
+        }
         Opts::setOpt("ic_sort", "start/+");
-        
         $items = Opts::getOpt("itemids");
         $hosts = Array();
         foreach ($items as $item) {
-            $ii = ItemStat::itemInfo($item,true);
+            $ii = ItemStat::itemInfo($item, true);
             $hosts[$ii[0]->hostid] = $ii[0]->hostid;
         }
         CliDebug::info(sprintf("Trigger items: %s, hosts: %s\n", join(",", $items), join(",", $hosts)));
-        Opts::setOpt("tw_sort","start/+");
+        Opts::setOpt("tw_sort", "start/+");
         $tws = Tw::twSearch()->fetchAll();
-        $events = TriggerInfo::Triggers2Events(round((Opts::getOpt("start") - Opts::getOpt("events_prefetch"))/Monda::_1HOUR)*Monda::_1HOUR, Opts::getOpt("end"), Opts::getOpt("triggerids"));
-        $valuesok=0;
-        $valuesproblem=0;
-        foreach ($tws as $tw) {
-            $wid = $tw->id;
-            List($event,$value)=TriggerInfo::eventValueForInterval($events, $tw->fstamp+Opts::getOpt("event_clock_shift"), $tw->tstamp+Opts::getOpt("event_clock_shift"), false);
-            CliDebug::info(sprintf("Timewindow %d, %s, %f\n",$wid,$tw->tfrom,$value));
-            if ($value>Opts::GetOpt("wevent_problem_treshold")) {
-                $value="PROBLEM";
-            } else {
-                $value="OK";
-            }
-            if (Opts::getOpt("event_value_filter")) {
-                if (Opts::getOpt("event_value_filter")=="50") {
-                    if ($valuesproblem>$valuesok && $value=="OK") {
-                        $valuesok++;
-                    } elseif ($value=="PROBLEM") {
-                        $valuesproblem++;
-                    } else {
-                        CliDebug::info(sprintf("Skipping timewindow %d due to 50/50 filter\n",$wid));
+        $ftids=Array();
+        foreach (Opts::getOpt("triggerids") as $tid) {
+            $events = TriggerInfo::Triggers2Events(round((Opts::getOpt("start") - Opts::getOpt("events_prefetch")) / Monda::_1HOUR) * Monda::_1HOUR, Opts::getOpt("end"), array($tid));
+            if (count($events)==0) continue;
+            $ftids[]=$tid;
+            $valuesok = 0;
+            $valuesproblem = 0;
+            foreach ($tws as $tw) {
+                $wid = $tw->id;
+                List($event, $value) = TriggerInfo::eventValueForInterval($events, $tw->fstamp + Opts::getOpt("event_clock_shift"), $tw->tstamp + Opts::getOpt("event_clock_shift"), false);
+                CliDebug::info(sprintf("Timewindow %d, %s, trigger %d, %f\n", $wid, $tw->tfrom, $tid, $value));
+                if ($value > Opts::GetOpt("wevent_problem_treshold")) {
+                    $value = "PROBLEM";
+                } else {
+                    $value = "OK";
+                }
+                if (Opts::getOpt("event_value_filter")) {
+                    if (Opts::getOpt("event_value_filter") == "50") {
+                        if ($valuesproblem > $valuesok && $value == "OK") {
+                            $valuesok++;
+                        } elseif ($value == "PROBLEM") {
+                            $valuesproblem++;
+                        } else {
+                            CliDebug::info(sprintf("Skipping timewindow %d due to 50/50 filter\n", $wid));
+                            continue;
+                        }
+                    } elseif ($value != Opts::getOpt("event_value_filter")) {
                         continue;
                     }
-                } elseif ($value!=Opts::getOpt("event_value_filter")) {
-                    continue;
                 }
+                $this->exportdata[$wid][$tid] = $value;
+                $this->exportinfo[$tid] = TriggerInfo::expandTrigger($tid, $event->hosts, true);
+                $this->arffinfo[$tid] = "{OK,PROBLEM}";
             }
+        }
+        foreach ($tws as $tw) {
+            $wid = $tw->id;
             $this->exportdata[$wid]["windowid"] = $wid;
-            ItemCorr::IcCompute($wid, $wid, $items, $tw->fstamp, $tw->tstamp, $tw->fstamp, $tw->tstamp, Opts::getOpt("time_precision"), Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), true, false);
-            $corrs=ItemCorr::TwCorrelationsByItemid($wid,$items);
-            $this->exportdata[$wid]=array_merge(
-                    $this->exportdata[$wid],
-                    $corrs);
-            $tid = $event->relatedObject->triggerid;
-            $this->exportdata[$wid][$tid]=$value;
-            $this->exportinfo[$tid] = TriggerInfo::expandTrigger($tid,$event->hosts,true);
-            $this->arffinfo[$tid] = "{OK,PROBLEM}";
+            if (Opts::isOpt("ic_compute_for_history")) {
+                ItemCorr::IcCompute($wid, $wid, $items, $tw->fstamp, $tw->tstamp, $tw->fstamp, $tw->tstamp, Opts::getOpt("time_precision"), Opts::getOpt("min_values_for_corr"), Opts::getOpt("max_values_for_corr"), true, false);
+            }
+            $corrs = ItemCorr::TwCorrelationsByItemid($wid, $items);
+            $row=Array();
+            foreach ($corrs as $k=>$corr) {
+                $row[$k]=$corr;
+            }
+            foreach ($ftids as $tid) {
+                $row[$tid]=$this->exportdata[$wid][$tid];
+            }
+            $this->exportdata[$wid] = $row;
             $this->exportinfo["windowid"] = "windowid";
             $this->arffinfo["windowid"] = "NUMERIC";
             foreach (array_keys($this->exportdata[$wid]) as $itempair) {
                 List($item1, $item2) = preg_split("/-/", $itempair);
                 if ($item2) {
-                    $this->exportinfo[$item1 . "-" . $item2] = IsPresenter::expandItem($item1,true) . "__" . IsPresenter::expandItem($item2,true);
+                    $this->exportinfo[$item1 . "-" . $item2] = IsPresenter::expandItem($item1, true) . "__" . IsPresenter::expandItem($item2, true);
                     $this->arffinfo[$item1 . "-" . $item2] = "NUMERIC";
                 }
             }

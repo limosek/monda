@@ -70,28 +70,38 @@ class TriggerInfo extends Monda {
         return($ret);
     }
     
+    static public function Hosts2Triggers($hostids) {
+        $tq = Array(
+            "hostids" => Opts::getOpt("hostids")
+        );
+        $tr = Monda::apiCmd("triggerGet", $tq);
+        $tids = Array();
+        foreach ($tr as $trigger) {
+            $tids[$trigger->triggerid] = $trigger->triggerid;
+        }
+        return($tids);
+    }
+
     static public function Triggers2Items($triggerids) {
-        $tq=Array(
+        $tq = Array(
             "triggerids" => $triggerids,
             "output" => "extend",
             "selectFunctions" => "extend"
         );
-        $tr=Monda::apiCmd("triggerGet",$tq);
-        $itemids=Array();
+        $tr = Monda::apiCmd("triggerGet", $tq);
+        $itemids = Array();
         foreach ($tr as $trigger) {
             if ($trigger->functions) {
                 foreach ($trigger->functions as $function) {
-                    $itemids[$function->itemid]=$function->itemid;
+                    $itemids[$function->itemid] = $function->itemid;
                 }
             }
         }
         return($itemids);
     }
-    
+
     static public function Triggers2Events($start, $end, $triggerids) {
         $eq = Array(
-            "time_from" => $start,
-            "time_till" => $end,
             "output" => "extend",
             "objectids" => $triggerids,
             "selectHosts" => "refer",
@@ -100,6 +110,8 @@ class TriggerInfo extends Monda {
             "select_acknowledges" => "refer",
             "sortfield" => "clock"
         );
+        if ($start) $eq["time_from"]=$start;
+        if ($end) $eq["time_till"]=$end;
         $events = Monda::apiCmd("eventGet", $eq);
         CliDebug::warn(sprintf("Found %d events for triggerids (<%d,%d>)%s.\n", count($events), $start, $end, join(",", $triggerids)));
         return($events);
