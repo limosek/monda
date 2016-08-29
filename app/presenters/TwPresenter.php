@@ -23,7 +23,7 @@ class TwPresenter extends BasePresenter {
                 "e", "end", "End time of analysis.", Util::roundtime(time() - 3600), "-1 hour"
         );
         Opts::addOpt(
-                false, "interval", "Interval for analysis (instead of --end).", false, false
+                false, "interval", "Interval for analysis (instead of --end). Use @number to specify number of history lines.", false, false
         );
         Opts::addOpt(
                 "d", "window_description", "Window description.", "", ""

@@ -240,8 +240,14 @@ ItemStats operations
                 Opts::SetOpt("start", $ev[0]->clock-Monda::_1HOUR);
                 CliDebug::info(sprintf("Changing start time to %s (from triggerids)\n", Util::dateTime($ev[0]->clock)));
                 if (Opts::isOpt("interval")) {
-                    Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("interval"))-time()+Opts::getOpt("start"));
-                    CliDebug::info(sprintf("Changing end time to %s (from triggerids)\n",Util::dateTime(Opts::getOpt("end"))));
+                    if (preg_match("/@/",Opts::getOpt("interval"))) {
+                        $rows=preg_split("/@/",Opts::getOpt("interval"));
+                        Opts::setOpt("end", Opts::getOpt("start")+$rows[1]*Opts::getOpt("history_granularity"));
+                        CliDebug::info(sprintf("Changing end time to %s (from interval)\n",Util::dateTime(Opts::getOpt("end"))));
+                    } else {
+                        Opts::setOpt("end", Util::timetoseconds(Opts::getOpt("interval"))-time()+Opts::getOpt("start"));
+                        CliDebug::info(sprintf("Changing end time to %s (from interval)\n",Util::dateTime(Opts::getOpt("end"))));
+                    }
                 }
             }
         }
